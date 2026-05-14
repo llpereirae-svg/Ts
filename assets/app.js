@@ -11,7 +11,7 @@ import { COUNTRIES, findCountry } from './countries.js';
 import { citiesFor } from './cities.js';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
-  establecerClave, finalizarRegistro,
+  establecerClave, finalizarRegistro, validarEmpresa,
 } from './api-mocks.js';
 import { validarFirmaP12 } from './firma-validator.js';
 
@@ -387,6 +387,21 @@ function init() {
   $('#cot-calcular').addEventListener('click', onCotCalcular);
   $('#cot-refrescar').addEventListener('click', onCotRefrescar);
   $('#cot-contratar').addEventListener('click', onCotContratar);
+  $('#cot-descargar').addEventListener('click', descargarCotizacionPDF);
+
+  // Modal validación de RUC para contratar (entre cotizador y pago)
+  $('#contratar-ruc-continuar').addEventListener('click', onContratarRucContinuar);
+  $('#contratar-ruc-cancelar').addEventListener('click', () => closeModal($('#modal-contratar-ruc')));
+  $('#contratar-ruc').addEventListener('input', (e) => {
+    // Filtrar a sólo dígitos, máx 13. Limpia mensajes anteriores.
+    const v = e.target.value.replace(/\D/g, '').slice(0, 13);
+    if (v !== e.target.value) e.target.value = v;
+    if ($('#contratar-ruc').getAttribute('aria-invalid') === 'true') {
+      $('#contratar-ruc-error').textContent = '';
+      $('#contratar-ruc').setAttribute('aria-invalid', 'false');
+    }
+  });
+
   $('#cot-docs').addEventListener('input', (e) => {
     // Filtrar a sólo dígitos y limitar al máximo
     const v = e.target.value.replace(/\D/g, '').slice(0, 9);
@@ -1372,11 +1387,64 @@ function onCotRefrescar() {
 }
 
 function onCotContratar() {
+  // Antes de mostrar el modal de pago, pedimos el RUC del contratante y
+  // validamos que esté en la tabla "Empresas" de TributaSoft.
   closeModal($('#modal-cotizar'));
-  resetPagoForm();
-  $('#pago-fecha').value = todayISO();
-  openModal($('#modal-pago'));
-  track('cotizador_contratar');
+  $('#contratar-ruc').value = '';
+  $('#contratar-ruc-error').textContent = '';
+  $('#contratar-ruc-ok').hidden = true;
+  $('#contratar-ruc-ok').textContent = '';
+  openModal($('#modal-contratar-ruc'));
+  track('cotizador_contratar_init');
+}
+
+async function onContratarRucContinuar() {
+  const ruc = ($('#contratar-ruc').value || '').replace(/\D/g, '');
+  $('#contratar-ruc').value = ruc; // normalizar visualmente
+  $('#contratar-ruc-error').textContent = '';
+  $('#contratar-ruc-ok').hidden = true;
+
+  // 1) Validación de estructura (mismo algoritmo de dígito verificador del SRI).
+  const struct = validarRUC(ruc);
+  if (!struct.valid) {
+    $('#contratar-ruc-error').textContent = struct.reason;
+    $('#contratar-ruc').setAttribute('aria-invalid', 'true');
+    return;
+  }
+  $('#contratar-ruc').setAttribute('aria-invalid', 'false');
+
+  // 2) Validación contra la "tabla empresas" (mock).
+  const btn = $('#contratar-ruc-continuar');
+  setBusy(btn, true);
+  try {
+    const resp = await validarEmpresa(ruc);
+    if (!resp.found) {
+      $('#contratar-ruc-error').textContent = 'No encontramos este RUC como empresa registrada en TributaSoft. Verifica el número o regístrate primero.';
+      $('#contratar-ruc').setAttribute('aria-invalid', 'true');
+      track('contratar_ruc_no_registrado', { ruc });
+      return;
+    }
+
+    // 3) OK — guardamos el RUC y razón social para el pago, y avanzamos.
+    flow.contratarRuc = ruc;
+    flow.contratarRazonSocial = resp.razonSocial;
+    $('#contratar-ruc-ok').textContent = `Empresa encontrada: ${resp.razonSocial}`;
+    $('#contratar-ruc-ok').hidden = false;
+    track('contratar_ruc_validado', { ruc, razonSocial: resp.razonSocial });
+
+    // Pequeño delay para que el usuario alcance a ver el ✓ y luego pasamos a pago.
+    setTimeout(() => {
+      closeModal($('#modal-contratar-ruc'));
+      resetPagoForm();
+      $('#pago-fecha').value = todayISO();
+      openModal($('#modal-pago'));
+    }, 700);
+  } catch (err) {
+    console.error(err);
+    $('#contratar-ruc-error').textContent = 'Error consultando. Intenta de nuevo en un momento.';
+  } finally {
+    setBusy(btn, false);
+  }
 }
 
 function formatMoney(n) {
@@ -1397,6 +1465,215 @@ function todayISO() {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// =========================================================================
+//   PDF DE COTIZACIÓN — usa jsPDF cargado on-demand desde CDN. Replica
+//   el encabezado y pie de la papelería corporativa de TributaSoft.
+// =========================================================================
+
+const JSPDF_CDN = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+let _jspdfPromise = null;
+function loadJsPDF() {
+  if (typeof window !== 'undefined' && window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (_jspdfPromise) return _jspdfPromise;
+  _jspdfPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = JSPDF_CDN;
+    s.async = true;
+    s.onload = () => window.jspdf?.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error('jsPDF no se inicializó'));
+    s.onerror = () => reject(new Error('No se pudo cargar jsPDF'));
+    document.head.appendChild(s);
+  });
+  return _jspdfPromise;
+}
+
+async function fetchPngAsDataURL(url) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function descargarCotizacionPDF() {
+  const btn = $('#cot-descargar');
+  setBusy(btn, true);
+  try {
+    const docsMes = parseInt($('#cot-docs').value, 10);
+    if (!Number.isInteger(docsMes) || docsMes < 1) {
+      showBanner('Calcula primero la cotización antes de descargar.', 'warn');
+      return;
+    }
+    const anual = docsMes * 12;
+    const subtotal = 6 + anual * 0.20;
+    const iva = subtotal * 0.15;
+    const total = subtotal + iva;
+    const hoy = new Date();
+    const vence = new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate());
+
+    const JsPDFCtor = await loadJsPDF();
+    const doc = new JsPDFCtor({ unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+
+    // ---- HEADER ----
+    // Logo (esquina superior izquierda).
+    const logoData = await fetchPngAsDataURL('./assets/Logo%20TributaSoft.png');
+    if (logoData) {
+      try { doc.addImage(logoData, 'PNG', 18, 12, 14, 14); } catch { /* ignore */ }
+    }
+
+    // Wordmark "Tributa" + "Soft"
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(135, 199, 220);   // celeste del logo (impreso queda visible)
+    const tributaX = logoData ? 35 : 20;
+    doc.text('Tributa', tributaX, 22);
+    const tributaW = doc.getTextWidth('Tributa');
+    doc.setTextColor(239, 115, 6);     // naranja del logo
+    doc.text('Soft', tributaX + tributaW, 22);
+
+    // Tagline
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(11);
+    doc.setTextColor(120, 120, 120);
+    const softW = doc.getTextWidth('Soft');
+    doc.text('...todo bajo control', tributaX + tributaW + softW + 4, 22);
+
+    // Línea separadora
+    doc.setDrawColor(0, 35, 111);
+    doc.setLineWidth(0.4);
+    doc.line(18, 30, pageW - 18, 30);
+
+    // Fecha (alineada a la derecha bajo la línea)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    const fechaLarga = `Guayaquil, ${hoy.getDate()} de ${NOMBRE_MESES[hoy.getMonth()].toLowerCase()} del ${hoy.getFullYear()}`;
+    doc.text(fechaLarga, pageW - 18, 38, { align: 'right' });
+
+    // ---- BODY ----
+    let y = 52;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(0, 35, 111);
+    doc.text('Cotización de servicios', 18, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Estimado cliente:', 18, y); y += 6;
+    const intro =
+      'A continuación, el detalle de la cotización personalizada para su plan ' +
+      'de facturación electrónica con TributaSoft, calculada sobre el volumen ' +
+      'mensual de comprobantes indicado.';
+    const introLines = doc.splitTextToSize(intro, pageW - 36);
+    doc.text(introLines, 18, y); y += introLines.length * 5 + 4;
+
+    // Tabla
+    const tblX = 18;
+    const tblW = pageW - 36;
+    const colValX = pageW - 22;
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+
+    // Encabezado de tabla
+    doc.setFillColor(0, 35, 111);
+    doc.rect(tblX, y, tblW, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Concepto', tblX + 4, y + 5.5);
+    doc.text('Valor', colValX, y + 5.5, { align: 'right' });
+    y += 8;
+
+    // Filas
+    const filas = [
+      ['Documentos promedio por mes', String(docsMes)],
+      ['Documentos por año', formatMiles(anual)],
+      ['Subtotal', formatMoney(subtotal)],
+      ['IVA (15%)', formatMoney(iva)],
+    ];
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(40, 40, 40);
+    filas.forEach((row, i) => {
+      const rowY = y + i * 8;
+      if (i % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(tblX, rowY, tblW, 8, 'F');
+      }
+      doc.text(row[0], tblX + 4, rowY + 5.5);
+      doc.text(row[1], colValX, rowY + 5.5, { align: 'right' });
+    });
+    y += filas.length * 8;
+
+    // Total destacado
+    doc.setFillColor(239, 115, 6);
+    doc.rect(tblX, y, tblW, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Total', tblX + 4, y + 6.5);
+    doc.text(formatMoney(total), colValX, y + 6.5, { align: 'right' });
+    y += 14;
+
+    // Vigencia
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Plan vigente hasta el ${formatFechaLarga(vence)}.`, 18, y);
+    y += 10;
+
+    // Notas
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    const notas =
+      'Los valores expresados están en dólares de los Estados Unidos de América (USD). ' +
+      'El plan se renueva al cumplir 12 meses desde la fecha de contratación o al alcanzar ' +
+      'el volumen anual contratado, lo que ocurra primero.';
+    const notasLines = doc.splitTextToSize(notas, pageW - 36);
+    doc.text(notasLines, 18, y); y += notasLines.length * 4 + 8;
+
+    // Cierre
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Atentamente,', 18, y); y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('TributaSoft S.A.', 18, y);
+
+    // ---- FOOTER ----
+    const footerTop = pageH - 22;
+    doc.setDrawColor(0, 35, 111);
+    doc.setLineWidth(0.3);
+    doc.line(18, footerTop, pageW - 18, footerTop);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.text('Machala 1002 y Hurtado, Edificio Coral, Piso 1, Oficina 15', 18, footerTop + 5);
+    doc.text('099-6345-284   ·   099-842-9901   ·   04-600-4992', 18, footerTop + 10);
+    doc.text('ventas@tributasoft.ec   ·   www.tributasoft.ec', 18, footerTop + 15);
+
+    // Guardar con nombre legible
+    const stamp = `${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,'0')}${String(hoy.getDate()).padStart(2,'0')}`;
+    doc.save(`cotizacion-tributasoft-${stamp}.pdf`);
+    track('cotizacion_pdf_descargada', { docsMes, total: total.toFixed(2) });
+  } catch (err) {
+    console.error(err);
+    showBanner('No pudimos generar el PDF. Revisa tu conexión e intenta de nuevo.', 'error');
+  } finally {
+    setBusy(btn, false);
+  }
 }
 
 // =========================================================================

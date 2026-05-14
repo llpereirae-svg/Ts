@@ -38,6 +38,29 @@ export async function clienteExiste(ruc) {
   };
 }
 
+// Set "Empresas registradas" — sirve para validar el RUC al momento de
+// Contratar en el cotizador. TICs lo reemplaza por SELECT en la tabla
+// `empresas` de la DB real.
+const EMPRESAS_REGISTRADAS = new Map([
+  ['0930452024001', { razonSocial: 'Pereira Espinoza Lenin Leonardo' }],
+  ['0992703601001', { razonSocial: 'TributaSoft S.A.' }],
+  ['1710034065001', { razonSocial: 'Cliente Demo' }],
+  ['1792060346001', { razonSocial: 'Empresa de Prueba S.A.' }],
+]);
+
+/**
+ * GET /api/empresas/:ruc — verifica que el RUC esté en la tabla `empresas`.
+ * TODO BACKEND: SELECT razon_social FROM empresas WHERE ruc = $1 LIMIT 1;
+ *
+ * @returns {Promise<{found: boolean, razonSocial?: string}>}
+ */
+export async function validarEmpresa(ruc) {
+  await delay(500);
+  const empresa = EMPRESAS_REGISTRADAS.get(ruc);
+  if (empresa) return { found: true, razonSocial: empresa.razonSocial };
+  return { found: false };
+}
+
 /**
  * POST /api/registro/iniciar
  * TODO BACKEND: replace with real endpoint
