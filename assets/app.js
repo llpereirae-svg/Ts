@@ -763,9 +763,15 @@ function aplicarModoFacturacion() {
     TIPOS_DOCUMENTO.forEach((t) => { flow.facturacion.secuencias[t.id] = '000000001'; });
   } else {
     // "Continuar con mi facturación": muestra el bloque con TODOS los campos
-    // habilitados desde el primer momento. No hay paso de "Editar".
+    // habilitados desde el primer momento. Pre-rellenamos punto de emisión
+    // en 002 — asumimos que el contribuyente ya tiene 001 en uso en su
+    // sistema previo y arranca en 002 con TributaSoft. El usuario puede
+    // cambiarlo libremente.
     bloque.hidden = false;
     if (guardado) guardado.hidden = true;
+    flow.facturacion.puntoEmision = '002';
+    const puntoInp = $('#cod-punto');
+    if (puntoInp) puntoInp.value = '002';
     bloque.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
