@@ -1,0 +1,29 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TributaSoft">
+  <g fill="#fd761a">
+    <polygon points="100,2 92,32 108,32"/>
+    <polygon points="100,198 92,168 108,168"/>
+    <polygon points="2,100 32,92 32,108"/>
+    <polygon points="198,100 168,92 168,108"/>
+    <polygon points="30,30 52,46 46,52"/>
+    <polygon points="170,30 148,46 154,52"/>
+    <polygon points="30,170 52,154 46,148"/>
+    <polygon points="170,170 148,154 154,148"/>
+  </g>
+  <g fill="none" stroke="#3cddc7" stroke-width="11" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 100 50
+             C 70 50, 55 75, 55 100
+             C 55 118, 65 130, 75 138
+             L 75 150
+             L 125 150
+             L 125 138
+             C 135 130, 145 118, 145 100
+             C 145 75, 130 50, 100 50 Z"/>
+    <line x1="80" y1="158" x2="120" y2="158"/>
+    <line x1="85" y1="168" x2="115" y2="168"/>
+  </g>
+  <g stroke="#3cddc7" stroke-width="8" stroke-linecap="round">
+    <line x1="100" y1="85" x2="100" y2="128"/>
+  </g>
+  <circle cx="100" cy="80" r="7" fill="none" stroke="#3cddc7" stroke-width="6"/>
+  <circle cx="100" cy="132" r="8" fill="#3cddc7"/>
+</svg>

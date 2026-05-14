@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Lobster&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#002114",
+                    "secondary-container": "#6cf8bb",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#68fcbf",
+                    "on-primary-fixed-variant": "#264191",
+                    "on-tertiary-container": "#13c38b",
+                    "primary-fixed": "#dce1ff",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#faf8ff",
+                    "secondary-fixed": "#6ffbbe",
+                    "surface-tint": "#4059aa",
+                    "surface-variant": "#e3e1e9",
+                    "tertiary": "#003120",
+                    "on-secondary-fixed-variant": "#005236",
+                    "background": "#faf8ff",
+                    "on-secondary-fixed": "#002113",
+                    "surface-dim": "#dad9e1",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#45dfa4",
+                    "inverse-surface": "#2f3036",
+                    "surface-container-high": "#e9e7ef",
+                    "inverse-primary": "#b6c4ff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "secondary": "#006c49",
+                    "on-tertiary-fixed-variant": "#005137",
+                    "on-surface": "#1a1b21",
+                    "primary-container": "#1e3a8a",
+                    "surface-container-highest": "#e3e1e9",
+                    "on-primary-container": "#90a8ff",
+                    "on-background": "#1a1b21",
+                    "primary": "#00236f",
+                    "outline-variant": "#c5c5d3",
+                    "surface-bright": "#faf8ff",
+                    "on-primary-fixed": "#00164e",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#eeedf4",
+                    "error": "#ba1a1a",
+                    "on-surface-variant": "#444651",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "outline": "#757682",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f4f3fa",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#00714d",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-container": "#004a32",
+                    "inverse-on-surface": "#f1f0f7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "48px",
+                    "gutter": "24px",
+                    "stack-sm": "8px",
+                    "margin-mobile": "16px",
+                    "unit": "4px",
+                    "container-max": "1280px",
+                    "stack-md": "16px",
+                    "stack-lg": "32px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["DM Sans"],
+                    "headline-lg": ["DM Sans"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["DM Sans"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg-mobile": ["DM Sans"]
+            },
+            "fontSize": {
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-background shadow-sm">
+<nav class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<div class="flex items-center gap-2">
+<img alt="TributaSoft Logo" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6Utmgl64E9cuGpqtnytAzNH1BglMKsDb7-QDc6LLp-H7PGyBEtHMojlvN4OkMRiHTzlXhCIT-V3U_hOF6d077PPmJI2hrHNhI0wlfG2AM5iv2xcHk98YBYI8Tg59pxb1CnRxBOv7f3_LEldVupNNSAbR2hufvPVq4qGx9AOkRpEqtvHoPtfbjtaZ_FiJ1HnzrfIHvqD3iODZNSUCXZr9jzKnLaRGF6lQxXfYFgZ7m2KGZuL7iEHHxJz--f9ibfTlPdmrq79CoJtcJ"/>
+<span class="font-['Lobster'] text-headline-md text-primary dark:text-primary-fixed">TributaSoft</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-secondary hover:opacity-80 transition-opacity active:scale-95 duration-150">Iniciar sesión</button>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="help">help</span>
+</div>
+</nav>
+</header>
+<main class="pt-24 pb-stack-lg">
+<!-- Hero Section -->
+<section class="px-margin-mobile flex flex-col items-center text-center">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm mb-stack-md">
+<span class="material-symbols-outlined text-[16px]" data-icon="grade" style="font-variation-settings: 'FILL' 1;">grade</span>
+                Nuevo cliente: 300 facturas gratis
+            </div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-stack-md max-w-[320px]">
+                Empieza a facturar electrónicamente en 2 minutos
+            </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg">
+                300 comprobantes electrónicos gratis para que pruebes la plataforma. Sin tarjeta de crédito. Sin contratos.
+            </p>
+</section>
+<!-- Main Registration Card -->
+<section class="px-margin-mobile mb-stack-lg">
+<div class="bg-surface-container-lowest rounded-[24px] p-stack-lg shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-stack-sm text-center">INGRESA TU RUC PARA EMPEZAR</label>
+<div class="space-y-4">
+<input class="w-full h-14 px-4 rounded-[12px] border border-outline focus:border-primary-container focus:ring-1 focus:ring-primary-container font-body-lg text-body-lg placeholder:text-outline-variant outline-none transition-all" placeholder="0992703601001" type="text"/>
+<p class="font-label-sm text-label-sm text-on-surface-variant text-center opacity-70">
+                        Debe tener 13 dígitos y terminar en 001, 002, etc.
+                    </p>
+<button class="w-full h-14 bg-[#10B981] text-white rounded-[12px] font-label-md text-label-md uppercase tracking-wider active:scale-[0.98] transition-transform shadow-md">
+                        Continuar
+                    </button>
+</div>
+</div>
+</section>
+<!-- Trust Signals -->
+<section class="px-margin-mobile py-stack-lg space-y-stack-md">
+<div class="flex items-center gap-4 p-4 bg-surface-container rounded-xl">
+<div class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="verified">verified</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Autorizado por el SRI</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container rounded-xl">
+<div class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="group">group</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Cientos de contadores activos</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container rounded-xl">
+<div class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="support_agent">support_agent</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Soporte personalizado</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container rounded-xl">
+<div class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="lock">lock</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Datos cifrados</span>
+</div>
+</section>
+<!-- How it works -->
+<section class="px-margin-mobile py-stack-lg bg-surface-container-low">
+<h2 class="font-headline-md text-headline-md text-on-surface text-center mb-stack-lg">¿Cómo funciona?</h2>
+<div class="space-y-stack-lg">
+<div class="relative pl-12">
+<div class="absolute left-0 top-0 w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">1</div>
+<h3 class="font-label-md text-label-md text-on-surface">Registra tu RUC</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Validamos tus datos directamente con el SRI en segundos.</p>
+</div>
+<div class="relative pl-12">
+<div class="absolute left-0 top-0 w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">2</div>
+<h3 class="font-label-md text-label-md text-on-surface">Sube tu Firma Electrónica</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Compatible con todos los proveedores autorizados del Ecuador.</p>
+</div>
+<div class="relative pl-12">
+<div class="absolute left-0 top-0 w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">3</div>
+<h3 class="font-label-md text-label-md text-on-surface">Empieza a Facturar</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Crea facturas, notas de crédito y retenciones al instante.</p>
+</div>
+</div>
+</section>
+<!-- Testimonial Section -->
+<section class="px-margin-mobile py-stack-lg">
+<div class="bg-surface rounded-[24px] p-stack-lg border border-outline-variant">
+<div class="flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-[#FBBF24]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[#FBBF24]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[#FBBF24]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[#FBBF24]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[#FBBF24]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-body-md italic text-on-surface mb-stack-md">
+                    "<span class="font-['Lobster']">TributaSoft</span> cambió la forma en que manejo mi negocio. Es rápido, intuitivo y el soporte siempre está ahí cuando tengo dudas sobre el SRI."
+                </p>
+<div class="flex items-center gap-3">
+<img alt="Usuario" class="w-10 h-10 rounded-full object-cover" data-alt="A professional headshot of a smiling Ecuadorian business woman in her late 30s, wearing a modern corporate blazer. The background is a brightly lit, minimalist office with soft focus. The lighting is warm and natural, creating a trustworthy and successful professional aesthetic that aligns with a premium fintech brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNAb115Xb03SOSxnLZAdO3j_Wka5cnwrOQcd4XzgNoOSHKE2W6KVr3KysCURSRnq6yt5Km2_42KL9GhOphy-Z9w53UdfLuVQ-_Wd5WHFK9H9zvPeV0NmCV4b3ZieDPf7nOt6C6d4qwHfqWVLL9RuzPiDtmtUcx27vMKXupy5ok2tAu0meeSp2ThG2WKzXMh4n7ZXuraxnSYnHx4EVt-vTBNlqXkJmPaMmyx4lvXrYLDFyfGzeYeFVz_2dJlEj_cMhDUAeOJv09LvFn"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Andrea Salazar</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Consultora Independiente</p>
+</div>
+</div>
+<div class="flex justify-center gap-2 mt-stack-lg">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-stack-lg bg-surface-container-low dark:bg-surface-container-highest border-t border-outline-variant">
+<div class="flex flex-col md:flex-row justify-between items-center gap-gutter px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center">
+<div class="flex items-center justify-center gap-2 mb-stack-sm md:mb-0">
+<img alt="TributaSoft Logo" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6Utmgl64E9cuGpqtnytAzNH1BglMKsDb7-QDc6LLp-H7PGyBEtHMojlvN4OkMRiHTzlXhCIT-V3U_hOF6d077PPmJI2hrHNhI0wlfG2AM5iv2xcHk98YBYI8Tg59pxb1CnRxBOv7f3_LEldVupNNSAbR2hufvPVq4qGx9AOkRpEqtvHoPtfbjtaZ_FiJ1HnzrfIHvqD3iODZNSUCXZr9jzKnLaRGF6lQxXfYFgZ7m2KGZuL7iEHHxJz--f9ibfTlPdmrq79CoJtcJ"/>
+<span class="font-['Lobster'] text-headline-md text-primary dark:text-primary-fixed">TributaSoft</span>
+</div>
+<div class="flex flex-wrap justify-center gap-4 mb-stack-md md:mb-0">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors" href="#">Términos y Condiciones</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors" href="#">Política de Privacidad</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors" href="#">Soporte</a>
+</div>
+<p class="font-body-sm text-body-sm text-secondary dark:text-secondary-fixed-dim">
+                © 2024 <span class="font-['Lobster']">TributaSoft</span>. Todos los derechos reservados. SRI Ecuador.
+            </p>
+</div>
+</footer>
+</body></html>

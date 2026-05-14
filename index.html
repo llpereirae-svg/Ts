@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#00236f">
+  <meta name="description" content="TributaSoft — Facturación electrónica para Ecuador. Empieza con 300 comprobantes gratis.">
+  <title>TributaSoft — Empieza a facturar en 2 minutos</title>
+
+  <!-- Fuentes Google: Lobster (logo), DM Sans (headlines), Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lobster&display=swap" rel="stylesheet">
+
+  <!-- CSS crítico inline mínimo para LCP rápido -->
+  <style>
+    body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1c1c;background:#f9f9f9;line-height:1.5;-webkit-font-smoothing:antialiased}
+    .site-header{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;background:rgba(249,249,249,.92);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid #e2e2e2;z-index:50}
+    .brand{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
+    .brand-mark{width:36px;height:36px;flex-shrink:0;display:block}
+    .brand-name{font-family:'Lobster',cursive;color:#00236f;font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
+    .hero{padding:2rem 1rem 1rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
+    .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.5rem,5vw,2.4rem);line-height:1.25;margin:0 0 .75rem;letter-spacing:-.02em;color:#1a1c1c}
+    .hero p{color:#444651;max-width:32rem;margin:0 auto;font-size:1rem}
+    .badge{display:inline-flex;align-items:center;gap:.4rem;background:#6cf8bb;color:#005236;font-size:.8rem;font-weight:600;padding:.45rem 1rem;border-radius:999px;margin-bottom:1.25rem;font-family:'Inter',sans-serif;letter-spacing:.02em;line-height:1.2}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body data-state="IDLE">
+
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="TributaSoft — Ir al inicio">
+      <img class="brand-mark" src="./assets/tributasoft-icon.png" alt="" aria-hidden="true">
+      <span class="brand-name">TributaSoft</span>
+    </a>
+    <nav>
+      <button class="btn btn--text" id="btn-login" type="button" onclick="window.location.href='https://app.tributasoft.ec/login'">Iniciar sesión</button>
+      <button class="btn btn--text" id="btn-help" type="button" aria-label="Abrir ayuda">¿Ayuda?</button>
+    </nav>
+  </header>
+
+  <div id="network-banner" class="network-banner" hidden role="status" aria-live="polite"></div>
+
+  <main>
+    <!-- HERO -->
+    <section id="hero" class="hero">
+      <span class="badge">Nuevo cliente: 300 facturas gratis</span>
+      <h1>Empieza a facturar electrónicamente en 2 minutos</h1>
+      <p>300 comprobantes electrónicos gratis, sin tarjeta. Hecho para PYMES ecuatorianas.</p>
+    </section>
+
+    <!-- TARJETA RUC -->
+    <section id="ruc-card" class="ruc-card" aria-labelledby="ruc-label">
+      <label id="ruc-label" for="ruc">Ingresa tu RUC para empezar</label>
+      <input
+        id="ruc"
+        type="tel"
+        inputmode="numeric"
+        autocomplete="off"
+        maxlength="13"
+        placeholder="0000000000001"
+        aria-describedby="ruc-help ruc-feedback"
+      >
+      <p id="ruc-help" class="help">Estimado cliente, el RUC debe tener 13 dígitos máximo y debe terminar en 001.</p>
+      <div id="ruc-feedback" class="feedback" role="status" aria-live="polite"></div>
+      <button id="cta-primary" type="button" class="btn btn--primary">Continuar</button>
+    </section>
+
+    <!-- CÓMO FUNCIONA -->
+    <section class="section" aria-labelledby="cf-h">
+      <h2 id="cf-h">¿Cómo funciona?</h2>
+      <div class="como-funciona">
+        <article data-step="1">
+          <h3>Registra tu RUC</h3>
+          <p>Validamos tus datos directamente con el SRI en segundos.</p>
+        </article>
+        <article data-step="2">
+          <h3>Sube tu Firma Electrónica</h3>
+          <p>Compatible con todos los proveedores autorizados del Ecuador.</p>
+        </article>
+        <article data-step="3">
+          <h3>Empieza a Facturar</h3>
+          <p>Crea facturas, notas de crédito y retenciones al instante.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- FORMULARIO EXPANDIDO -->
+    <form id="registration-form" class="registration-form" hidden novalidate>
+      <header class="form-header">
+        <h2>Completa tus datos</h2>
+        <p class="small">RUC: <strong id="ruc-display">—</strong> · <span id="razon-social-static">—</span></p>
+      </header>
+
+      <div id="sri-banner" class="banner-warn" hidden>
+        No pudimos validar tu RUC en el SRI en este momento. Puedes continuar completando los datos manualmente.
+      </div>
+
+      <div class="field">
+        <label for="razon-social">Razón social</label>
+        <input id="razon-social" type="text" required autocomplete="organization" aria-describedby="razon-social-error">
+        <div id="razon-social-error" class="error" role="alert" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="email">Correo electrónico</label>
+        <input id="email" type="email" required autocomplete="email" inputmode="email" placeholder="tu@empresa.com" aria-describedby="email-error">
+        <div id="email-error" class="error" role="alert" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="celular">Celular</label>
+        <div class="field-phone">
+          <span class="prefix" aria-hidden="true">+593</span>
+          <input id="celular" type="tel" required autocomplete="tel-national" inputmode="numeric" placeholder="9XXXXXXXX" maxlength="13" aria-describedby="celular-error celular-warn">
+        </div>
+        <div id="celular-error" class="error" role="alert" aria-live="polite"></div>
+        <small id="celular-warn" class="canal-warn"></small>
+      </div>
+
+      <div class="field">
+        <span class="field-label" style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Por dónde quieres recibir tu código?</span>
+        <div class="canal-options" role="radiogroup" aria-label="Canal para enviar código">
+          <label><input type="radio" name="canal-token" value="email" checked><span>📧 Email</span></label>
+          <label><input type="radio" name="canal-token" value="sms"><span>📱 SMS</span></label>
+          <label><input type="radio" name="canal-token" value="whatsapp"><span>💬 WhatsApp</span></label>
+        </div>
+      </div>
+
+      <details class="config-avanzada">
+        <summary>Configuración avanzada del SRI</summary>
+        <div class="field" style="margin-top: 1rem">
+          <label for="regimen">Régimen</label>
+          <input id="regimen" type="text" placeholder="GENERAL / RIMPE">
+        </div>
+        <div class="field">
+          <label for="establecimiento">Establecimiento</label>
+          <input id="establecimiento" type="text" maxlength="3" placeholder="001">
+        </div>
+        <div class="field">
+          <label for="punto-emision">Punto de emisión</label>
+          <input id="punto-emision" type="text" maxlength="3" placeholder="001">
+        </div>
+      </details>
+
+      <button id="submit-registro" type="submit" class="btn btn--primary">Crear cuenta gratis</button>
+    </form>
+
+    <!-- MODAL TOKEN -->
+    <dialog id="modal-token" aria-labelledby="modal-token-h">
+      <div class="modal-content">
+        <h2 id="modal-token-h">Verifica tu código</h2>
+        <p>Te enviamos un código a <strong id="token-destino"></strong></p>
+        <fieldset id="codigo-input" class="codigo-input" aria-label="Código de 6 dígitos">
+          <input type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Dígito 1">
+          <input type="text" inputmode="numeric" maxlength="1" aria-label="Dígito 2">
+          <input type="text" inputmode="numeric" maxlength="1" aria-label="Dígito 3">
+          <input type="text" inputmode="numeric" maxlength="1" aria-label="Dígito 4">
+          <input type="text" inputmode="numeric" maxlength="1" aria-label="Dígito 5">
+          <input type="text" inputmode="numeric" maxlength="1" aria-label="Dígito 6">
+        </fieldset>
+        <div id="token-error" class="error" role="alert" aria-live="polite"></div>
+        <p id="token-hint" class="modal-hint"></p>
+        <div class="modal-actions">
+          <button type="button" id="verificar-token" class="btn btn--primary">Verificar</button>
+          <button type="button" id="reenviar" class="btn btn--ghost" disabled>Reenviar en 30s</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL CLAVE -->
+    <dialog id="modal-clave" aria-labelledby="modal-clave-h">
+      <div class="modal-content">
+        <h2 id="modal-clave-h">Crea tu clave</h2>
+        <p>Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.</p>
+
+        <div class="field">
+          <label for="clave">Clave</label>
+          <input id="clave" type="password" autocomplete="new-password">
+        </div>
+        <div id="fuerza-clave" class="fuerza-clave" data-nivel="0" role="status"><span>Débil</span></div>
+        <ul id="requisitos-clave" class="requisitos-clave" aria-live="polite">
+          <li data-req="longitud">Al menos 8 caracteres</li>
+          <li data-req="mayuscula">Una mayúscula</li>
+          <li data-req="minuscula">Una minúscula</li>
+          <li data-req="numero">Un número</li>
+          <li data-req="simbolo">Un símbolo</li>
+        </ul>
+
+        <div class="field">
+          <label for="confirmar-clave">Confirma tu clave</label>
+          <input id="confirmar-clave" type="password" autocomplete="new-password">
+          <div id="confirmar-error" class="error" role="alert" aria-live="polite"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="continuar-clave" class="btn btn--primary" disabled>Continuar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL FIRMA -->
+    <dialog id="modal-firma" aria-labelledby="modal-firma-h">
+      <div class="modal-content">
+        <h2 id="modal-firma-h">Sube tu firma electrónica</h2>
+        <p>Es opcional. Puedes subirla ahora o más tarde desde tu cuenta. Aceptamos archivos .p12 o .pfx.</p>
+
+        <div class="firma-options">
+          <button type="button" id="subir-firma" class="btn btn--primary">Sí, subirla ahora</button>
+          <button type="button" id="saltar-firma" class="btn btn--ghost">Lo haré después</button>
+        </div>
+
+        <input id="firma-uploader" class="firma-uploader" type="file" accept=".p12,.pfx" aria-label="Archivo de firma">
+
+        <div id="firma-clave-step" class="firma-clave-step" hidden>
+          <p>Archivo: <span id="firma-nombre" class="firma-nombre"></span></p>
+          <div class="field">
+            <label for="firma-clave">Clave de la firma</label>
+            <input id="firma-clave" type="password" autocomplete="off">
+          </div>
+          <div id="firma-error" class="firma-error" role="alert" aria-live="polite"></div>
+          <div class="modal-actions">
+            <button type="button" id="firma-clave-confirmar" class="btn btn--primary">Validar firma</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- SUCCESS -->
+    <section id="success" class="success" hidden aria-live="polite">
+      <div class="check-icon" aria-hidden="true"></div>
+      <h2>¡Listo!</h2>
+      <p>Tu cuenta está creada. Te llevamos al portal en un momento…</p>
+      <button id="go-to-account" type="button" class="btn btn--primary" style="max-width:18rem;margin-top:1rem">Ir a mi cuenta</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    © 2026 TributaSoft S.A. · Hecho en Ecuador 🇪🇨
+  </footer>
+
+  <!-- noscript fallback -->
+  <noscript>
+    <div style="position:fixed;inset:0;background:white;padding:2rem;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      <h2>Necesitamos JavaScript activo</h2>
+      <p>Para registrarte sin JavaScript, escríbenos por WhatsApp al <a href="https://wa.me/593999999999">+593 99 999 9999</a> y te ayudamos manualmente.</p>
+    </div>
+  </noscript>
+
+  <script type="module" defer src="./assets/app.js"></script>
+</body>
+</html>
