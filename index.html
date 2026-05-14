@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#00236f">
-  <meta name="description" content="TributaSoft — 300 comprobantes electrónicos GRATIS. Hecho para todos los ecuatorianos.">
+  <meta name="description" content="TributaSoft — 300 comprobantes electrónicos GRATIS. Pioneros en facturación electrónica del Ecuador.">
   <title>TributaSoft — 300 comprobantes electrónicos GRATIS</title>
 
   <!-- Fuentes Google: Lobster (logo), DM Sans (headlines), Inter (body) -->
@@ -21,11 +21,11 @@
     .brand-name{font-family:'Lobster',cursive;font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
     .brand-name .b-tributa{color:#87C7DC}
     .brand-name .b-soft{color:#EF7306}
-    .hero{padding:2rem 1rem 1rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
-    .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.5rem,5vw,2.4rem);line-height:1.25;margin:0 0 .75rem;letter-spacing:-.02em;color:#1a1c1c}
-    .hero h1 .h-accent{color:#fd761a}
-    .hero p{color:#444651;max-width:32rem;margin:0 auto;font-size:1rem}
-    .badge{display:inline-flex;align-items:center;gap:.4rem;background:#d8f7f1;color:#00867a;font-size:.8rem;font-weight:600;padding:.45rem 1rem;border-radius:999px;margin-bottom:1.25rem;font-family:'Inter',sans-serif;letter-spacing:.02em;line-height:1.2}
+    .hero{padding:1.75rem 1rem .75rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
+    .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.2;margin:0 0 .65rem;letter-spacing:-.02em;color:#87C7DC}
+    .hero h1 .h-gratis{color:#EF7306}
+    .hero p{color:#6b7280;max-width:32rem;margin:0 auto;font-size:.95rem}
+    .badge{display:inline-flex;align-items:center;gap:.4rem;background:#e3f2f8;color:#87C7DC;font-size:.82rem;font-weight:700;padding:.45rem 1rem;border-radius:999px;margin-bottom:1.1rem;font-family:'Inter',sans-serif;letter-spacing:.02em;line-height:1.2}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
@@ -39,7 +39,7 @@
       <span class="brand-name"><span class="b-tributa">Tributa</span><span class="b-soft">Soft</span></span>
     </a>
     <nav>
-      <button class="btn btn--text" id="btn-login" type="button" onclick="window.location.href='https://app.tributasoft.ec/login'">Iniciar sesión</button>
+      <button class="btn btn--text" id="btn-login" type="button" onclick="window.location.href='https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true'">Iniciar sesión</button>
       <button class="btn btn--text" id="btn-help" type="button" aria-label="Abrir ayuda">¿Ayuda?</button>
     </nav>
   </header>
@@ -50,8 +50,8 @@
     <!-- HERO -->
     <section id="hero" class="hero">
       <span class="badge">Para todos los ecuatorianos 🇪🇨</span>
-      <h1><span class="h-accent">300 comprobantes electrónicos GRATIS</span></h1>
-      <p>Hecho para todos los ecuatorianos, que no requieren de sistemas caros ni complejos. La facilidad en un clic.</p>
+      <h1>300 comprobantes electrónicos <span class="h-gratis">GRATIS</span></h1>
+      <p>Todo Bajo Control por más de 10 años. La facilidad al alcance de tu mano.</p>
     </section>
 
     <!-- TARJETA RUC -->
@@ -66,7 +66,7 @@
         placeholder="0000000000001"
         aria-describedby="ruc-help ruc-feedback"
       >
-      <p id="ruc-help" class="help">Estimado cliente, el RUC debe tener 13 dígitos máximo y debe terminar en 001.</p>
+      <p id="ruc-help" class="help">Estimado cliente, el RUC debe tener 13 dígitos y terminar en 001.</p>
       <div id="ruc-feedback" class="feedback" role="status" aria-live="polite"></div>
       <button id="cta-primary" type="button" class="btn btn--primary">Continuar</button>
     </section>
@@ -126,7 +126,7 @@
         <div id="direccion-error" class="error" role="alert" aria-live="polite"></div>
       </div>
 
-      <!-- Provincia + Ciudad en fila -->
+      <!-- Provincia + Ciudad en fila (Ciudad depende de Provincia) -->
       <div class="field-row">
         <div class="field">
           <label for="provincia">Provincia</label>
@@ -161,7 +161,9 @@
         </div>
         <div class="field">
           <label for="ciudad">Ciudad</label>
-          <input id="ciudad" type="text" autocomplete="address-level2" aria-describedby="ciudad-error">
+          <select id="ciudad" required disabled aria-describedby="ciudad-error">
+            <option value="">Selecciona una provincia primero…</option>
+          </select>
           <div id="ciudad-error" class="error" role="alert" aria-live="polite"></div>
         </div>
       </div>
@@ -173,21 +175,21 @@
         <div id="email-error" class="error" role="alert" aria-live="polite"></div>
       </div>
 
-      <!-- Celular: selector de país + número nacional -->
+      <!-- Celular: país + número nacional -->
       <div class="field">
-        <label for="celular">Celular / WhatsApp</label>
+        <label for="celular">Celular</label>
         <div class="field-phone">
-          <select id="celular-pais" class="celular-pais" aria-label="Código de país">
-            <!-- Se puebla con countries.js en app.js -->
+          <select id="celular-pais" class="celular-pais" aria-label="País del celular">
+            <!-- Poblado por countries.js -->
           </select>
-          <input id="celular" type="tel" required autocomplete="tel" inputmode="tel" placeholder="9XXXXXXXX" maxlength="20" aria-describedby="celular-error celular-warn">
+          <input id="celular" type="tel" required autocomplete="tel" inputmode="tel" placeholder="09XXXXXXXX" maxlength="20" aria-describedby="celular-error celular-warn">
         </div>
-        <p class="hint" id="celular-hint">Selecciona tu país y escribe sólo el número local.</p>
+        <p class="hint" id="celular-hint">Formato para Ecuador: 09XXXXXXXX (10 dígitos).</p>
         <div id="celular-error" class="error" role="alert" aria-live="polite"></div>
         <small id="celular-warn" class="canal-warn"></small>
       </div>
 
-      <!-- Canal — íconos sobrios, SVG sin fondo -->
+      <!-- Canal: íconos sobrios -->
       <div class="field">
         <span class="field-label" style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Por dónde quieres recibir tu código?</span>
         <div class="canal-options" role="radiogroup" aria-label="Canal para enviar código" id="canal-options">
@@ -221,6 +223,7 @@
       <details class="config-avanzada" open>
         <summary>Configuración del SRI</summary>
 
+        <!-- 1. Régimen -->
         <div class="field" style="margin-top: 1rem">
           <label for="regimen">Régimen</label>
           <select id="regimen" required>
@@ -231,53 +234,95 @@
           </select>
         </div>
 
-        <!-- Modo de facturación -->
+        <!-- 2. Tipo de contribuyente -->
+        <div class="field">
+          <label for="tipo-contribuyente">Tipo de Contribuyente</label>
+          <select id="tipo-contribuyente" required>
+            <option value="">Selecciona…</option>
+            <option value="NO_OBLIGADO">No Obligado a Llevar Contabilidad</option>
+            <option value="OBLIGADO">Obligado a Llevar Contabilidad</option>
+            <option value="AGENTE_RETENCION">Agente de Retención</option>
+            <option value="CONTRIBUYENTE_ESPECIAL">Contribuyente Especial</option>
+            <option value="GRAN_CONTRIBUYENTE">Gran Contribuyente</option>
+          </select>
+        </div>
+
+        <!-- 3. No. Resolución (condicional) -->
+        <div class="field" id="no-resolucion-wrap" hidden>
+          <label for="no-resolucion">No. Resolución</label>
+          <input id="no-resolucion" type="text" maxlength="50" autocomplete="off" placeholder="Ej: NAC-DGERCGC23-00000000001" aria-describedby="no-resolucion-error">
+          <p class="hint">Alfanumérico. Se permite el carácter "-".</p>
+          <div id="no-resolucion-error" class="error" role="alert" aria-live="polite"></div>
+        </div>
+
+        <!-- 4. Modo de facturación con íconos minimalistas -->
         <div class="field">
           <span style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Cuál es tu situación con la facturación electrónica?</span>
           <div class="modo-facturacion" role="radiogroup" aria-label="Modo de facturación">
             <label>
               <input type="radio" name="modo-facturacion" value="nuevo" checked>
+              <span class="modo-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <line x1="12" y1="8" x2="12" y2="16"/>
+                  <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+              </span>
               <div class="modo-content">
                 <span class="modo-title">Soy nuevo facturando</span>
-                <span class="modo-desc">Empezarás desde cero con establecimiento 001 y punto de emisión 001.</span>
+                <span class="modo-desc">Empezarás con establecimiento 001 y punto de emisión 001. Las secuencias comienzan en 1.</span>
               </div>
             </label>
             <label>
               <input type="radio" name="modo-facturacion" value="continuar">
+              <span class="modo-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                  <polyline points="21 3 21 8 16 8"/>
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                  <polyline points="3 21 3 16 8 16"/>
+                </svg>
+              </span>
               <div class="modo-content">
-                <span class="modo-title">Quiero continuar facturando</span>
-                <span class="modo-desc">Tengo establecimientos y secuencias en curso que quiero mantener.</span>
-              </div>
-            </label>
-            <label>
-              <input type="radio" name="modo-facturacion" value="reiniciar">
-              <div class="modo-content">
-                <span class="modo-title">He facturado, pero quiero empezar de nuevo</span>
-                <span class="modo-desc">Reinicio limpio, pero con la opción de ajustar la secuencia inicial.</span>
+                <span class="modo-title">Quiero seguir facturando</span>
+                <span class="modo-desc">Configura tu establecimiento, punto de emisión y las secuencias en curso.</span>
               </div>
             </label>
           </div>
         </div>
 
-        <!-- Establecimientos dinámicos: máx 3, cada uno con hasta 2 puntos de emisión -->
-        <div class="establecimientos" id="establecimientos-wrap">
-          <div class="establecimientos-titulo">
-            <h4>Establecimientos</h4>
-            <span id="establecimientos-counter" class="hint" style="margin:0"></span>
+        <!-- 5. Bloque único de establecimiento + punto (visible sólo en modo "continuar") -->
+        <div id="establecimiento-bloque" class="establecimiento-bloque" hidden>
+          <div class="establecimiento-bloque-header">
+            <h4>Establecimiento y punto de emisión</h4>
+            <button type="button" id="btn-editar-est" class="btn-editar">Editar</button>
           </div>
-          <p class="hint" style="margin-top:-.25rem;margin-bottom:.5rem">Hasta 3 establecimientos, cada uno con hasta 2 puntos de emisión.</p>
-          <div id="establecimientos-list"></div>
-          <button type="button" id="btn-add-establecimiento" class="btn-add-establecimiento">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Agregar establecimiento
-          </button>
+          <div class="codigos-fila">
+            <div class="field">
+              <label for="cod-establecimiento">Establecimiento</label>
+              <input id="cod-establecimiento" type="text" maxlength="3" value="001" inputmode="numeric" disabled>
+            </div>
+            <div class="field">
+              <label for="cod-punto">Punto de emisión</label>
+              <input id="cod-punto" type="text" maxlength="3" value="001" inputmode="numeric" disabled>
+            </div>
+          </div>
+          <div class="field">
+            <label for="nombre-punto">Nombre corto del punto de emisión</label>
+            <input id="nombre-punto" type="text" maxlength="50" value="Matriz" placeholder="Ej: Matriz, Sucursal Norte" disabled>
+            <p class="hint">Máx 50 caracteres. Sólo letras, números y . , _ -</p>
+          </div>
+
+          <div class="secuencias" id="secuencias-wrap">
+            <p class="secuencias-titulo">Próxima secuencia por tipo de documento</p>
+            <div class="secuencias-grid" id="secuencias-grid">
+              <!-- Generado por JS: 5 tipos de documento, 9 dígitos cada uno -->
+            </div>
+          </div>
         </div>
       </details>
 
-      <button id="submit-registro" type="submit" class="btn btn--primary">Crear cuenta gratis</button>
+      <button id="submit-registro" type="submit" class="btn btn--primary">Registrarse</button>
     </form>
 
     <!-- MODAL TOKEN -->
@@ -341,7 +386,7 @@
 
         <div class="firma-options">
           <button type="button" id="subir-firma" class="btn btn--primary">Sí, subirla ahora</button>
-          <button type="button" id="saltar-firma" class="btn btn--ghost">Lo haré después</button>
+          <button type="button" id="saltar-firma" class="btn btn--ghost">Lo haré después en el portal</button>
         </div>
 
         <input id="firma-uploader" class="firma-uploader" type="file" accept=".p12,.pfx" aria-label="Archivo de firma">
@@ -353,6 +398,23 @@
             <input id="firma-clave" type="password" autocomplete="off">
           </div>
           <div id="firma-error" class="firma-error" role="alert" aria-live="polite"></div>
+
+          <!-- Resumen mostrado al validar OK -->
+          <div id="firma-resumen" class="firma-resumen" hidden>
+            <div class="firma-resumen-row">
+              <span class="firma-resumen-label">Titular</span>
+              <span class="firma-resumen-value" id="firma-titular">—</span>
+            </div>
+            <div class="firma-resumen-row">
+              <span class="firma-resumen-label">RUC</span>
+              <span class="firma-resumen-value" id="firma-ruc">—</span>
+            </div>
+            <div class="firma-resumen-row">
+              <span class="firma-resumen-label">Caducidad</span>
+              <span class="firma-resumen-value" id="firma-caducidad">—</span>
+            </div>
+          </div>
+
           <div class="modal-actions">
             <button type="button" id="firma-clave-confirmar" class="btn btn--primary">Validar firma</button>
           </div>
@@ -370,7 +432,8 @@
   </main>
 
   <footer class="site-footer">
-    © 2026 <span style="font-family:'Lobster',cursive"><span style="color:#87C7DC">Tributa</span><span style="color:#EF7306">Soft</span></span> S.A. · Hecho en Ecuador 🇪🇨
+    <p style="margin:0 0 .35rem">Todo Bajo Control · Pioneros en facturación electrónica del Ecuador 🇪🇨</p>
+    <p style="margin:0;color:#1a1c1c">© 2026 <span style="font-family:'Lobster',cursive;color:#1a1c1c">TributaSoft</span> S.A.</p>
   </footer>
 
   <!-- noscript fallback -->

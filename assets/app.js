@@ -3,15 +3,31 @@
 
 import {
   validarRUC, validarCelular, validarEmail, validarClave,
-  validarFirmaArchivo, validarCodigoToken,
+  validarFirmaArchivo, validarCodigoToken, validarNoResolucion,
 } from './validators.js';
 import { createMachine, STATES, EVENTS } from './state-machine.js';
 import { consultarRUC } from './sri-client.js';
-import { COUNTRIES, findCountry, regionalIndicator } from './countries.js';
+import { COUNTRIES, findCountry } from './countries.js';
+import { citiesFor } from './cities.js';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
   establecerClave, validarFirma, finalizarRegistro,
 } from './api-mocks.js';
+
+const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
+
+// Tipos de contribuyente que requieren No. Resolución
+const TIPOS_CON_RESOLUCION = new Set(['AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE']);
+
+const TIPOS_DOCUMENTO = [
+  { id: 'factura', label: 'Facturas' },
+  { id: 'nc', label: 'Notas de crédito' },
+  { id: 'nd', label: 'Notas de débito' },
+  { id: 'retencion', label: 'Comprobantes de retención' },
+  { id: 'guia', label: 'Guías de remisión' },
+];
+
+const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]{1,50}$/;
 
 // ---------- Analytics ----------
 function track(name, detail = {}) {
@@ -86,8 +102,7 @@ const flow = {
   canal: 'email',
   email: '',
   celular: '',
-  celularPais: 'EC',          // ISO alpha-2 del país del celular
-  celularEsEcuador: true,
+  celularPais: 'EC',
   razonSocial: '',
   nombreComercial: '',
   nombreComercialNA: false,
@@ -95,19 +110,20 @@ const flow = {
   provincia: '',
   ciudad: '',
   regimen: '',
+  tipoContribuyente: '',
+  noResolucion: '',
   modoFacturacion: 'nuevo',
-  establecimientos: [],
+  // Bloque único de configuración de facturación
+  facturacion: {
+    establecimiento: '001',
+    puntoEmision: '001',
+    nombrePunto: 'Matriz',
+    // Secuencias en 9 dígitos con pad a la izquierda (siempre 9 dígitos numéricos)
+    secuencias: TIPOS_DOCUMENTO.reduce((acc, t) => { acc[t.id] = '000000001'; return acc; }, {}),
+  },
   tokenSentTo: '',
+  firmaPendienteDespues: false,
 };
-
-// Tipos de documento para configurar secuencia
-const TIPOS_DOCUMENTO = [
-  { id: 'factura', label: 'Facturas' },
-  { id: 'nc', label: 'Notas de crédito' },
-  { id: 'nd', label: 'Notas de débito' },
-  { id: 'retencion', label: 'Comprobantes de retención' },
-  { id: 'guia', label: 'Guías de remisión' },
-];
 
 // ---------- Wire up ----------
 document.addEventListener('DOMContentLoaded', () => {
@@ -134,28 +150,34 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   ctaPrimary.addEventListener('click', onContinuar);
 
-  // Form principal
   $('#registration-form').addEventListener('submit', onFormSubmit);
 
   // Nombre comercial "No aplica"
   $('#nombre-comercial-na').addEventListener('change', onNombreComercialNAToggle);
 
-  // Poblar select de país y configurar listener
-  poblarSelectPaises();
-  $('#celular-pais').addEventListener('change', onPaisChange);
+  // Provincia → poblar ciudades
+  $('#provincia').addEventListener('change', onProvinciaChange);
 
-  // Celular: re-evaluar canales disponibles al escribir
-  $('#celular').addEventListener('input', onCelularInput);
+  // Tipo de contribuyente → mostrar/ocultar No. Resolución
+  $('#tipo-contribuyente').addEventListener('change', onTipoContribuyenteChange);
+
+  // No. Resolución: filtrar a alfanuméricos + "-"
+  $('#no-resolucion').addEventListener('input', onNoResolucionInput);
 
   // Modo de facturación
   $$('input[name="modo-facturacion"]').forEach((r) =>
     r.addEventListener('change', onModoFacturacionChange)
   );
 
-  // Agregar establecimiento
-  $('#btn-add-establecimiento').addEventListener('click', () => {
-    addEstablecimiento();
-  });
+  // Botón "Editar" del bloque de facturación
+  $('#btn-editar-est').addEventListener('click', onToggleEditar);
+
+  // Inputs del bloque (códigos + nombre)
+  setupBloqueEstablecimientoListeners();
+
+  // Poblar select de país
+  poblarSelectPaises();
+  $('#celular-pais').addEventListener('change', onPaisChange);
 
   // Modal token
   setupTokenInputs();
@@ -173,13 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#firma-clave-confirmar').addEventListener('click', onValidarFirma);
   $('#saltar-firma').addEventListener('click', () => {
     track('firma_skipped');
+    flow.firmaPendienteDespues = true;
     machine.send(EVENTS.FIRMA_SKIP);
     finalizarFlow();
   });
 
   // Success
   $('#go-to-account').addEventListener('click', () => {
-    window.location.href = 'https://app.tributasoft.ec/login';
+    window.location.href = PORTAL_URL;
   });
 
   // Cerrar modales con Escape
@@ -188,6 +211,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   machine.subscribe(render);
+
+  // Pre-render del bloque facturación (oculto en modo "nuevo" por defecto)
+  renderSecuencias();
+  aplicarModoFacturacion();
 });
 
 // ---------- Handlers ----------
@@ -246,27 +273,27 @@ async function onContinuar() {
 function prefilledFormUI() {
   const form = $('#registration-form');
   show(form);
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  // Razón social
+  // Prefill
   $('#razon-social').value = flow.razonSocial || '';
-
-  // Nombre comercial
   $('#nombre-comercial').value = flow.nombreComercial || '';
-
-  // Dirección / Provincia / Ciudad
   $('#direccion').value = flow.direccion || '';
   if (flow.provincia) {
     const sel = $('#provincia');
-    // Buscar match case-insensitive
     const opt = Array.from(sel.options).find(
       (o) => o.value.toUpperCase() === (flow.provincia || '').toUpperCase()
     );
     if (opt) sel.value = opt.value;
+    poblarCiudadesPara(sel.value);
+    // Intentar matchear la ciudad
+    if (flow.ciudad) {
+      const citySel = $('#ciudad');
+      const cityOpt = Array.from(citySel.options).find(
+        (o) => o.value.toUpperCase() === (flow.ciudad || '').toUpperCase()
+      );
+      if (cityOpt) citySel.value = cityOpt.value;
+    }
   }
-  $('#ciudad').value = flow.ciudad || '';
-
-  // Régimen — match a una de las 3 opciones del combobox
   if (flow.regimen) {
     const sel = $('#regimen');
     const upper = flow.regimen.toUpperCase();
@@ -277,23 +304,30 @@ function prefilledFormUI() {
     if (match) sel.value = match;
   }
 
-  // Banner SRI: si falló → mostrar y resaltar campos editables
   $('#sri-banner').hidden = !!flow.rucInfo;
-
-  // Header
   $('#razon-social-static').textContent = flow.razonSocial || flow.ruc;
   $('#ruc-display').textContent = flow.ruc;
 
-  // Inicializa establecimientos según modo (por defecto "nuevo")
-  flow.modoFacturacion = $('input[name="modo-facturacion"]:checked')?.value || 'nuevo';
-  flow.establecimientos = [crearEstablecimientoVacio(true)];
-  renderEstablecimientos();
+  // Reset modo a "nuevo" y aplicar
+  $('input[name="modo-facturacion"][value="nuevo"]').checked = true;
+  flow.modoFacturacion = 'nuevo';
+  aplicarModoFacturacion();
 
-  // Inicializa canales según celular actual (vacío al inicio)
+  // Inicializar canales y país
   actualizarCanalesDisponibles();
 
-  // Foco al primer campo
-  setTimeout(() => $('#email').focus(), 250);
+  // Scroll suave a Razón social + animación de highlight
+  setTimeout(() => {
+    const target = $('#razon-social');
+    if (!target) return;
+    const headerOffset = 80;
+    const rect = target.getBoundingClientRect();
+    const y = rect.top + window.pageYOffset - headerOffset;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+    target.classList.add('is-highlighted');
+    setTimeout(() => target.classList.remove('is-highlighted'), 1700);
+    setTimeout(() => target.focus({ preventScroll: true }), 600);
+  }, 250);
 }
 
 // ---------- Nombre Comercial — "No aplica" ----------
@@ -312,6 +346,58 @@ function onNombreComercialNAToggle(e) {
   }
 }
 
+// ---------- Provincia → Ciudad dependiente ----------
+function onProvinciaChange(e) {
+  const prov = e.target.value;
+  flow.provincia = prov;
+  poblarCiudadesPara(prov);
+}
+
+function poblarCiudadesPara(provinciaCode) {
+  const sel = $('#ciudad');
+  const ciudades = citiesFor(provinciaCode);
+  sel.innerHTML = '';
+  if (!ciudades.length) {
+    sel.innerHTML = '<option value="">Selecciona una provincia primero…</option>';
+    sel.disabled = true;
+    flow.ciudad = '';
+    return;
+  }
+  sel.disabled = false;
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Selecciona…';
+  sel.appendChild(placeholder);
+  ciudades.forEach((c) => {
+    const o = document.createElement('option');
+    o.value = c.toUpperCase();
+    o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+// ---------- Tipo de contribuyente → No. Resolución condicional ----------
+function onTipoContribuyenteChange(e) {
+  flow.tipoContribuyente = e.target.value;
+  const wrap = $('#no-resolucion-wrap');
+  if (TIPOS_CON_RESOLUCION.has(flow.tipoContribuyente)) {
+    wrap.hidden = false;
+    setTimeout(() => $('#no-resolucion').focus(), 100);
+  } else {
+    wrap.hidden = true;
+    $('#no-resolucion').value = '';
+    flow.noResolucion = '';
+    setFieldError('no-resolucion', '');
+  }
+}
+
+function onNoResolucionInput(e) {
+  // Filtrar a alfanuméricos + "-"
+  const v = e.target.value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 50);
+  if (v !== e.target.value) e.target.value = v;
+  flow.noResolucion = v;
+}
+
 // ---------- Celular + país + canales ----------
 function poblarSelectPaises() {
   const sel = $('#celular-pais');
@@ -320,7 +406,8 @@ function poblarSelectPaises() {
   COUNTRIES.forEach((c) => {
     const opt = document.createElement('option');
     opt.value = c.code;
-    opt.textContent = `${regionalIndicator(c.code)} ${c.name} (+${c.dial})`;
+    // Nombre + código (sin abreviación/bandera)
+    opt.textContent = `${c.name} (+${c.dial})`;
     sel.appendChild(opt);
   });
   sel.value = 'EC';
@@ -330,32 +417,25 @@ function poblarSelectPaises() {
 function onPaisChange(e) {
   flow.celularPais = e.target.value;
   const pais = findCountry(flow.celularPais);
-  // Actualizar placeholder e input
   const input = $('#celular');
   input.placeholder = pais.placeholder || 'XXXXXXXX';
-  input.value = ''; // reset al cambiar de país para evitar mezcla
+  input.value = '';
   actualizarCanalesDisponibles();
   input.focus();
-}
-
-function onCelularInput() {
-  actualizarCanalesDisponibles();
 }
 
 function actualizarCanalesDisponibles() {
   const pais = findCountry(flow.celularPais);
   const esEcuador = pais.code === 'EC';
-  flow.celularEsEcuador = esEcuador;
 
-  const warn = $('#celular-warn');
   const hint = $('#celular-hint');
-
-  // Actualizar hint con el formato esperado del país
   if (hint) {
-    hint.textContent = `Formato para ${pais.name}: ${pais.placeholder || 'sólo dígitos'}.`;
+    hint.textContent = esEcuador
+      ? 'Formato para Ecuador: 09XXXXXXXX (10 dígitos).'
+      : `Formato para ${pais.name}: ${pais.placeholder || 'sólo dígitos'}.`;
   }
 
-  // Habilitar/deshabilitar SMS sólo si el país es Ecuador
+  const warn = $('#celular-warn');
   const smsLabel = $('#canal-options label[data-canal="sms"]');
   const smsRadio = smsLabel.querySelector('input[type="radio"]');
   if (!esEcuador) {
@@ -366,7 +446,7 @@ function actualizarCanalesDisponibles() {
       waRadio.checked = true;
       flow.canal = 'whatsapp';
     }
-    warn.textContent = `Para ${pais.name} sólo disponible WhatsApp o Email (SMS bloqueado fuera de Ecuador).`;
+    warn.textContent = `Para ${pais.name} sólo está disponible WhatsApp o Email (SMS bloqueado fuera de Ecuador).`;
   } else {
     smsLabel.classList.remove('canal-disabled');
     smsRadio.disabled = false;
@@ -374,314 +454,163 @@ function actualizarCanalesDisponibles() {
   }
 }
 
-// ---------- Modo de facturación + Establecimientos ----------
-const MAX_ESTABLECIMIENTOS = 3;
-const MAX_PUNTOS_POR_EST = 2;
-const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]{0,50}$/;
-
+// ---------- Modos de facturación + Bloque único ----------
 function onModoFacturacionChange(e) {
   flow.modoFacturacion = e.target.value;
-  // En todos los modos arranca con 001/Matriz por defecto.
-  // El lápiz le permite al usuario editarlo después.
-  flow.establecimientos = [crearEstablecimientoVacio(true)];
-  renderEstablecimientos();
+  aplicarModoFacturacion();
 }
 
-function crearPuntoEmision(codigo = '', nombre = '') {
-  const secuencias = {};
-  TIPOS_DOCUMENTO.forEach((t) => { secuencias[t.id] = '1'; });
-  return {
-    id: 'pe-' + Math.random().toString(36).slice(2, 9),
-    codigo,
-    nombre,
-    secuencias,
-  };
-}
+function aplicarModoFacturacion() {
+  const bloque = $('#establecimiento-bloque');
+  const editBtn = $('#btn-editar-est');
+  const inputs = [$('#cod-establecimiento'), $('#cod-punto'), $('#nombre-punto')];
+  const secuenciasInputs = $$('#secuencias-grid input');
 
-function crearEstablecimientoVacio(esDefault = false) {
-  return {
-    id: 'est-' + Math.random().toString(36).slice(2, 9),
-    establecimiento: esDefault ? '001' : '',
-    editando: false,
-    puntos: [crearPuntoEmision(esDefault ? '001' : '', esDefault ? 'Matriz' : '')],
-  };
-}
-
-function addEstablecimiento() {
-  if (flow.establecimientos.length >= MAX_ESTABLECIMIENTOS) return;
-  const usados = flow.establecimientos
-    .map((e) => parseInt(e.establecimiento, 10))
-    .filter((n) => !isNaN(n));
-  const siguiente = (Math.max(0, ...usados) + 1).toString().padStart(3, '0');
-
-  const nuevo = {
-    id: 'est-' + Math.random().toString(36).slice(2, 9),
-    establecimiento: siguiente,
-    editando: false, // arranca bloqueado; el usuario hace clic en el lápiz para editar
-    puntos: [crearPuntoEmision('001', 'Matriz')],
-  };
-  flow.establecimientos.push(nuevo);
-  renderEstablecimientos();
-}
-
-function removeEstablecimiento(id) {
-  if (flow.establecimientos.length <= 1) return;
-  flow.establecimientos = flow.establecimientos.filter((e) => e.id !== id);
-  renderEstablecimientos();
-}
-
-function toggleEditEstablecimiento(id) {
-  const est = flow.establecimientos.find((e) => e.id === id);
-  if (!est) return;
-  // Si estábamos editando y vamos a cerrar, validamos el código antes de guardar.
-  if (est.editando) {
-    const raw = (est.establecimiento || '').replace(/\D/g, '');
-    if (!raw) est.establecimiento = '001';
-    else {
-      const padded = raw.padStart(3, '0'); // pad SÓLO a la izquierda
-      if (padded === '000') {
-        showBanner('El código del establecimiento debe estar entre 001 y 999.', 'warn');
-        est.establecimiento = '001';
-      } else {
-        est.establecimiento = padded;
-      }
-    }
+  if (flow.modoFacturacion === 'nuevo') {
+    // "Soy nuevo facturando": ocultamos el bloque y forzamos defaults.
+    bloque.hidden = true;
+    flow.facturacion.establecimiento = '001';
+    flow.facturacion.puntoEmision = '001';
+    flow.facturacion.nombrePunto = 'Matriz';
+    TIPOS_DOCUMENTO.forEach((t) => { flow.facturacion.secuencias[t.id] = '000000001'; });
+  } else {
+    // "Quiero seguir facturando": muestra bloque, todo bloqueado hasta tocar "Editar".
+    bloque.hidden = false;
+    bloque.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    inputs.forEach((i) => { if (i) i.disabled = true; });
+    secuenciasInputs.forEach((i) => { i.disabled = true; });
+    editBtn.classList.remove('is-active');
+    editBtn.textContent = 'Editar';
   }
-  est.editando = !est.editando;
-  renderEstablecimientos();
 }
 
-function addPunto(estId) {
-  const est = flow.establecimientos.find((e) => e.id === estId);
-  if (!est || est.puntos.length >= MAX_PUNTOS_POR_EST) return;
-  const usados = est.puntos.map((p) => parseInt(p.codigo, 10)).filter((n) => !isNaN(n));
-  const siguiente = (Math.max(0, ...usados) + 1).toString().padStart(3, '0');
-  est.puntos.push(crearPuntoEmision(siguiente, ''));
-  renderEstablecimientos();
+function onToggleEditar() {
+  const editBtn = $('#btn-editar-est');
+  const inputs = [$('#cod-establecimiento'), $('#cod-punto'), $('#nombre-punto')];
+  const secuenciasInputs = $$('#secuencias-grid input');
+  const editing = editBtn.classList.contains('is-active');
+
+  if (editing) {
+    // Cerrar edición: validar y guardar
+    if (!validarBloqueFacturacion(true)) return;
+    inputs.forEach((i) => { if (i) i.disabled = true; });
+    secuenciasInputs.forEach((i) => { i.disabled = true; });
+    editBtn.classList.remove('is-active');
+    editBtn.textContent = 'Editar';
+  } else {
+    // Abrir edición
+    inputs.forEach((i) => { if (i) i.disabled = false; });
+    secuenciasInputs.forEach((i) => { i.disabled = false; });
+    editBtn.classList.add('is-active');
+    editBtn.textContent = 'Guardar';
+    setTimeout(() => $('#cod-establecimiento').focus(), 80);
+  }
 }
 
-function removePunto(estId, puntoId) {
-  const est = flow.establecimientos.find((e) => e.id === estId);
-  if (!est || est.puntos.length <= 1) return;
-  est.puntos = est.puntos.filter((p) => p.id !== puntoId);
-  renderEstablecimientos();
-}
+function renderSecuencias() {
+  const grid = $('#secuencias-grid');
+  if (!grid) return;
+  grid.innerHTML = TIPOS_DOCUMENTO.map((t) => `
+    <div class="secuencia-row">
+      <span class="secuencia-label">${t.label}</span>
+      <input type="text" data-secuencia="${t.id}" value="${flow.facturacion.secuencias[t.id] || '1'}" inputmode="numeric" maxlength="9" disabled>
+    </div>
+  `).join('');
 
-function renderEstablecimientos() {
-  const list = $('#establecimientos-list');
-  const counter = $('#establecimientos-counter');
-  const addBtn = $('#btn-add-establecimiento');
-  if (!list) return;
-
-  const modo = flow.modoFacturacion;
-  const muestraSecuencia = modo === 'continuar' || modo === 'reiniciar';
-
-  counter.textContent = `${flow.establecimientos.length} de ${MAX_ESTABLECIMIENTOS}`;
-  addBtn.disabled = flow.establecimientos.length >= MAX_ESTABLECIMIENTOS;
-
-  list.innerHTML = '';
-  flow.establecimientos.forEach((est, idx) => {
-    const div = document.createElement('div');
-    div.className = 'establecimiento-item';
-    div.dataset.id = est.id;
-
-    // Por defecto el código del establecimiento queda bloqueado tras crearse.
-    // Sólo se edita cuando el usuario hace clic en el lápiz (toggle est.editando).
-    const puedeEditarCodigo = !!est.editando;
-
-    const puntosHtml = est.puntos.map((punto, pIdx) => `
-      <div class="punto-item" data-punto-id="${punto.id}">
-        <div class="punto-header">
-          <span class="punto-label">Punto de emisión #${pIdx + 1}</span>
-          ${est.puntos.length > 1 ? `
-            <button type="button" class="btn-icon" data-action="remove-punto" aria-label="Quitar punto de emisión">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <line x1="6" y1="6" x2="18" y2="18"/>
-                <line x1="6" y1="18" x2="18" y2="6"/>
-              </svg>
-            </button>
-          ` : ''}
-        </div>
-        <div class="punto-fields">
-          <div class="field">
-            <label>Código</label>
-            <input type="text" maxlength="3" class="punto-codigo" data-punto-campo="codigo" value="${punto.codigo}" inputmode="numeric">
-          </div>
-          <div class="field">
-            <label>Nombre corto (máx 50)</label>
-            <input type="text" maxlength="50" data-punto-campo="nombre" value="${escapeAttr(punto.nombre)}" placeholder="Ej: Matriz, Sucursal Norte">
-          </div>
-        </div>
-        ${muestraSecuencia ? `
-          <div class="secuencias">
-            <p class="secuencias-titulo">Próxima secuencia por tipo de documento</p>
-            <div class="secuencias-grid">
-              ${TIPOS_DOCUMENTO.map((t) => `
-                <div class="secuencia-row">
-                  <span class="secuencia-label">${t.label}</span>
-                  <input type="text" data-punto-secuencia="${t.id}" value="${punto.secuencias[t.id] || '1'}" inputmode="numeric" maxlength="9">
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-      </div>
-    `).join('');
-
-    div.innerHTML = `
-      <div class="establecimiento-header">
-        <span class="establecimiento-label">Establecimiento #${idx + 1}</span>
-        <div class="establecimiento-actions">
-          <button type="button" class="btn-icon" data-action="edit" aria-label="${est.editando ? 'Guardar' : 'Editar establecimiento'}" title="${est.editando ? 'Guardar' : 'Editar código'}">
-            ${est.editando ? `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            ` : `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-            `}
-          </button>
-          ${flow.establecimientos.length > 1 ? `
-            <button type="button" class="btn-icon" data-action="remove" aria-label="Quitar establecimiento">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <line x1="6" y1="6" x2="18" y2="18"/>
-                <line x1="6" y1="18" x2="18" y2="6"/>
-              </svg>
-            </button>
-          ` : ''}
-        </div>
-      </div>
-      <div class="establecimiento-codigos">
-        <div class="field">
-          <label>Código de establecimiento</label>
-          <input type="text" maxlength="3" class="establecimiento-codigo-input" data-campo="establecimiento" value="${est.establecimiento}" ${puedeEditarCodigo ? '' : 'disabled'} inputmode="numeric">
-        </div>
-      </div>
-      <div class="puntos-emision">
-        <p class="puntos-emision-titulo">
-          <span>Puntos de emisión</span>
-          <span class="hint" style="margin:0;text-transform:none;letter-spacing:0">${est.puntos.length} de ${MAX_PUNTOS_POR_EST}</span>
-        </p>
-        ${puntosHtml}
-        <button type="button" class="btn-add-punto" data-action="add-punto" ${est.puntos.length >= MAX_PUNTOS_POR_EST ? 'disabled' : ''}>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Agregar punto de emisión
-        </button>
-      </div>
-    `;
-
-    list.appendChild(div);
-
-    // Listeners: establecimiento código
-    // - Sólo dígitos, máx 3.
-    // - Al perder foco, completa con ceros a la izquierda (NUNCA a la derecha).
-    // - Rechaza "000": revierte al último valor válido o, en su defecto, a "001".
-    div.querySelectorAll('input[data-campo]').forEach((inp) => {
-      inp.addEventListener('input', (e) => {
-        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+  // Listeners para cada secuencia: sólo dígitos, máx 9, error si >9
+  grid.querySelectorAll('input[data-secuencia]').forEach((inp) => {
+    inp.addEventListener('input', (e) => {
+      const original = e.target.value;
+      const v = original.replace(/\D/g, '');
+      if (v.length > 9) {
+        showBanner('La secuencia no puede tener más de 9 dígitos.', 'warn', 3000);
+        e.target.value = v.slice(0, 9);
+      } else {
         e.target.value = v;
-        est[e.target.dataset.campo] = v;
-      });
-      inp.addEventListener('blur', (e) => {
-        const raw = e.target.value.replace(/\D/g, '');
-        if (!raw) {
-          // Vacío: revertir al valor previo o a 001
-          const fallback = (est[e.target.dataset.campo] && /^\d{3}$/.test(est[e.target.dataset.campo]) && est[e.target.dataset.campo] !== '000')
-            ? est[e.target.dataset.campo]
-            : '001';
-          e.target.value = fallback;
-          est[e.target.dataset.campo] = fallback;
-          return;
-        }
-        // Pad SÓLO a la izquierda (padStart, nunca padEnd)
-        const padded = raw.padStart(3, '0');
-        if (padded === '000') {
-          showBanner('El código del establecimiento debe estar entre 001 y 999.', 'warn');
-          e.target.value = '001';
-          est[e.target.dataset.campo] = '001';
-          return;
-        }
-        e.target.value = padded;
-        est[e.target.dataset.campo] = padded;
-      });
+      }
+      flow.facturacion.secuencias[e.target.dataset.secuencia] = e.target.value || '1';
     });
-
-    // Listeners: puntos
-    div.querySelectorAll('.punto-item').forEach((puntoDiv) => {
-      const puntoId = puntoDiv.dataset.puntoId;
-      const punto = est.puntos.find((p) => p.id === puntoId);
-      if (!punto) return;
-
-      // Código del punto (3 dígitos, 001-999, pad sólo a la izquierda)
-      const codigoInp = puntoDiv.querySelector('input[data-punto-campo="codigo"]');
-      codigoInp.addEventListener('input', (e) => {
-        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
-        e.target.value = v;
-        punto.codigo = v;
-      });
-      codigoInp.addEventListener('blur', (e) => {
-        const raw = e.target.value.replace(/\D/g, '');
-        if (!raw) {
-          const fallback = (punto.codigo && /^\d{3}$/.test(punto.codigo) && punto.codigo !== '000') ? punto.codigo : '001';
-          e.target.value = fallback;
-          punto.codigo = fallback;
-          return;
-        }
-        const padded = raw.padStart(3, '0'); // pad SÓLO a la izquierda
-        if (padded === '000') {
-          showBanner('El código del punto de emisión debe estar entre 001 y 999.', 'warn');
-          e.target.value = '001';
-          punto.codigo = '001';
-          return;
-        }
-        e.target.value = padded;
-        punto.codigo = padded;
-      });
-
-      // Nombre corto (sin caracteres especiales, máx 50)
-      const nombreInp = puntoDiv.querySelector('input[data-punto-campo="nombre"]');
-      nombreInp.addEventListener('input', (e) => {
-        const filtered = e.target.value
-          .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]/g, '')
-          .slice(0, 50);
-        if (filtered !== e.target.value) e.target.value = filtered;
-        punto.nombre = filtered;
-        nombreInp.setAttribute('aria-invalid', NOMBRE_PUNTO_REGEX.test(punto.nombre) ? 'false' : 'true');
-      });
-
-      // Secuencias por tipo de documento (sólo si modo lo muestra)
-      puntoDiv.querySelectorAll('input[data-punto-secuencia]').forEach((inp) => {
-        inp.addEventListener('input', (e) => {
-          const v = e.target.value.replace(/\D/g, '');
-          e.target.value = v;
-          punto.secuencias[e.target.dataset.puntoSecuencia] = v || '1';
-        });
-      });
-
-      const removePuntoBtn = puntoDiv.querySelector('[data-action="remove-punto"]');
-      if (removePuntoBtn) removePuntoBtn.addEventListener('click', () => removePunto(est.id, punto.id));
+    inp.addEventListener('blur', (e) => {
+      const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
+      if (!raw) {
+        // Vacío → 000000001 (secuencia inicial)
+        e.target.value = '000000001';
+        flow.facturacion.secuencias[e.target.dataset.secuencia] = '000000001';
+        return;
+      }
+      // Pad SÓLO a la izquierda hasta 9 dígitos
+      const padded = raw.padStart(9, '0');
+      e.target.value = padded;
+      flow.facturacion.secuencias[e.target.dataset.secuencia] = padded;
     });
-
-    const editBtn = div.querySelector('[data-action="edit"]');
-    if (editBtn) editBtn.addEventListener('click', () => toggleEditEstablecimiento(est.id));
-    const removeBtn = div.querySelector('[data-action="remove"]');
-    if (removeBtn) removeBtn.addEventListener('click', () => removeEstablecimiento(est.id));
-    const addPuntoBtn = div.querySelector('[data-action="add-punto"]');
-    if (addPuntoBtn) addPuntoBtn.addEventListener('click', () => addPunto(est.id));
   });
 }
 
-function escapeAttr(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function setupBloqueEstablecimientoListeners() {
+  const estInp = $('#cod-establecimiento');
+  const punInp = $('#cod-punto');
+  const nomInp = $('#nombre-punto');
+
+  // Establecimiento + Punto: 3 dígitos, pad sólo a la izquierda, 001-999
+  [estInp, punInp].forEach((inp) => {
+    if (!inp) return;
+    inp.addEventListener('input', (e) => {
+      const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+      e.target.value = v;
+    });
+    inp.addEventListener('blur', (e) => {
+      const raw = e.target.value.replace(/\D/g, '');
+      if (!raw) { e.target.value = '001'; }
+      else {
+        const padded = raw.padStart(3, '0');
+        if (padded === '000') {
+          showBanner('El código debe estar entre 001 y 999.', 'warn');
+          e.target.value = '001';
+        } else {
+          e.target.value = padded;
+        }
+      }
+      if (inp === estInp) flow.facturacion.establecimiento = e.target.value;
+      else flow.facturacion.puntoEmision = e.target.value;
+    });
+  });
+
+  // Nombre corto del punto: máx 50, sólo alfanuméricos + . , _ -
+  if (nomInp) {
+    nomInp.addEventListener('input', (e) => {
+      const filtered = e.target.value
+        .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]/g, '')
+        .slice(0, 50);
+      if (filtered !== e.target.value) e.target.value = filtered;
+      flow.facturacion.nombrePunto = filtered;
+    });
+  }
 }
 
-// ---------- Submit del form ----------
+function validarBloqueFacturacion(silencioso = false) {
+  const est = ($('#cod-establecimiento').value || '').replace(/\D/g, '').padStart(3, '0');
+  const punto = ($('#cod-punto').value || '').replace(/\D/g, '').padStart(3, '0');
+  const nombre = ($('#nombre-punto').value || '').trim();
+
+  if (est === '000' || !/^\d{3}$/.test(est)) {
+    if (!silencioso) showBanner('Código de establecimiento inválido (001-999).', 'warn');
+    return false;
+  }
+  if (punto === '000' || !/^\d{3}$/.test(punto)) {
+    if (!silencioso) showBanner('Código de punto de emisión inválido (001-999).', 'warn');
+    return false;
+  }
+  if (!nombre || !NOMBRE_PUNTO_REGEX.test(nombre)) {
+    if (!silencioso) showBanner('Nombre del punto de emisión: 1-50 caracteres válidos.', 'warn');
+    return false;
+  }
+  flow.facturacion.establecimiento = est;
+  flow.facturacion.puntoEmision = punto;
+  flow.facturacion.nombrePunto = nombre;
+  return true;
+}
+
+// ---------- Submit ----------
 async function onFormSubmit(e) {
   e.preventDefault();
 
@@ -690,43 +619,44 @@ async function onFormSubmit(e) {
   const nombreComercialNA = $('#nombre-comercial-na').checked;
   const direccion = $('#direccion').value.trim();
   const provincia = $('#provincia').value;
-  const ciudad = $('#ciudad').value.trim();
+  const ciudad = $('#ciudad').value;
   const regimen = $('#regimen').value;
+  const tipoContribuyente = $('#tipo-contribuyente').value;
+  const noResolucion = $('#no-resolucion').value.trim();
   const email = $('#email').value;
   const celular = $('#celular').value;
   const canal = $('input[name="canal-token"]:checked')?.value || 'email';
 
-  // Validaciones
   let hayError = false;
 
-  if (!razonSocial) {
-    setFieldError('razon-social', 'Ingresa la razón social.');
-    hayError = true;
-  } else setFieldError('razon-social', '');
+  if (!razonSocial) { setFieldError('razon-social', 'Ingresa la razón social.'); hayError = true; }
+  else setFieldError('razon-social', '');
 
   if (!nombreComercial && !nombreComercialNA) {
-    setFieldError('nombre-comercial', 'Ingresa el nombre comercial o marca "No aplica".');
-    hayError = true;
+    setFieldError('nombre-comercial', 'Ingresa el nombre comercial o marca "No aplica".'); hayError = true;
   } else setFieldError('nombre-comercial', '');
 
-  if (!direccion) {
-    setFieldError('direccion', 'Ingresa la dirección.');
-    hayError = true;
-  } else setFieldError('direccion', '');
+  if (!direccion) { setFieldError('direccion', 'Ingresa la dirección.'); hayError = true; }
+  else setFieldError('direccion', '');
 
-  if (!provincia) {
-    setFieldError('provincia', 'Selecciona una provincia.');
-    hayError = true;
-  } else setFieldError('provincia', '');
+  if (!provincia) { setFieldError('provincia', 'Selecciona una provincia.'); hayError = true; }
+  else setFieldError('provincia', '');
 
-  if (!ciudad) {
-    setFieldError('ciudad', 'Ingresa la ciudad.');
-    hayError = true;
-  } else setFieldError('ciudad', '');
+  if (!ciudad) { setFieldError('ciudad', 'Selecciona la ciudad.'); hayError = true; }
+  else setFieldError('ciudad', '');
 
-  if (!regimen) {
-    showBanner('Selecciona un régimen tributario.', 'warn');
-    hayError = true;
+  if (!regimen) { showBanner('Selecciona un régimen tributario.', 'warn'); hayError = true; }
+
+  if (!tipoContribuyente) {
+    showBanner('Selecciona el tipo de contribuyente.', 'warn'); hayError = true;
+  } else if (TIPOS_CON_RESOLUCION.has(tipoContribuyente)) {
+    const v = validarNoResolucion(noResolucion);
+    if (!v.valid) {
+      setFieldError('no-resolucion', v.reason); hayError = true;
+    } else {
+      setFieldError('no-resolucion', '');
+      flow.noResolucion = v.normalizado;
+    }
   }
 
   const emailV = validarEmail(email);
@@ -737,36 +667,14 @@ async function onFormSubmit(e) {
   setFieldError('celular', celularV.valid ? '' : celularV.reason);
   if (!celularV.valid) hayError = true;
 
-  // Validar establecimientos: código de 3 dígitos + al menos 1 punto válido con nombre
-  let estsError = null;
-  for (const est of flow.establecimientos) {
-    if (!/^\d{3}$/.test(est.establecimiento)) {
-      estsError = 'Cada establecimiento debe tener un código de 3 dígitos.'; break;
-    }
-    if (!est.puntos.length) {
-      estsError = 'Cada establecimiento debe tener al menos un punto de emisión.'; break;
-    }
-    for (const p of est.puntos) {
-      if (!/^\d{3}$/.test(p.codigo)) {
-        estsError = 'Cada punto de emisión debe tener un código de 3 dígitos.'; break;
-      }
-      if (!p.nombre || !p.nombre.trim()) {
-        estsError = 'Cada punto de emisión debe tener un nombre corto.'; break;
-      }
-      if (!NOMBRE_PUNTO_REGEX.test(p.nombre)) {
-        estsError = 'El nombre del punto de emisión sólo admite letras, números y . , _ - (máx 50).'; break;
-      }
-    }
-    if (estsError) break;
-  }
-  if (estsError) {
-    showBanner(estsError, 'warn');
+  // Validación del bloque facturación (sólo si modo === "continuar")
+  if (flow.modoFacturacion === 'continuar' && !validarBloqueFacturacion()) {
     hayError = true;
   }
 
   if (hayError) return;
 
-  // Persistir en flow
+  // Persistir
   flow.razonSocial = razonSocial;
   flow.nombreComercial = nombreComercialNA ? '' : nombreComercial;
   flow.nombreComercialNA = nombreComercialNA;
@@ -774,12 +682,12 @@ async function onFormSubmit(e) {
   flow.provincia = provincia;
   flow.ciudad = ciudad;
   flow.regimen = regimen;
+  flow.tipoContribuyente = tipoContribuyente;
   flow.email = emailV.normalizado;
   flow.celular = celularV.normalizado;
-  flow.celularEsEcuador = celularV.esEcuador;
   flow.canal = canal;
   saveDraft(flow);
-  track('form_submitted', { canal, modoFacturacion: flow.modoFacturacion, esEcuador: celularV.esEcuador });
+  track('form_submitted', { canal, modo: flow.modoFacturacion, tipoContribuyente });
 
   const submitBtn = $('#submit-registro');
   setBusy(submitBtn, true);
@@ -793,12 +701,14 @@ async function onFormSubmit(e) {
       provincia,
       ciudad,
       regimen,
+      tipoContribuyente,
+      noResolucion: flow.noResolucion,
       email: flow.email,
       celular: flow.celular,
       celularPais: flow.celularPais,
       canal,
       modoFacturacion: flow.modoFacturacion,
-      establecimientos: flow.establecimientos,
+      facturacion: flow.facturacion,
       datosSRI: flow.rucInfo,
     });
     flow.registroId = resp.registroId;
@@ -937,7 +847,6 @@ function onClaveInput() {
   const confirm = $('#confirmar-clave').value;
   const coincide = confirm && c === confirm;
   $('#confirmar-error').textContent = (confirm && !coincide) ? 'Las claves no coinciden.' : '';
-
   $('#continuar-clave').disabled = !(v.valid && coincide);
 }
 
@@ -976,6 +885,7 @@ function onFirmaFile(e) {
   firmaFileSeleccionada = file;
   $('#firma-nombre').textContent = file.name;
   $('#firma-error').textContent = '';
+  $('#firma-resumen').hidden = true;
   show($('#firma-clave-step'));
   $('#firma-clave').focus();
 }
@@ -987,18 +897,38 @@ async function onValidarFirma() {
 
   setBusy($('#firma-clave-confirmar'), true);
   machine.send(EVENTS.FIRMA_UPLOAD);
+  $('#firma-error').textContent = '';
+  $('#firma-resumen').hidden = true;
+
   try {
-    const resp = await validarFirma({ file: firmaFileSeleccionada, clave });
+    const resp = await validarFirma({
+      file: firmaFileSeleccionada,
+      clave,
+      rucEsperado: flow.ruc,
+    });
+
     if (resp.valida) {
       track('firma_uploaded_valid', { fechaCaducidad: resp.fechaCaducidad });
       machine.send(EVENTS.FIRMA_OK);
-      closeModal($('#modal-firma'));
-      finalizarFlow();
+
+      // Mostrar resumen
+      $('#firma-titular').textContent = resp.subject || '—';
+      $('#firma-ruc').textContent = resp.rucCertificado || flow.ruc;
+      $('#firma-caducidad').textContent = formatearFecha(resp.fechaCaducidad);
+      $('#firma-resumen').hidden = false;
+
+      // Pequeña pausa para que el usuario vea el resumen, luego finaliza
+      setTimeout(() => {
+        closeModal($('#modal-firma'));
+        finalizarFlow();
+      }, 1800);
     } else {
       track('firma_uploaded_invalid', { error: resp.error });
       machine.send(EVENTS.FIRMA_BAD);
-      const hint = resp._mockHint ? ` (${resp._mockHint})` : '';
-      $('#firma-error').textContent = (resp.error || 'La firma no es válida.') + hint;
+      // Mensaje específico según el motivo
+      let msg = resp.error || 'La firma no es válida.';
+      if (resp._mockHint) msg += ` (${resp._mockHint})`;
+      $('#firma-error').textContent = msg;
     }
   } catch (err) {
     $('#firma-error').textContent = 'Error validando la firma.';
@@ -1007,16 +937,26 @@ async function onValidarFirma() {
   }
 }
 
+function formatearFecha(yyyyMmDd) {
+  if (!yyyyMmDd || typeof yyyyMmDd !== 'string') return '—';
+  const [y, m, d] = yyyyMmDd.split('-');
+  if (!y || !m || !d) return yyyyMmDd;
+  return `${d}/${m}/${y}`;
+}
+
 async function finalizarFlow() {
   try {
     const resp = await finalizarRegistro({ registroId: flow.registroId });
     clearDraft();
-    track('registration_complete', { redirectUrl: resp.redirectUrl });
+    track('registration_complete', {
+      redirectUrl: resp.redirectUrl,
+      firmaPendienteDespues: flow.firmaPendienteDespues,
+    });
     machine.send(EVENTS.FINALIZED);
     show($('#success'));
     $('#success').scrollIntoView({ behavior: 'smooth' });
     setTimeout(() => {
-      window.location.href = resp.redirectUrl || 'https://app.tributasoft.ec/login';
+      window.location.href = resp.redirectUrl || PORTAL_URL;
     }, 3000);
   } catch (err) {
     showBanner('Error finalizando el registro.', 'error');

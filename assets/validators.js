@@ -132,9 +132,10 @@ export function validarCelular(input, paisCode = 'EC') {
     return { valid: false, reason: 'El número no coincide con el código del país seleccionado.' };
   }
 
-  // Para EC, si tipearon "09XXXXXXXX" (con el 0 inicial), quitamos el 0.
-  if (pais.code === 'EC' && nacional.startsWith('0') && nacional.length === 10) {
-    nacional = nacional.substring(1);
+  // Para EC: el formato oficial es 09XXXXXXXX (10 dígitos con el 0 inicial).
+  // Si tras quitar +593 quedó "9XXXXXXXXX" (9 dígitos), le anteponemos el 0.
+  if (pais.code === 'EC' && nacional.length === 9 && nacional.startsWith('9')) {
+    nacional = '0' + nacional;
   }
 
   if (!/^\d+$/.test(nacional)) {
@@ -144,12 +145,18 @@ export function validarCelular(input, paisCode = 'EC') {
     const rango = pais.minLen === pais.maxLen ? `${pais.minLen} dígitos` : `${pais.minLen} a ${pais.maxLen} dígitos`;
     return { valid: false, reason: `Para ${pais.name}, el número debe tener ${rango}.` };
   }
-  if (pais.leadingDigit && !nacional.startsWith(pais.leadingDigit)) {
+  if (pais.leadingPrefix && !nacional.startsWith(pais.leadingPrefix)) {
+    return { valid: false, reason: `El celular de ${pais.name} debe empezar con ${pais.leadingPrefix}.` };
+  }
+  if (!pais.leadingPrefix && pais.leadingDigit && !nacional.startsWith(pais.leadingDigit)) {
     return { valid: false, reason: `El celular de ${pais.name} debe empezar con ${pais.leadingDigit}.` };
   }
 
-  const e164 = '+' + pais.dial + nacional;
-  const normalizado = pais.code === 'EC' ? '0' + nacional : e164;
+  // Para EC, el "nacional" YA incluye el "09". El e164 omite el 0 inicial.
+  const e164 = pais.code === 'EC'
+    ? '+' + pais.dial + nacional.substring(1)
+    : '+' + pais.dial + nacional;
+  const normalizado = pais.code === 'EC' ? nacional : e164;
 
   return {
     valid: true,
@@ -229,4 +236,20 @@ export function validarFirmaArchivo(file) {
 export function validarCodigoToken(codigo) {
   if (typeof codigo !== 'string') return { valid: false };
   return { valid: /^\d{6}$/.test(codigo) };
+}
+
+/**
+ * Número de resolución del SRI:
+ *   - Alfanumérico, permite el carácter especial "-".
+ *   - No vacío. Máx 50 caracteres.
+ */
+export function validarNoResolucion(input) {
+  if (typeof input !== 'string') return { valid: false, reason: 'Valor inválido.' };
+  const trimmed = input.trim();
+  if (!trimmed) return { valid: false, reason: 'Ingresa el número de resolución.' };
+  if (trimmed.length > 50) return { valid: false, reason: 'Máximo 50 caracteres.' };
+  if (!/^[A-Za-z0-9-]+$/.test(trimmed)) {
+    return { valid: false, reason: 'Sólo se permiten letras, números y el guión "-".' };
+  }
+  return { valid: true, normalizado: trimmed.toUpperCase() };
 }

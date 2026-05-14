@@ -7,9 +7,9 @@
 //   minLen:     Mínimo de dígitos del número nacional (sin dial code).
 //   maxLen:     Máximo de dígitos del número nacional.
 //   placeholder: Plantilla local de ejemplo para mostrar al usuario.
-//   leadingDigit: Si el celular de ese país siempre empieza con un dígito específico
-//                 (ej. en EC siempre empieza con 9 al hablar de móviles), lo declaramos.
-//                 Si no hay regla fija, omitir.
+//   leadingDigit:  Si el celular de ese país siempre empieza con un dígito específico, lo declaramos.
+//   leadingPrefix: Si exige un prefijo de varios dígitos (ej. EC empieza con "09" al hablar de móviles).
+//                  Tiene prioridad sobre leadingDigit cuando ambos están presentes.
 //
 // La bandera se calcula a partir de `code` con regionalIndicator(code).
 
@@ -21,7 +21,7 @@ export function regionalIndicator(code) {
 }
 
 export const COUNTRIES = [
-  { code: 'EC', name: 'Ecuador', dial: '593', minLen: 9, maxLen: 9, placeholder: '9XXXXXXXX', leadingDigit: '9' },
+  { code: 'EC', name: 'Ecuador', dial: '593', minLen: 10, maxLen: 10, placeholder: '09XXXXXXXX', leadingPrefix: '09' },
   { code: 'AR', name: 'Argentina', dial: '54', minLen: 10, maxLen: 11, placeholder: '11XXXXXXXX' },
   { code: 'BO', name: 'Bolivia', dial: '591', minLen: 8, maxLen: 8, placeholder: '7XXXXXXX' },
   { code: 'BR', name: 'Brasil', dial: '55', minLen: 10, maxLen: 11, placeholder: '11XXXXXXXXX' },

@@ -29,13 +29,14 @@
   --color-border: #e2e2e2;
   --color-outline: #c5c5d3;
 
-  /* Estados — siempre coherentes con la paleta del logo */
-  --color-ok: #00867a;                 /* Éxito = teal oscuro */
-  --color-ok-container: #d8f7f1;       /* Éxito suave = teal pálido */
+  /* Estados — siempre coherentes con la paleta del logo (sin verde) */
+  --color-ok: #2E7A95;                 /* Éxito = celeste oscuro del logo */
+  --color-ok-container: #e3f2f8;       /* Éxito suave = celeste pálido */
   --color-warn: #9d4300;               /* Advertencia = naranja oscuro */
-  --color-warn-container: #fff1e6;
+  --color-warn-container: #fdecde;
   --color-error: #ba1a1a;
   --color-error-container: #ffdad6;
+  --color-edit: #d92e2e;               /* Botón "Editar" en rojo */
   --color-info: #00236f;
 
   --shadow-sm: 0 1px 2px rgba(0,35,111,.04), 0 1px 3px rgba(0,35,111,.06);
@@ -118,17 +119,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 
 /* ---------------- Hero ---------------- */
 .hero {
-  padding: 2rem 1rem 1rem;
+  padding: 1.75rem 1rem .75rem;
   text-align: center;
   animation: fadeUp 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .badge {
   display: inline-flex; align-items: center; gap: .4rem;
   background: var(--color-teal-light);
-  color: var(--color-teal-dark);
-  font-size: .8rem; font-weight: 600; letter-spacing: .02em;
+  color: var(--color-brand-tributa);
+  font-size: .82rem; font-weight: 700; letter-spacing: .02em;
   padding: .45rem 1rem; border-radius: 999px;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.1rem;
   line-height: 1.2;
 }
 .badge::before {
@@ -139,23 +140,25 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .hero h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.5rem, 5vw, 2.4rem);
-  line-height: 1.25;
-  margin: 0 0 .75rem;
+  font-size: clamp(1.4rem, 4.5vw, 2.1rem);
+  line-height: 1.2;
+  margin: 0 0 .65rem;
   letter-spacing: -.02em;
+  color: var(--color-brand-tributa);
 }
-.hero h1 .h-accent { color: var(--color-cta); }
-.hero p { color: var(--color-muted); max-width: 32rem; margin: 0 auto; font-size: 1rem; }
+.hero h1 .h-gratis { color: var(--color-cta); }
+.hero p { color: #6b7280; max-width: 32rem; margin: 0 auto; font-size: .95rem; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------------- Tarjeta RUC ---------------- */
+/* ---------------- Tarjeta RUC (compacta para laptop) ---------------- */
 .ruc-card {
-  margin: 1.5rem 1rem;
-  padding: 1.5rem 1.25rem;
+  margin: 1rem auto;
+  padding: 1.1rem 1rem;
+  max-width: 28rem;
   background: var(--color-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
@@ -166,18 +169,18 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   display: block;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: .82rem;
+  font-size: .76rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   text-align: center;
   color: var(--color-muted);
-  margin-bottom: .75rem;
+  margin-bottom: .55rem;
 }
 .ruc-card input[type="tel"] {
   width: 100%;
-  height: 3.5rem;
-  padding: 0 1rem;
-  font-size: 1.1rem;
+  height: 2.9rem;
+  padding: 0 .9rem;
+  font-size: 1.02rem;
   letter-spacing: .12em;
   text-align: center;
   border: 1px solid var(--color-outline);
@@ -194,10 +197,15 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 }
 .ruc-card .help {
   color: var(--color-muted);
-  font-size: .82rem;
-  margin-top: .65rem;
+  font-size: .78rem;
+  margin-top: .5rem;
   text-align: center;
   opacity: .8;
+}
+.ruc-card .btn--primary {
+  height: 2.9rem;
+  margin-top: .7rem;
+  font-size: .9rem;
 }
 .feedback {
   margin-top: .65rem;
@@ -380,14 +388,14 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .field-phone input[type="tel"] { flex: 1; min-width: 0; }
 .field-phone .celular-pais {
   flex: 0 0 auto;
-  max-width: 9.5rem;
+  max-width: 11rem;
   padding: .8rem .55rem;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   background: #f7f8fb;
   color: var(--color-primary);
   font-weight: 600;
-  font-size: .95rem;
+  font-size: .9rem;
   cursor: pointer;
   appearance: auto;
   transition: border-color var(--transition);
@@ -466,13 +474,13 @@ details.config-avanzada summary {
 details.config-avanzada summary::after { content: " ▾"; transition: transform var(--transition); display: inline-block; }
 details[open] summary::after { transform: rotate(180deg); }
 
-/* Modos de facturación (radio cards) */
+/* Modos de facturación (cards con icono minimalista) */
 .modo-facturacion {
-  display: grid; gap: .5rem; margin: .75rem 0 1rem;
+  display: grid; gap: .55rem; margin: .65rem 0 1rem;
 }
 .modo-facturacion label {
-  display: flex; align-items: flex-start; gap: .65rem;
-  padding: .85rem .9rem;
+  display: flex; align-items: center; gap: .8rem;
+  padding: .85rem 1rem;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -480,36 +488,79 @@ details[open] summary::after { transform: rotate(180deg); }
   background: white;
 }
 .modo-facturacion input[type="radio"] { display: none; }
-.modo-facturacion label::before {
-  content: "";
+.modo-facturacion .modo-icon {
   flex-shrink: 0;
-  width: 1.25rem; height: 1.25rem;
-  border-radius: 50%;
-  border: 2px solid var(--color-outline);
-  margin-top: 1px;
-  transition: all var(--transition);
+  width: 2.25rem; height: 2.25rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-brand-tributa);
+  transition: color var(--transition);
 }
+.modo-facturacion .modo-icon svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.7; }
 .modo-facturacion label:has(input:checked) {
   border-color: var(--color-primary);
   background: rgba(0, 35, 111, .03);
+  box-shadow: 0 0 0 2px rgba(0, 35, 111, .08);
 }
-.modo-facturacion label:has(input:checked)::before {
-  border-color: var(--color-primary);
-  background: radial-gradient(circle, var(--color-primary) 40%, transparent 45%);
-}
-.modo-facturacion .modo-content {
-  flex: 1;
-}
+.modo-facturacion label:has(input:checked) .modo-icon { color: var(--color-cta); }
+.modo-facturacion .modo-content { flex: 1; }
 .modo-facturacion .modo-title {
   font-weight: 600; font-size: .92rem; color: var(--color-text);
-  display: block; margin-bottom: .15rem;
+  display: block; margin-bottom: .12rem;
 }
 .modo-facturacion .modo-desc {
-  font-size: .82rem; color: var(--color-muted);
+  font-size: .8rem; color: var(--color-muted);
   line-height: 1.4;
 }
 
-/* Lista de establecimientos */
+/* Bloque único de establecimiento + punto de emisión */
+.establecimiento-bloque {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-low);
+  animation: slideUp 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.establecimiento-bloque[hidden] { display: none; }
+.establecimiento-bloque-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .75rem;
+}
+.establecimiento-bloque-header h4 {
+  margin: 0; font-size: .92rem; font-weight: 600; color: var(--color-primary);
+}
+.btn-editar {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .35rem .7rem;
+  background: transparent;
+  border: 1.5px solid var(--color-edit);
+  color: var(--color-edit);
+  border-radius: var(--radius-sm);
+  font-weight: 700; font-size: .78rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  transition: all var(--transition);
+}
+.btn-editar:hover { background: var(--color-edit); color: white; }
+.btn-editar.is-active {
+  background: var(--color-edit); color: white;
+}
+.codigos-fila {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
+  margin-bottom: .75rem;
+}
+.codigos-fila .field { margin: 0; }
+.codigos-fila .field label {
+  font-size: .8rem; color: var(--color-muted); font-weight: 500;
+}
+.codigos-fila input {
+  font-family: ui-monospace, monospace;
+  text-align: center;
+  letter-spacing: .08em;
+}
+
+/* Lista legacy (puede que aún se use en variantes) */
 .establecimientos {
   margin-top: 1rem;
 }
@@ -749,6 +800,37 @@ dialog.is-open .modal-content {
 .firma-clave-step { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); }
 .firma-nombre { font-family: ui-monospace, monospace; font-size: .85rem; color: var(--color-muted); }
 .firma-error { color: var(--color-error); font-size: .9rem; min-height: 1.1em; margin-top: .35rem; }
+
+.firma-resumen {
+  background: var(--color-teal-light);
+  border: 1px solid #c9e7ee;
+  border-radius: var(--radius-md);
+  padding: .75rem .85rem;
+  margin-top: .75rem;
+  font-size: .88rem;
+  animation: slideUp 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.firma-resumen-row {
+  display: flex; justify-content: space-between; gap: .75rem;
+  padding: .15rem 0;
+}
+.firma-resumen-label {
+  color: var(--color-muted); font-weight: 500;
+}
+.firma-resumen-value {
+  color: var(--color-primary); font-weight: 600; text-align: right;
+  font-family: ui-monospace, monospace; font-size: .82rem;
+}
+
+/* Animación de "highlight" para el campo razón social al hacer scroll */
+@keyframes highlightField {
+  0%   { box-shadow: 0 0 0 0 rgba(135, 199, 220, 0); border-color: var(--color-border); }
+  30%  { box-shadow: 0 0 0 6px rgba(135, 199, 220, .35); border-color: var(--color-brand-tributa); }
+  100% { box-shadow: 0 0 0 0 rgba(135, 199, 220, 0); border-color: var(--color-border); }
+}
+.field input.is-highlighted {
+  animation: highlightField 1600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 /* ---------------- Success — check con teal del logo ---------------- */
 .success {
