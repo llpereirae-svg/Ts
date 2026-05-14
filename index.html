@@ -16,7 +16,7 @@
   <!-- Fuentes Google: DM Sans (headlines) + Inter (body). 'Avenida' se carga vía @font-face en styles.css. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lobster&display=swap" rel="stylesheet">
 
   <!-- CSS crítico inline mínimo para LCP rápido -->
   <style>
@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514h">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514i">
 </head>
 <body data-state="IDLE">
 
@@ -471,6 +471,34 @@
       </div>
     </dialog>
 
+    <!-- MODAL LOGO / BANNER (paso opcional tras la firma) -->
+    <dialog id="modal-logo" aria-labelledby="modal-logo-h">
+      <div class="modal-content modal-content--wide">
+        <h2 id="modal-logo-h">Tu logo (opcional)</h2>
+        <p>Sube tu logo o, si prefieres, generamos uno con tu nombre comercial. El banner final tendrá 2970×300 px (PNG).</p>
+
+        <div class="logo-options">
+          <button type="button" id="logo-upload-btn" class="btn btn--ghost">Subir mi logo</button>
+          <button type="button" id="logo-generar-btn" class="btn btn--primary">Generar automáticamente</button>
+        </div>
+        <input type="file" id="logo-uploader" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden>
+        <p id="logo-error" class="error" role="alert" aria-live="polite"></p>
+
+        <div id="logo-preview-wrap" class="logo-preview-wrap" hidden>
+          <p class="logo-preview-label">Vista previa de tu banner (2970×300 px):</p>
+          <div class="logo-preview-frame">
+            <canvas id="logo-preview-canvas" width="2970" height="300"></canvas>
+          </div>
+          <p id="logo-preview-source" class="logo-preview-source"></p>
+        </div>
+
+        <div class="modal-actions modal-actions--split" id="logo-actions" hidden>
+          <button type="button" id="logo-rehacer" class="btn btn--ghost">Rehacer</button>
+          <button type="button" id="logo-continuar" class="btn btn--primary">Continuar</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- MODAL COTIZAR -->
     <dialog id="modal-cotizar" aria-labelledby="modal-cotizar-h">
       <div class="modal-content modal-content--wide">
@@ -650,7 +678,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514h';
+    const APP_VER = '20260514i';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

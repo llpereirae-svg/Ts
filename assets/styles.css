@@ -938,6 +938,65 @@ dialog#modal-terms {
   font-family: ui-monospace, monospace; font-size: .82rem;
 }
 
+/* ---------------- Modal Logo / Banner ---------------- */
+.logo-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .65rem;
+  margin: .75rem 0 .5rem;
+}
+@media (max-width: 480px) {
+  .logo-options { grid-template-columns: 1fr; }
+}
+.logo-options .btn {
+  width: 100%;
+  height: auto;
+  padding: .8rem 1rem;
+  font-size: .9rem;
+  margin-top: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.logo-preview-wrap {
+  margin-top: 1rem;
+  animation: slideUp 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.logo-preview-wrap[hidden] { display: none; }
+.logo-preview-label {
+  margin: 0 0 .35rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.logo-preview-frame {
+  /* Aspect ratio del banner real: 2970:300 = 9.9 : 1.
+     Forzamos esa proporción con padding-bottom para que el preview luzca
+     exactamente como lo verá el cliente final. */
+  position: relative;
+  width: 100%;
+  padding-bottom: calc(300 / 2970 * 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: repeating-conic-gradient(#f2f2f2 0% 25%, #ffffff 0% 50%) 0 0 / 16px 16px;
+  overflow: hidden;
+}
+.logo-preview-frame canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.logo-preview-source {
+  margin: .4rem 0 0;
+  font-size: .75rem;
+  color: var(--color-muted);
+  text-align: right;
+  font-style: italic;
+}
+
+#logo-error { min-height: 1.1em; }
+
 /* ---------------- Modal Cotizar ---------------- */
 .cotizar-grid {
   display: grid;

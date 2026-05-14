@@ -310,7 +310,7 @@ function init() {
   $('#firma-continuar').addEventListener('click', () => {
     track('firma_confirmada');
     closeModal($('#modal-firma'));
-    finalizarFlow();
+    openLogoStep();
   });
   $('#firma-cancelar').addEventListener('click', () => {
     track('firma_cancelada_tras_validar');
@@ -325,6 +325,17 @@ function init() {
     track('firma_skipped');
     flow.firmaPendienteDespues = true;
     machine.send(EVENTS.FIRMA_SKIP);
+    closeModal($('#modal-firma'));
+    openLogoStep();
+  });
+
+  // Modal logo / banner — se abre tras firma OK o firma saltada.
+  $('#logo-upload-btn').addEventListener('click', () => $('#logo-uploader').click());
+  $('#logo-uploader').addEventListener('change', onLogoUploaded);
+  $('#logo-generar-btn').addEventListener('click', onLogoGenerar);
+  $('#logo-rehacer').addEventListener('click', resetLogoStep);
+  $('#logo-continuar').addEventListener('click', () => {
+    closeModal($('#modal-logo'));
     finalizarFlow();
   });
 
@@ -1456,6 +1467,204 @@ function closeTooltip() {
   const pop = $('#tooltip-popover');
   if (pop) pop.hidden = true;
   _tooltipAnchor = null;
+}
+
+// =========================================================================
+//   LOGO / BANNER (paso opcional tras la firma — antes de la pantalla SUCCESS)
+//
+//   Output: 2970 × 300 px PNG. Dos rutas posibles:
+//     a) El usuario sube un PNG/JPG y lo ajustamos al banner (contain, centrado).
+//        Funciona igual si el logo es muy grande (se reduce) o muy pequeño
+//        (se amplía), preservando la proporción.
+//     b) El usuario pide auto-generación: dibujamos su nombre comercial
+//        (con fallback a razón social) en tipografía Lobster, normalizado a
+//        capitalización tipo título — "lEnin PerEira" → "Lenin Pereira".
+//   El resultado (Blob PNG) queda en flow.bannerBlob para que el backend lo
+//   reciba y persista en la base de datos.
+// =========================================================================
+
+const BANNER_W = 2970;
+const BANNER_H = 300;
+const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB para el archivo del logo subido
+
+function toTitleCase(str) {
+  // Capitaliza la primera letra de cada palabra, considerando como
+  // separadores el inicio del string, espacios en blanco, puntos, guiones
+  // y barras. \p{L} con flag /u abarca también acentos y la ñ.
+  if (!str) return '';
+  const lower = String(str).trim().toLowerCase();
+  return lower.replace(/(^|[\s.\-/])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+}
+
+function bannerNameFor(state) {
+  // Si el usuario marcó "No aplica" para nombre comercial, usamos la razón
+  // social. Último recurso: el RUC.
+  const nc = state.nombreComercialNA ? '' : (state.nombreComercial || '');
+  const raw = nc || state.razonSocial || state.ruc || 'TributaSoft';
+  return toTitleCase(raw);
+}
+
+async function ensureLobsterLoaded() {
+  // Espera a que la fuente Lobster esté disponible para que el canvas la use.
+  // Sin esto, canvas dibujaría con la fuente de fallback al primer intento.
+  try {
+    if (document.fonts && document.fonts.load) {
+      await document.fonts.load('200px "Lobster"');
+    }
+  } catch { /* fuentes no disponibles — seguimos con fallback cursive */ }
+}
+
+async function generateBannerFromText(text) {
+  await ensureLobsterLoaded();
+  const canvas = document.createElement('canvas');
+  canvas.width = BANNER_W;
+  canvas.height = BANNER_H;
+  const ctx = canvas.getContext('2d');
+
+  // Fondo blanco — sirve como base limpia para impresión y para el portal.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, BANNER_W, BANNER_H);
+
+  // Barra decorativa sutil con los colores del logo arriba y abajo.
+  ctx.fillStyle = '#87C7DC';
+  ctx.fillRect(0, 0, BANNER_W, 6);
+  ctx.fillStyle = '#EF7306';
+  ctx.fillRect(0, BANNER_H - 6, BANNER_W, 6);
+
+  // Texto en Lobster, color azul del logo. Auto-fit del tamaño para que
+  // siempre quepa con un margen lateral cómodo.
+  ctx.fillStyle = '#00236f';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const maxWidth = BANNER_W - 240;
+  let fontSize = 220;
+  do {
+    ctx.font = `${fontSize}px "Lobster", cursive`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+    fontSize -= 4;
+  } while (fontSize > 60);
+
+  ctx.fillText(text, BANNER_W / 2, BANNER_H / 2 + 4);
+  return canvas;
+}
+
+function fitLogoToBanner(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = BANNER_W;
+      canvas.height = BANNER_H;
+      const ctx = canvas.getContext('2d');
+
+      // Fondo blanco — el "padding" alrededor del logo si no llena los 9.9:1.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, BANNER_W, BANNER_H);
+
+      // Contain: escalamos uniformemente para que el lado más restrictivo
+      // toque el borde del banner. Funciona igual para imágenes grandes
+      // (downscale) y pequeñas (upscale).
+      const scale = Math.min(BANNER_W / img.width, BANNER_H / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const x = (BANNER_W - w) / 2;
+      const y = (BANNER_H - h) / 2;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, x, y, w, h);
+      resolve(canvas);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No pudimos leer la imagen.'));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
+function paintPreview(sourceCanvas) {
+  // El canvas del modal tiene resolución interna 2970×300 (alta calidad),
+  // pero CSS lo escala al ancho disponible. Sólo lo "sincronizamos" con
+  // el canvas fuente para que muestre el mismo resultado.
+  const preview = $('#logo-preview-canvas');
+  preview.width = sourceCanvas.width;
+  preview.height = sourceCanvas.height;
+  preview.getContext('2d').drawImage(sourceCanvas, 0, 0);
+}
+
+function openLogoStep() {
+  resetLogoStep();
+  openModal($('#modal-logo'));
+}
+
+function resetLogoStep() {
+  $('#logo-preview-wrap').hidden = true;
+  $('#logo-actions').hidden = true;
+  $('#logo-uploader').value = '';
+  $('#logo-error').textContent = '';
+  $('#logo-preview-source').textContent = '';
+  flow.bannerBlob = null;
+  flow.bannerSource = null;
+}
+
+async function onLogoGenerar() {
+  $('#logo-error').textContent = '';
+  const text = bannerNameFor(flow);
+  try {
+    const canvas = await generateBannerFromText(text);
+    paintPreview(canvas);
+    flow.bannerBlob = await canvasToPngBlob(canvas);
+    flow.bannerSource = 'generated';
+    $('#logo-preview-source').textContent = `Texto: "${text}"`;
+    $('#logo-preview-wrap').hidden = false;
+    $('#logo-actions').hidden = false;
+    track('banner_generado', { source: 'text', text, bytes: flow.bannerBlob?.size || 0 });
+  } catch (err) {
+    console.error(err);
+    $('#logo-error').textContent = 'No pudimos generar el banner. Intenta de nuevo.';
+  }
+}
+
+async function onLogoUploaded(e) {
+  $('#logo-error').textContent = '';
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const name = (file.name || '').toLowerCase();
+  const extOk = name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg');
+  const mimeOk = !file.type || file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'image/jpg';
+  if (!extOk || !mimeOk) {
+    $('#logo-error').textContent = 'Sólo se aceptan archivos PNG o JPG.';
+    e.target.value = '';
+    return;
+  }
+  if (file.size > LOGO_MAX_BYTES) {
+    $('#logo-error').textContent = 'El logo no puede pesar más de 5 MB.';
+    e.target.value = '';
+    return;
+  }
+
+  try {
+    const canvas = await fitLogoToBanner(file);
+    paintPreview(canvas);
+    flow.bannerBlob = await canvasToPngBlob(canvas);
+    flow.bannerSource = 'uploaded';
+    $('#logo-preview-source').textContent = `Archivo: ${file.name} · ajustado a 2970×300`;
+    $('#logo-preview-wrap').hidden = false;
+    $('#logo-actions').hidden = false;
+    track('banner_generado', { source: 'upload', original: file.name, bytes: flow.bannerBlob?.size || 0 });
+  } catch (err) {
+    console.error(err);
+    $('#logo-error').textContent = 'No pudimos procesar la imagen. Prueba con otra.';
+    e.target.value = '';
+  }
 }
 
 // ---------- Render según estado ----------
