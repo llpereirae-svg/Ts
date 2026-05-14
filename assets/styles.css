@@ -260,6 +260,35 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .btn--text { background: none; color: var(--color-primary); padding: .5rem .8rem; font-weight: 600; font-size: .9rem; }
 .btn--text:hover { color: var(--color-cta); }
 
+/* Píldoras del header (Iniciar sesión / Ayuda) — ícono minimalista + label.
+   En pantallas muy angostas mostramos sólo el ícono para no romper el layout. */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .4rem .85rem;
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  background: white;
+  color: var(--color-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+  white-space: nowrap;
+}
+.btn-pill:hover { background: var(--color-surface-low); border-color: var(--color-primary); }
+.btn-pill:active { transform: scale(.97); }
+.btn-pill:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
+.btn-pill__icon { width: 16px; height: 16px; flex-shrink: 0; }
+.btn-pill__label { line-height: 1; }
+
+@media (max-width: 360px) {
+  .btn-pill { padding: .4rem; gap: 0; }
+  .btn-pill__label { display: none; }
+}
+
 /* Botones de icono pequeños (+/lapiz) */
 .btn-icon {
   display: inline-flex; align-items: center; justify-content: center;
@@ -792,7 +821,11 @@ dialog.is-open .modal-content {
   box-shadow: 0 0 0 3px rgba(0, 35, 111, .15);
 }
 .modal-actions { display: flex; gap: .5rem; flex-direction: column; margin-top: 1rem; }
+.modal-actions[hidden] { display: none; } /* sobre-escribe display:flex cuando se oculta */
 .modal-actions .btn { width: 100%; }
+/* Variante con dos botones lado a lado en mobile (Continuar / Cancelar) */
+.modal-actions--split { flex-direction: row; }
+.modal-actions--split .btn { flex: 1; width: auto; }
 .modal-hint { color: var(--color-info); font-size: .78rem; text-align: center; }
 
 /* Fuerza de clave — coherente con paleta del logo */
@@ -853,6 +886,16 @@ dialog.is-open .modal-content {
 .btn-link-firma:active { transform: scale(.97); }
 .firma-error { color: var(--color-error); font-size: .9rem; min-height: 1.1em; margin-top: .35rem; }
 
+.firma-resumen-titulo {
+  margin: 0 0 .5rem; font-weight: 600; color: var(--color-success, #1d7a3a);
+  font-size: .9rem; display: flex; align-items: center; gap: .35rem;
+}
+.firma-resumen-titulo::before {
+  content: ""; display: inline-block; width: 14px; height: 14px;
+  background: var(--color-success, #1d7a3a);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / contain no-repeat;
+}
 .firma-resumen {
   background: var(--color-teal-light);
   border: 1px solid #c9e7ee;

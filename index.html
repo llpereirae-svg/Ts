@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514e">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514f">
 </head>
 <body data-state="IDLE">
 
@@ -45,8 +45,22 @@
       <span class="brand-name"><span class="b-tributa">Tributa</span><span class="b-soft">Soft</span></span>
     </a>
     <nav>
-      <button class="btn btn--text" id="btn-login" type="button" onclick="window.location.href='https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true'">Iniciar sesión</button>
-      <button class="btn btn--text" id="btn-help" type="button" aria-label="Abrir ayuda">¿Ayuda?</button>
+      <button class="btn-pill" id="btn-login" type="button" onclick="window.location.href='https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true'">
+        <svg class="btn-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span class="btn-pill__label">Iniciar sesión</span>
+      </button>
+      <button class="btn-pill" id="btn-help" type="button" aria-label="Abrir ayuda">
+        <svg class="btn-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="btn-pill__label">Ayuda</span>
+      </button>
     </nav>
   </header>
 
@@ -416,6 +430,7 @@
 
           <!-- Resumen mostrado al validar OK -->
           <div id="firma-resumen" class="firma-resumen" hidden>
+            <p class="firma-resumen-titulo">Firma validada correctamente</p>
             <div class="firma-resumen-row">
               <span class="firma-resumen-label">Titular</span>
               <span class="firma-resumen-value" id="firma-titular">—</span>
@@ -430,8 +445,15 @@
             </div>
           </div>
 
-          <div class="modal-actions">
+          <!-- Acciones antes de validar -->
+          <div class="modal-actions" id="firma-actions-validar">
             <button type="button" id="firma-clave-confirmar" class="btn btn--primary">Validar firma</button>
+          </div>
+
+          <!-- Acciones después de validar OK: el usuario decide cuándo continuar -->
+          <div class="modal-actions modal-actions--split" id="firma-actions-confirmar" hidden>
+            <button type="button" id="firma-cancelar" class="btn btn--ghost">Cancelar</button>
+            <button type="button" id="firma-continuar" class="btn btn--primary">Continuar al portal</button>
           </div>
         </div>
       </div>
@@ -441,7 +463,7 @@
     <section id="success" class="success" hidden aria-live="polite">
       <div class="check-icon" aria-hidden="true"></div>
       <h2>¡Listo!</h2>
-      <p>Tu cuenta está creada. Te llevamos al portal en un momento…</p>
+      <p>Tu cuenta está creada. Cuando estés listo, te llevamos al portal.</p>
       <button id="go-to-account" type="button" class="btn btn--primary" style="max-width:18rem;margin-top:1rem">Ir a mi cuenta</button>
     </section>
   </main>
@@ -461,7 +483,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514e';
+    const APP_VER = '20260514f';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

@@ -210,6 +210,22 @@ function init() {
     $('#firma-uploader').value = ''; // limpiar el input para que disparar change con el mismo archivo también funcione
     $('#firma-uploader').click();
   });
+  // Tras validar OK: el usuario decide cuándo continuar
+  $('#firma-continuar').addEventListener('click', () => {
+    track('firma_confirmada');
+    closeModal($('#modal-firma'));
+    finalizarFlow();
+  });
+  // Cancelar: vuelve a la pantalla de carga de firma — permite cambiar archivo
+  $('#firma-cancelar').addEventListener('click', () => {
+    track('firma_cancelada_tras_validar');
+    resetFirmaActions();
+    $('#firma-resumen').hidden = true;
+    $('#firma-clave-step').hidden = true;
+    $('#firma-uploader').value = '';
+    firmaFileSeleccionada = null;
+    machine.send(EVENTS.FIRMA_BAD); // vuelve a ERROR_FIRMA para permitir reintentar / skip
+  });
   $('#saltar-firma').addEventListener('click', () => {
     track('firma_skipped');
     flow.firmaPendienteDespues = true;
@@ -217,9 +233,9 @@ function init() {
     finalizarFlow();
   });
 
-  // Success
+  // Success — usa la URL devuelta por el backend si está disponible
   $('#go-to-account').addEventListener('click', () => {
-    window.location.href = PORTAL_URL;
+    window.location.href = flow.redirectUrlFinal || PORTAL_URL;
   });
 
   // Cerrar modales con Escape
@@ -1023,6 +1039,8 @@ function onFirmaFile(e) {
   $('#firma-clave').value = '';
   $('#firma-error').textContent = '';
   $('#firma-resumen').hidden = true;
+  $('#firma-actions-validar').hidden = false;
+  $('#firma-actions-confirmar').hidden = true;
   $('#firma-clave-confirmar').disabled = false;
   show($('#firma-clave-step'));
   $('#firma-clave').focus();
@@ -1053,10 +1071,10 @@ async function onValidarFirma() {
       $('#firma-caducidad').textContent = formatearFecha(resp.fechaCaducidad);
       $('#firma-resumen').hidden = false;
 
-      setTimeout(() => {
-        closeModal($('#modal-firma'));
-        finalizarFlow();
-      }, 1800);
+      // No autoredirigir: mostramos los botones Continuar / Cancelar y dejamos
+      // que el usuario revise el resumen antes de decidir.
+      $('#firma-actions-validar').hidden = true;
+      $('#firma-actions-confirmar').hidden = false;
     } else {
       track('firma_uploaded_invalid', { error: resp.error });
       machine.send(EVENTS.FIRMA_BAD);
@@ -1096,14 +1114,23 @@ async function finalizarFlow() {
       firmaPendienteDespues: flow.firmaPendienteDespues,
     });
     machine.send(EVENTS.FINALIZED);
+    // Guardamos la URL final para usarla cuando el usuario presione "Ir a mi cuenta".
+    // Ya no redirigimos automáticamente — el usuario decide cuándo continuar.
+    flow.redirectUrlFinal = resp.redirectUrl || PORTAL_URL;
     show($('#success'));
     $('#success').scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => {
-      window.location.href = resp.redirectUrl || PORTAL_URL;
-    }, 3000);
   } catch (err) {
     showBanner('Error finalizando el registro.', 'error');
   }
+}
+
+// Helper para volver al estado inicial del modal de firma cuando el usuario cancela.
+function resetFirmaActions() {
+  $('#firma-actions-validar').hidden = false;
+  $('#firma-actions-confirmar').hidden = true;
+  $('#firma-resumen').hidden = true;
+  $('#firma-clave').value = '';
+  $('#firma-error').textContent = '';
 }
 
 // ---------- Render según estado ----------
