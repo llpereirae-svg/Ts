@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514c">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514d">
 </head>
 <body data-state="IDLE">
 
@@ -404,7 +404,10 @@
         <input id="firma-uploader" class="firma-uploader" type="file" accept=".p12,.pfx" aria-label="Archivo de firma">
 
         <div id="firma-clave-step" class="firma-clave-step" hidden>
-          <p>Archivo: <span id="firma-nombre" class="firma-nombre"></span></p>
+          <div class="firma-archivo-row">
+            <p>Archivo: <span id="firma-nombre" class="firma-nombre"></span></p>
+            <button type="button" id="cambiar-firma" class="btn-link-firma">Cambiar archivo</button>
+          </div>
           <div class="field">
             <label for="firma-clave">Clave de la firma</label>
             <input id="firma-clave" type="password" autocomplete="off">
@@ -458,7 +461,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514c';
+    const APP_VER = '20260514d';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

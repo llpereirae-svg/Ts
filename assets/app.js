@@ -200,6 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#subir-firma').addEventListener('click', () => $('#firma-uploader').click());
   $('#firma-uploader').addEventListener('change', onFirmaFile);
   $('#firma-clave-confirmar').addEventListener('click', onValidarFirma);
+  // Permitir cambiar el archivo si se equivocó (resetea clave/error/resumen)
+  $('#cambiar-firma').addEventListener('click', () => {
+    $('#firma-uploader').value = ''; // limpiar el input para que disparar change con el mismo archivo también funcione
+    $('#firma-uploader').click();
+  });
   $('#saltar-firma').addEventListener('click', () => {
     track('firma_skipped');
     flow.firmaPendienteDespues = true;
@@ -992,15 +997,21 @@ async function onContinuarClave() {
 let firmaFileSeleccionada = null;
 function onFirmaFile(e) {
   const file = e.target.files[0];
+  if (!file) return; // el usuario canceló el diálogo
   const v = validarFirmaArchivo(file);
   if (!v.valid) {
+    // Archivo con extensión incorrecta — mantenemos el step abierto pero mostramos error
     $('#firma-error').textContent = v.reason;
     return;
   }
+  // Archivo nuevo válido: reseteamos por completo el estado del paso
+  // (clave anterior, error rojo, resumen verde) para que el usuario empiece limpio.
   firmaFileSeleccionada = file;
   $('#firma-nombre').textContent = file.name;
+  $('#firma-clave').value = '';
   $('#firma-error').textContent = '';
   $('#firma-resumen').hidden = true;
+  $('#firma-clave-confirmar').disabled = false;
   show($('#firma-clave-step'));
   $('#firma-clave').focus();
 }

@@ -829,6 +829,28 @@ dialog.is-open .modal-content {
 .firma-clave-step[hidden] { display: none; }
 .firma-clave-step { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); }
 .firma-nombre { font-family: ui-monospace, monospace; font-size: .85rem; color: var(--color-muted); }
+
+.firma-archivo-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: .75rem; margin-bottom: .5rem;
+}
+.firma-archivo-row p { margin: 0; }
+.btn-link-firma {
+  background: transparent;
+  border: 0;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: .82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: .25rem .35rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color var(--transition);
+  font-family: inherit;
+}
+.btn-link-firma:hover { color: var(--color-cta); }
+.btn-link-firma:active { transform: scale(.97); }
 .firma-error { color: var(--color-error); font-size: .9rem; min-height: 1.1em; margin-top: .35rem; }
 
 .firma-resumen {
