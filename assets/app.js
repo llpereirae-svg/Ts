@@ -28,12 +28,21 @@ const TIPOS_DOCUMENTO = [
   { id: 'guia', label: 'Guías de remisión' },
 ];
 
-const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]{1,50}$/;
+// Descripción del punto de emisión: sólo letras (con tildes y ñ) y dígitos.
+// Sin caracteres especiales. Espacios permitidos para nombres compuestos
+// (ej. "Sucursal Norte"). Tope: 50 caracteres.
+const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]{1,50}$/;
 
 const NOMBRE_MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+
+// SVGs inline para los botones "Copiar". Inyectados por JS para no repetirlos
+// en cada botón del HTML. Declarados arriba para que estén disponibles cuando
+// init() corre durante la evaluación del módulo (sin caer en TDZ).
+const COPY_ICON_DEFAULT = `<svg class="copy-btn__icon copy-btn__icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const COPY_ICON_SUCCESS = `<svg class="copy-btn__icon copy-btn__icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
 
 // Textos de los tooltips informativos (íconos "i" en establecimiento, punto y secuencias)
 const TOOLTIPS = {
@@ -382,11 +391,14 @@ function init() {
   $('#terms-aceptar').addEventListener('click', onTermsAceptar);
   $('#terms-cancelar').addEventListener('click', () => closeModal($('#modal-terms')));
 
-  // Tooltips (íconos "i") — delegación global de clicks
+  // Tooltips (íconos "i") + botones Copiar — delegación global de clicks
   document.addEventListener('click', onDocumentClick);
   $('#tooltip-popover-close').addEventListener('click', closeTooltip);
   window.addEventListener('resize', closeTooltip);
   window.addEventListener('scroll', closeTooltip, { passive: true });
+
+  // Inyectar los íconos SVG en todos los .copy-btn — un solo lugar de mantenimiento.
+  injectCopyIcons();
 
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
@@ -498,8 +510,9 @@ function prefilledFormUI() {
   }
   aplicarFiltroTipoContribuyente();
 
-  $('#sri-banner').hidden = !!flow.rucInfo;
-  $('#razon-social-static').textContent = flow.razonSocial || flow.ruc;
+  // El banner de "no pudimos validar el SRI" y la línea con razón social
+  // duplicada se eliminaron: el usuario completa siempre manualmente,
+  // y los datos del SRI sólo prellenarán cuando vengan (sin avisos).
   $('#ruc-display').textContent = flow.ruc;
 
   // Reset modo a "nuevo" y aplicar
@@ -836,8 +849,9 @@ function setupBloqueEstablecimientoListeners() {
 
   if (nomInp) {
     nomInp.addEventListener('input', (e) => {
+      // Sólo alfanuméricos + espacio (sin . , _ -)
       const filtered = e.target.value
-        .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]/g, '')
+        .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]/g, '')
         .slice(0, 50);
       if (filtered !== e.target.value) e.target.value = filtered;
       flow.facturacion.nombrePunto = filtered;
@@ -1424,12 +1438,21 @@ function onTermsAceptar() {
 let _tooltipAnchor = null;
 
 function onDocumentClick(e) {
+  // 1) Botones Copiar al portapapeles
+  const copyTrigger = e.target.closest('.copy-btn');
+  if (copyTrigger) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleCopy(copyTrigger);
+    return;
+  }
+
+  // 2) Tooltips informativos "i"
   const trigger = e.target.closest('.tooltip-i');
   if (trigger) {
     e.preventDefault();
     e.stopPropagation();
     const key = trigger.dataset.tooltip;
-    // Si el mismo botón se vuelve a clicar, alternar
     if (_tooltipAnchor === trigger && !$('#tooltip-popover').hidden) {
       closeTooltip();
       return;
@@ -1437,9 +1460,69 @@ function onDocumentClick(e) {
     showTooltip(key, trigger);
     return;
   }
-  // Click fuera del popover (y no en otro tooltip-i) → cerrar
+
+  // 3) Click fuera del popover de tooltip → cerrar
   if (!e.target.closest('#tooltip-popover')) {
     closeTooltip();
+  }
+}
+
+function injectCopyIcons() {
+  // Centraliza el SVG para no repetirlo en cada botón del HTML.
+  $$('.copy-btn').forEach((btn) => {
+    if (btn.querySelector('svg')) return;
+    btn.innerHTML = COPY_ICON_DEFAULT + COPY_ICON_SUCCESS;
+  });
+}
+
+async function handleCopy(button) {
+  const text = button.dataset.copy || '';
+  if (!text) return;
+
+  let ok = false;
+
+  // 1) Camino moderno (Clipboard API). Requiere gesto del usuario y contexto
+  //    seguro. En navegadores reales con click real funciona; si rechaza
+  //    (permisos, gesto sintético, http no-localhost) caemos al fallback.
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch { /* fallthrough al fallback */ }
+  }
+
+  // 2) Fallback con <textarea> oculto + execCommand('copy'). Sigue siendo
+  //    el camino confiable en http://localhost o cuando la Clipboard API
+  //    no está disponible.
+  if (!ok) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      document.body.removeChild(ta);
+    } catch { ok = false; }
+  }
+
+  if (ok) {
+    button.classList.add('is-copied');
+    const prevLabel = button.getAttribute('aria-label') || '';
+    button.setAttribute('aria-label', 'Copiado al portapapeles');
+    setTimeout(() => {
+      button.classList.remove('is-copied');
+      if (prevLabel) button.setAttribute('aria-label', prevLabel);
+    }, 1500);
+    track('clipboard_copy', { len: text.length });
+  } else {
+    showBanner('No pudimos copiar al portapapeles.', 'warn', 3000);
   }
 }
 
@@ -1721,8 +1804,9 @@ function render({ state, context }) {
       feedback.className = 'feedback feedback--ok';
       break;
     case STATES.FORM_OPEN_EMPTY:
-      feedback.textContent = 'No pudimos validar en el SRI, pero puedes continuar.';
-      feedback.className = 'feedback feedback--warn';
+      // Sin aviso de SRI fallido: el registro manual es el camino normal.
+      feedback.textContent = '';
+      feedback.className = 'feedback';
       break;
     case STATES.SUCCESS:
       feedback.textContent = '';

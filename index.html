@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514j">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514k">
 </head>
 <body data-state="IDLE">
 
@@ -122,12 +122,8 @@
     <form id="registration-form" class="registration-form" hidden novalidate>
       <header class="form-header">
         <h2>Completa tus datos</h2>
-        <p class="small">RUC: <strong id="ruc-display">—</strong> · <span id="razon-social-static">—</span></p>
+        <p class="small">RUC: <strong id="ruc-display">—</strong></p>
       </header>
-
-      <div id="sri-banner" class="banner-warn" hidden>
-        No pudimos validar tu RUC en el SRI en este momento. Puedes completar los datos manualmente.
-      </div>
 
       <!-- Razón social -->
       <div class="field">
@@ -334,9 +330,8 @@
             </div>
           </div>
           <div class="field">
-            <label for="nombre-punto">Nombre corto del punto de emisión</label>
-            <input id="nombre-punto" type="text" maxlength="50" value="Matriz" placeholder="Ej: Matriz, Sucursal Norte">
-            <p class="hint">Máx 50 caracteres. Sólo letras, números y . , _ -</p>
+            <label for="nombre-punto">Descripción</label>
+            <input id="nombre-punto" type="text" maxlength="50" value="Matriz" placeholder="Ej: Matriz">
           </div>
 
           <div class="secuencias" id="secuencias-wrap">
@@ -602,24 +597,24 @@
       <div class="modal-content">
         <h2 id="modal-bank-h">Cuentas bancarias</h2>
         <p class="bank-titular">A nombre de <strong>TributaSoft S.A.</strong></p>
-        <p class="bank-ruc">RUC: <span class="mono">0992703601001</span></p>
+        <p class="bank-ruc">RUC: <span class="bank-value"><span class="mono">0992703601001</span><button type="button" class="copy-btn" data-copy="0992703601001" aria-label="Copiar 0992703601001"></button></span></p>
 
         <ul class="bank-list">
           <li>
             <span class="bank-label">Banco del Pacífico — Ahorros</span>
-            <span class="bank-num mono">1043401667</span>
+            <span class="bank-value"><span class="bank-num mono">1043401667</span><button type="button" class="copy-btn" data-copy="1043401667" aria-label="Copiar 1043401667"></button></span>
           </li>
           <li>
             <span class="bank-label">Banco Pichincha — Corriente</span>
-            <span class="bank-num mono">2100146073</span>
+            <span class="bank-value"><span class="bank-num mono">2100146073</span><button type="button" class="copy-btn" data-copy="2100146073" aria-label="Copiar 2100146073"></button></span>
           </li>
           <li>
             <span class="bank-label">Banco Procredit — Ahorros</span>
-            <span class="bank-num mono">17030123262</span>
+            <span class="bank-value"><span class="bank-num mono">17030123262</span><button type="button" class="copy-btn" data-copy="17030123262" aria-label="Copiar 17030123262"></button></span>
           </li>
         </ul>
 
-        <p class="bank-email">Notifica tu pago a <a href="mailto:cobranza@tributasoft.ec">cobranza@tributasoft.ec</a></p>
+        <p class="bank-email">Notifica tu pago a <span class="bank-value"><a href="mailto:cobranza@tributasoft.ec">cobranza@tributasoft.ec</a><button type="button" class="copy-btn" data-copy="cobranza@tributasoft.ec" aria-label="Copiar cobranza@tributasoft.ec"></button></span></p>
 
         <div class="modal-actions">
           <button type="button" id="btn-bank-close" class="btn btn--primary">Entendido</button>
@@ -671,7 +666,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514j';
+    const APP_VER = '20260514k';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

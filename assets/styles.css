@@ -1095,11 +1095,11 @@ dialog#modal-terms {
 
 /* ---------------- Modal Información Bancaria ---------------- */
 .bank-titular { margin: 0 0 .15rem; font-size: .95rem; }
-.bank-ruc { margin: 0 0 .85rem; color: var(--color-muted); font-size: .85rem; }
+.bank-ruc { margin: 0 0 .85rem; color: var(--color-muted); font-size: .85rem; display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .bank-ruc .mono { font-family: ui-monospace, monospace; }
 .bank-list { list-style: none; padding: 0; margin: 0 0 1rem; }
 .bank-list li {
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; justify-content: space-between; align-items: center;
   gap: .75rem;
   padding: .55rem 0;
   border-bottom: 1px dashed var(--color-border);
@@ -1117,12 +1117,62 @@ dialog#modal-terms {
   margin: 0 0 .25rem;
   font-size: .85rem;
   color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
 }
 .bank-email a {
   color: var(--color-primary);
   font-weight: 600;
   text-decoration: underline;
 }
+
+/* Wrapper que agrupa valor + botón de copiar en la misma "celda" inline. */
+.bank-value {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+/* Botón Copiar (clipboard) — pequeño, inline, con feedback al copiar.
+   El SVG por defecto se reemplaza temporalmente por un checkmark cuando
+   la operación tiene éxito (.is-copied). */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--color-outline);
+  background: white;
+  color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition), transform .1s ease;
+  flex-shrink: 0;
+}
+.copy-btn:hover {
+  background: var(--color-teal-light);
+  border-color: var(--color-teal);
+  color: var(--color-teal-dark);
+}
+.copy-btn:active { transform: scale(.92); }
+.copy-btn:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
+.copy-btn svg {
+  width: .9rem;
+  height: .9rem;
+  pointer-events: none;
+}
+.copy-btn__icon--success { display: none; }
+.copy-btn.is-copied {
+  background: var(--color-ok-container);
+  border-color: var(--color-ok);
+  color: var(--color-ok);
+}
+.copy-btn.is-copied .copy-btn__icon--default { display: none; }
+.copy-btn.is-copied .copy-btn__icon--success { display: block; }
 
 /* ---------------- Modal Términos (scroll-to-bottom) ---------------- */
 .modal-content--terms { max-width: 36rem; }
