@@ -127,7 +127,12 @@ const flow = {
 };
 
 // ---------- Wire up ----------
-document.addEventListener('DOMContentLoaded', () => {
+// Importante: cargamos app.js con `import()` dinámico desde index.html (cache-busting).
+// Como el import es async, para cuando este módulo termina de evaluarse,
+// DOMContentLoaded ya disparó y un listener tardío nunca correría.
+// Por eso: si el DOM ya está listo, ejecutamos init() de inmediato;
+// si no, esperamos al evento.
+function init() {
   track('landing_view', { url: location.href });
 
   const draft = loadDraft();
@@ -227,7 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pre-render del bloque facturación (oculto en modo "nuevo" por defecto)
   renderSecuencias();
   aplicarModoFacturacion();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  // El DOM ya está parseado (caso típico con import() dinámico).
+  init();
+}
 
 // ---------- Handlers ----------
 
