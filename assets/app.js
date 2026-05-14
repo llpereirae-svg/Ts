@@ -220,7 +220,7 @@ const flow = {
   facturacion: {
     establecimiento: '001',
     puntoEmision: '001',
-    nombrePunto: 'Matriz',
+    nombrePunto: 'Electrónicas',
     // Secuencias en 9 dígitos con pad a la izquierda (siempre 9 dígitos numéricos)
     secuencias: TIPOS_DOCUMENTO.reduce((acc, t) => { acc[t.id] = '000000001'; return acc; }, {}),
   },
@@ -759,7 +759,7 @@ function aplicarModoFacturacion() {
     bloque.hidden = true;
     flow.facturacion.establecimiento = '001';
     flow.facturacion.puntoEmision = '001';
-    flow.facturacion.nombrePunto = 'Matriz';
+    flow.facturacion.nombrePunto = 'Electrónicas';
     TIPOS_DOCUMENTO.forEach((t) => { flow.facturacion.secuencias[t.id] = '000000001'; });
   } else {
     // "Continuar con mi facturación": muestra el bloque con TODOS los campos
