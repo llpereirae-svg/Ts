@@ -1447,11 +1447,13 @@ async function onContratarRucContinuar() {
   }
 }
 
+// Formato monetario con punto como decimal y coma como separador de miles
+// (ej. $1,234.56) — usado tanto en la UI del cotizador como en el PDF.
 function formatMoney(n) {
-  return '$' + n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function formatMiles(n) {
-  return n.toLocaleString('es-EC');
+  return n.toLocaleString('en-US');
 }
 function formatFechaLarga(d) {
   const dd = String(d.getDate()).padStart(2, '0');
@@ -1468,11 +1470,16 @@ function todayISO() {
 }
 
 // =========================================================================
-//   PDF DE COTIZACIÓN — usa jsPDF cargado on-demand desde CDN. Replica
-//   el encabezado y pie de la papelería corporativa de TributaSoft.
+//   PDF DE COTIZACIÓN — renderizado con html2canvas (para usar las MISMAS
+//   fuentes de la landing: Avenida, Lobster, Roboto Condensed) y embebido
+//   como imagen en una página A4 vía jsPDF. Pros: fidelidad visual exacta;
+//   contras: el texto del PDF no es seleccionable. Aceptable para una
+//   cotización corporativa de 1 página.
 // =========================================================================
 
 const JSPDF_CDN = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+const HTML2CANVAS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+
 let _jspdfPromise = null;
 function loadJsPDF() {
   if (typeof window !== 'undefined' && window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
@@ -1488,23 +1495,149 @@ function loadJsPDF() {
   return _jspdfPromise;
 }
 
-async function fetchPngAsDataURL(url) {
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) return null;
-    const blob = await resp.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch { return null; }
+let _h2cPromise = null;
+function loadHtml2Canvas() {
+  if (typeof window !== 'undefined' && window.html2canvas) return Promise.resolve(window.html2canvas);
+  if (_h2cPromise) return _h2cPromise;
+  _h2cPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = HTML2CANVAS_CDN;
+    s.async = true;
+    s.onload = () => window.html2canvas ? resolve(window.html2canvas) : reject(new Error('html2canvas no inicializado'));
+    s.onerror = () => reject(new Error('No se pudo cargar html2canvas'));
+    document.head.appendChild(s);
+  });
+  return _h2cPromise;
+}
+
+// Iconos Feather inline en SVG, color #6b7280 — para el footer del PDF.
+const PDF_ICON = {
+  home: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1V10"/></svg>`,
+  mail: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>`,
+  phone: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>`,
+  globe: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>`,
+  wa: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-3.6-6.93L20.5 3.5l-1.6 3.6A8.46 8.46 0 0 1 20.5 12z"/><path d="M9 10.5c.5 2 2.5 4 4.5 4.5l1.5-1.5 2 1c-.4 1.3-1.7 2-3 2-3 0-6-3-6-6 0-1.3.7-2.6 2-3l1 2L9 10.5z"/></svg>`,
+};
+
+function buildCotizacionHTML({ docsMes, anual, subtotal, iva, total, hoy, vence }) {
+  // 794x1123 px ≈ A4 a 96dpi (595x842 pt)
+  const fechaLarga = `Guayaquil, ${hoy.getDate()} de ${NOMBRE_MESES[hoy.getMonth()].toLowerCase()} del ${hoy.getFullYear()}`;
+  const vigenciaStr = formatFechaLarga(vence);
+
+  const baseFont = `'Roboto Condensed', 'Inter', system-ui, sans-serif`;
+
+  return `
+    <div style="
+      width: 794px;
+      min-height: 1123px;
+      padding: 50px 56px 130px;
+      background: white;
+      font-family: ${baseFont};
+      color: #1a1c1c;
+      box-sizing: border-box;
+      position: relative;
+      line-height: 1.45;
+    ">
+      <!-- HEADER -->
+      <div style="display: flex; align-items: center; gap: 18px; padding-bottom: 14px; border-bottom: 2px solid #00236f;">
+        <img src="./assets/Logo%20TributaSoft.png" alt="" crossorigin="anonymous" style="height: 64px; width: auto; flex-shrink: 0;">
+        <div style="display: flex; align-items: baseline;">
+          <span style="font-family: 'Avenida', 'DM Sans', sans-serif; color: #c9dee9; font-size: 40px; font-weight: 400; line-height: 1;">Tributa</span><span style="font-family: 'Lobster', cursive; color: #EF7306; font-size: 40px; font-weight: 400; line-height: 1;">Soft</span>
+        </div>
+        <div style="margin-left: auto; font-family: 'Lobster', cursive; color: #6b7280; font-size: 22px; line-height: 1;">
+          ...todo bajo control
+        </div>
+      </div>
+
+      <!-- DATE -->
+      <p style="text-align: right; margin: 18px 0 0; font-size: 14px; color: #4b5563; font-family: ${baseFont};">${fechaLarga}</p>
+
+      <!-- TITLE -->
+      <h2 style="font-family: ${baseFont}; color: #00236f; font-size: 26px; font-weight: 700; margin: 30px 0 14px; letter-spacing: -.01em;">Cotización de servicios</h2>
+
+      <!-- INTRO -->
+      <p style="font-size: 14px; margin: 0 0 6px; font-family: ${baseFont};">Estimado cliente:</p>
+      <p style="font-size: 14px; margin: 0 0 22px; font-family: ${baseFont};">A continuación, el detalle de la cotización personalizada para su plan de facturación electrónica con TributaSoft, calculada sobre el volumen mensual de comprobantes indicado.</p>
+
+      <!-- TABLE -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: ${baseFont};">
+        <thead>
+          <tr style="background: #00236f; color: white;">
+            <th style="padding: 11px 14px; text-align: left; font-weight: 700; letter-spacing: .02em;">Concepto</th>
+            <th style="padding: 11px 14px; text-align: right; font-weight: 700; letter-spacing: .02em;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Documentos promedio por mes</td>
+            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${docsMes.toLocaleString('en-US')}</td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Documentos por año</td>
+            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMiles(anual)}</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Subtotal</td>
+            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(subtotal)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">IVA (15%)</td>
+            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(iva)}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background: #EF7306; color: white;">
+            <td style="padding: 13px 14px; font-weight: 700; font-size: 15px; letter-spacing: .02em;">Total</td>
+            <td style="padding: 13px 14px; text-align: right; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums;">${formatMoney(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- VIGENCIA -->
+      <p style="margin: 18px 0 0; font-size: 14px; font-style: italic; color: #4b5563; font-family: ${baseFont};">Plan vigente hasta el <strong style="color: #00236f; font-style: normal;">${vigenciaStr}</strong>.</p>
+
+      <!-- NOTAS -->
+      <p style="margin: 14px 0 0; font-size: 12px; color: #6b7280; line-height: 1.55; font-family: ${baseFont};">Los valores expresados están en dólares de los Estados Unidos de América (USD). El plan se renueva al cumplir 12 meses desde la fecha de contratación o al alcanzar el volumen anual contratado, lo que ocurra primero.</p>
+
+      <!-- SIGNATURE -->
+      <div style="margin-top: 38px; font-size: 14px; font-family: ${baseFont};">
+        <p style="margin: 0;">Atentamente,</p>
+        <p style="margin: 6px 0 0; font-weight: 700; color: #00236f; font-size: 15px;">TributaSoft S.A.</p>
+        <p style="margin: 0; color: #4b5563;">Departamento de Facturación Electrónica Pre-Pago</p>
+        <p style="margin: 0; color: #4b5563;">RUC: 0992703601001</p>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="position: absolute; left: 56px; right: 56px; bottom: 50px; font-family: ${baseFont};">
+        <hr style="border: 0; border-top: 1px solid #d1d5db; margin: 0 0 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #6b7280;">
+          <tr>
+            <td style="padding: 4px 0; vertical-align: middle;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.home}<span>Machala 1002 y Hurtado, Edificio Coral, Piso 1, Oficina 15</span></span>
+            </td>
+            <td style="padding: 4px 0; vertical-align: middle; text-align: right;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.mail}<span>ventas@tributasoft.ec</span></span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; vertical-align: middle;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.phone}<span>099-6345-284  ·  099-842-9901</span></span>
+              <span style="display: inline-flex; align-items: center; gap: 8px; margin-left: 18px;">${PDF_ICON.wa}<span>04-600-4992</span></span>
+            </td>
+            <td style="padding: 4px 0; vertical-align: middle; text-align: right;">
+              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.globe}<span>www.tributasoft.ec</span></span>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 async function descargarCotizacionPDF() {
   const btn = $('#cot-descargar');
   setBusy(btn, true);
+  let host = null;
   try {
     const docsMes = parseInt($('#cot-docs').value, 10);
     if (!Number.isInteger(docsMes) || docsMes < 1) {
@@ -1518,160 +1651,61 @@ async function descargarCotizacionPDF() {
     const hoy = new Date();
     const vence = new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate());
 
-    const JsPDFCtor = await loadJsPDF();
-    const doc = new JsPDFCtor({ unit: 'mm', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
+    // Esperar fuentes (Roboto Condensed, Lobster, Avenida) para que el render
+    // no use fallbacks visuales.
+    if (document.fonts?.load) {
+      await Promise.all([
+        document.fonts.load('400 14px "Roboto Condensed"'),
+        document.fonts.load('700 14px "Roboto Condensed"'),
+        document.fonts.load('400 22px "Lobster"'),
+        document.fonts.load('400 40px "Avenida"'),
+      ]).catch(() => {});
+    }
+    if (document.fonts?.ready) await document.fonts.ready;
 
-    // ---- HEADER ----
-    // Logo (esquina superior izquierda).
-    const logoData = await fetchPngAsDataURL('./assets/Logo%20TributaSoft.png');
-    if (logoData) {
-      try { doc.addImage(logoData, 'PNG', 18, 12, 14, 14); } catch { /* ignore */ }
+    // Cargar libs en paralelo
+    const [JsPDFCtor, html2canvas] = await Promise.all([loadJsPDF(), loadHtml2Canvas()]);
+
+    // Insertar el HTML del PDF off-screen pero medible
+    host = document.createElement('div');
+    host.id = 'pdf-render-host';
+    host.style.cssText = 'position:fixed;top:0;left:-99999px;z-index:-1;pointer-events:none;';
+    host.innerHTML = buildCotizacionHTML({ docsMes, anual, subtotal, iva, total, hoy, vence });
+    document.body.appendChild(host);
+
+    // Esperar a que la imagen del logo cargue (sino se rasteriza en blanco)
+    const img = host.querySelector('img');
+    if (img && !img.complete) {
+      await new Promise((res) => { img.addEventListener('load', res); img.addEventListener('error', res); });
     }
 
-    // Wordmark "Tributa" + "Soft"
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(135, 199, 220);   // celeste del logo (impreso queda visible)
-    const tributaX = logoData ? 35 : 20;
-    doc.text('Tributa', tributaX, 22);
-    const tributaW = doc.getTextWidth('Tributa');
-    doc.setTextColor(239, 115, 6);     // naranja del logo
-    doc.text('Soft', tributaX + tributaW, 22);
-
-    // Tagline
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(11);
-    doc.setTextColor(120, 120, 120);
-    const softW = doc.getTextWidth('Soft');
-    doc.text('...todo bajo control', tributaX + tributaW + softW + 4, 22);
-
-    // Línea separadora
-    doc.setDrawColor(0, 35, 111);
-    doc.setLineWidth(0.4);
-    doc.line(18, 30, pageW - 18, 30);
-
-    // Fecha (alineada a la derecha bajo la línea)
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    const fechaLarga = `Guayaquil, ${hoy.getDate()} de ${NOMBRE_MESES[hoy.getMonth()].toLowerCase()} del ${hoy.getFullYear()}`;
-    doc.text(fechaLarga, pageW - 18, 38, { align: 'right' });
-
-    // ---- BODY ----
-    let y = 52;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 35, 111);
-    doc.text('Cotización de servicios', 18, y);
-    y += 8;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    doc.text('Estimado cliente:', 18, y); y += 6;
-    const intro =
-      'A continuación, el detalle de la cotización personalizada para su plan ' +
-      'de facturación electrónica con TributaSoft, calculada sobre el volumen ' +
-      'mensual de comprobantes indicado.';
-    const introLines = doc.splitTextToSize(intro, pageW - 36);
-    doc.text(introLines, 18, y); y += introLines.length * 5 + 4;
-
-    // Tabla
-    const tblX = 18;
-    const tblW = pageW - 36;
-    const colValX = pageW - 22;
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.2);
-
-    // Encabezado de tabla
-    doc.setFillColor(0, 35, 111);
-    doc.rect(tblX, y, tblW, 8, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.text('Concepto', tblX + 4, y + 5.5);
-    doc.text('Valor', colValX, y + 5.5, { align: 'right' });
-    y += 8;
-
-    // Filas
-    const filas = [
-      ['Documentos promedio por mes', String(docsMes)],
-      ['Documentos por año', formatMiles(anual)],
-      ['Subtotal', formatMoney(subtotal)],
-      ['IVA (15%)', formatMoney(iva)],
-    ];
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(40, 40, 40);
-    filas.forEach((row, i) => {
-      const rowY = y + i * 8;
-      if (i % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(tblX, rowY, tblW, 8, 'F');
-      }
-      doc.text(row[0], tblX + 4, rowY + 5.5);
-      doc.text(row[1], colValX, rowY + 5.5, { align: 'right' });
+    const target = host.firstElementChild;
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
     });
-    y += filas.length * 8;
 
-    // Total destacado
-    doc.setFillColor(239, 115, 6);
-    doc.rect(tblX, y, tblW, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(255, 255, 255);
-    doc.text('Total', tblX + 4, y + 6.5);
-    doc.text(formatMoney(total), colValX, y + 6.5, { align: 'right' });
-    y += 14;
+    // Calibrar tamaño en A4
+    const pdf = new JsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = 210;
+    const pageH = 297;
+    const imgRatio = canvas.height / canvas.width;
+    const imgW = pageW;
+    let imgH = pageW * imgRatio;
+    if (imgH > pageH) imgH = pageH; // si por algún motivo se pasa, recortamos
+    const imgData = canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
 
-    // Vigencia
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Plan vigente hasta el ${formatFechaLarga(vence)}.`, 18, y);
-    y += 10;
-
-    // Notas
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    const notas =
-      'Los valores expresados están en dólares de los Estados Unidos de América (USD). ' +
-      'El plan se renueva al cumplir 12 meses desde la fecha de contratación o al alcanzar ' +
-      'el volumen anual contratado, lo que ocurra primero.';
-    const notasLines = doc.splitTextToSize(notas, pageW - 36);
-    doc.text(notasLines, 18, y); y += notasLines.length * 4 + 8;
-
-    // Cierre
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    doc.text('Atentamente,', 18, y); y += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('TributaSoft S.A.', 18, y);
-
-    // ---- FOOTER ----
-    const footerTop = pageH - 22;
-    doc.setDrawColor(0, 35, 111);
-    doc.setLineWidth(0.3);
-    doc.line(18, footerTop, pageW - 18, footerTop);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.text('Machala 1002 y Hurtado, Edificio Coral, Piso 1, Oficina 15', 18, footerTop + 5);
-    doc.text('099-6345-284   ·   099-842-9901   ·   04-600-4992', 18, footerTop + 10);
-    doc.text('ventas@tributasoft.ec   ·   www.tributasoft.ec', 18, footerTop + 15);
-
-    // Guardar con nombre legible
     const stamp = `${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,'0')}${String(hoy.getDate()).padStart(2,'0')}`;
-    doc.save(`cotizacion-tributasoft-${stamp}.pdf`);
+    pdf.save(`cotizacion-tributasoft-${stamp}.pdf`);
     track('cotizacion_pdf_descargada', { docsMes, total: total.toFixed(2) });
   } catch (err) {
     console.error(err);
     showBanner('No pudimos generar el PDF. Revisa tu conexión e intenta de nuevo.', 'error');
   } finally {
+    if (host && host.parentNode) host.parentNode.removeChild(host);
     setBusy(btn, false);
   }
 }
