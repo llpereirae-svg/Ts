@@ -319,18 +319,47 @@ function prefilledFormUI() {
   // Inicializar canales y país
   actualizarCanalesDisponibles();
 
-  // Scroll suave a Razón social + animación de highlight
-  setTimeout(() => {
-    const target = $('#razon-social');
-    if (!target) return;
+  // Scroll suave a Razón social + animación de highlight.
+  // - Esperamos a que las fuentes web carguen para evitar saltos de layout.
+  // - Doble rAF + un re-scroll defensivo 600ms después corrigen cualquier
+  //   reflow tardío (animación slideUp del form, fonts.ready en navegadores
+  //   donde no resuelve antes del primer paint, etc.).
+  // - No hacemos focus al input: el preventScroll no es 100% confiable en
+  //   Safari/Chrome móvil y provocaba que el viewport saltara a otro campo.
+  scrollARazonSocial();
+}
+
+function scrollARazonSocial() {
+  const target = document.querySelector('#razon-social');
+  if (!target) return;
+
+  const doScroll = () => {
     const headerOffset = 80;
     const rect = target.getBoundingClientRect();
     const y = rect.top + window.pageYOffset - headerOffset;
     window.scrollTo({ top: y, behavior: 'smooth' });
+  };
+
+  const animate = () => {
     target.classList.add('is-highlighted');
     setTimeout(() => target.classList.remove('is-highlighted'), 1700);
-    setTimeout(() => target.focus({ preventScroll: true }), 600);
-  }, 250);
+  };
+
+  const run = () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      doScroll();
+      animate();
+      // Re-scroll defensivo: si el smooth scroll se desvía por relayout
+      // tardío (fuente cargando, imagen apareciendo), corregimos.
+      setTimeout(doScroll, 700);
+    }));
+  };
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(run, run);
+  } else {
+    run();
+  }
 }
 
 // ---------- Nombre Comercial — "No aplica" ----------
