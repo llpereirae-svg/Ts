@@ -1530,7 +1530,7 @@ function buildCotizacionHTML({ docsMes, anual, subtotal, iva, total, hoy, vence 
     <div style="
       width: 794px;
       min-height: 1123px;
-      padding: 50px 56px 130px;
+      padding: 44px 50px 110px;
       background: white;
       font-family: ${baseFont};
       color: #1a1c1c;
@@ -1538,97 +1538,87 @@ function buildCotizacionHTML({ docsMes, anual, subtotal, iva, total, hoy, vence 
       position: relative;
       line-height: 1.45;
     ">
-      <!-- HEADER -->
-      <div style="display: flex; align-items: center; gap: 18px; padding-bottom: 14px; border-bottom: 2px solid #00236f;">
-        <img src="./assets/Logo%20TributaSoft.png" alt="" crossorigin="anonymous" style="height: 64px; width: auto; flex-shrink: 0;">
-        <div style="display: flex; align-items: baseline;">
-          <span style="font-family: 'Avenida', 'DM Sans', sans-serif; color: #c9dee9; font-size: 40px; font-weight: 400; line-height: 1;">Tributa</span><span style="font-family: 'Lobster', cursive; color: #EF7306; font-size: 40px; font-weight: 400; line-height: 1;">Soft</span>
+      <!-- HEADER: logo + wordmark + tagline JUNTOS, separados por gaps fijos
+           (sin margin-left:auto que empujaba el tagline al borde derecho). -->
+      <div style="display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 2px solid #00236f;">
+        <img src="./assets/Logo%20TributaSoft.png" alt="" crossorigin="anonymous" style="height: 56px; width: auto; flex-shrink: 0;">
+        <div style="display: flex; align-items: baseline; flex-shrink: 0;">
+          <span style="font-family: 'Avenida', 'DM Sans', sans-serif; color: #c9dee9; font-size: 44px; font-weight: 400; line-height: 1;">Tributa</span><span style="font-family: 'Lobster', cursive; color: #EF7306; font-size: 44px; font-weight: 400; line-height: 1;">Soft</span>
         </div>
-        <div style="margin-left: auto; font-family: 'Lobster', cursive; color: #6b7280; font-size: 22px; line-height: 1;">
+        <div style="font-family: 'Lobster', cursive; color: #6b7280; font-size: 20px; line-height: 1; padding-left: 18px;">
           ...todo bajo control
         </div>
       </div>
 
       <!-- DATE -->
-      <p style="text-align: right; margin: 18px 0 0; font-size: 14px; color: #4b5563; font-family: ${baseFont};">${fechaLarga}</p>
+      <p style="text-align: right; margin: 14px 0 0; font-size: 13px; color: #4b5563; font-family: ${baseFont};">${fechaLarga}</p>
 
       <!-- TITLE -->
-      <h2 style="font-family: ${baseFont}; color: #00236f; font-size: 26px; font-weight: 700; margin: 30px 0 14px; letter-spacing: -.01em;">Cotización de servicios</h2>
+      <h2 style="font-family: ${baseFont}; color: #00236f; font-size: 24px; font-weight: 700; margin: 24px 0 10px; letter-spacing: -.01em;">Cotización de servicios</h2>
 
       <!-- INTRO -->
-      <p style="font-size: 14px; margin: 0 0 6px; font-family: ${baseFont};">Estimado cliente:</p>
-      <p style="font-size: 14px; margin: 0 0 22px; font-family: ${baseFont};">A continuación, el detalle de la cotización personalizada para su plan de facturación electrónica con TributaSoft, calculada sobre el volumen mensual de comprobantes indicado.</p>
+      <p style="font-size: 13px; margin: 0 0 4px; font-family: ${baseFont};">Estimado cliente:</p>
+      <p style="font-size: 13px; margin: 0 0 16px; font-family: ${baseFont};">A continuación, el detalle de la cotización personalizada para su plan de facturación electrónica con TributaSoft, calculada sobre el volumen mensual de comprobantes indicado.</p>
 
-      <!-- TABLE -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: ${baseFont};">
+      <!-- TABLE compacta -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: ${baseFont};">
         <thead>
           <tr style="background: #00236f; color: white;">
-            <th style="padding: 11px 14px; text-align: left; font-weight: 700; letter-spacing: .02em;">Concepto</th>
-            <th style="padding: 11px 14px; text-align: right; font-weight: 700; letter-spacing: .02em;">Valor</th>
+            <th style="padding: 7px 12px; text-align: left; font-weight: 700; letter-spacing: .02em;">Concepto</th>
+            <th style="padding: 7px 12px; text-align: right; font-weight: 700; letter-spacing: .02em;">Valor</th>
           </tr>
         </thead>
         <tbody>
           <tr style="background: #f8fafc;">
-            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Documentos promedio por mes</td>
-            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${docsMes.toLocaleString('en-US')}</td>
+            <td style="padding: 5px 12px; border-bottom: 1px solid #e5e7eb;">Documentos promedio por mes</td>
+            <td style="padding: 5px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${docsMes.toLocaleString('en-US')}</td>
           </tr>
           <tr>
-            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Documentos por año</td>
-            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMiles(anual)}</td>
+            <td style="padding: 5px 12px; border-bottom: 1px solid #e5e7eb;">Documentos por año</td>
+            <td style="padding: 5px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMiles(anual)}</td>
           </tr>
           <tr style="background: #f8fafc;">
-            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">Subtotal</td>
-            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(subtotal)}</td>
+            <td style="padding: 5px 12px; border-bottom: 1px solid #e5e7eb;">Subtotal</td>
+            <td style="padding: 5px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(subtotal)}</td>
           </tr>
           <tr>
-            <td style="padding: 9px 14px; border-bottom: 1px solid #e5e7eb;">IVA (15%)</td>
-            <td style="padding: 9px 14px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(iva)}</td>
+            <td style="padding: 5px 12px; border-bottom: 1px solid #e5e7eb;">IVA (15%)</td>
+            <td style="padding: 5px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-variant-numeric: tabular-nums;">${formatMoney(iva)}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr style="background: #EF7306; color: white;">
-            <td style="padding: 13px 14px; font-weight: 700; font-size: 15px; letter-spacing: .02em;">Total</td>
-            <td style="padding: 13px 14px; text-align: right; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums;">${formatMoney(total)}</td>
+            <td style="padding: 8px 12px; font-weight: 700; font-size: 14px; letter-spacing: .02em;">Total</td>
+            <td style="padding: 8px 12px; text-align: right; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums;">${formatMoney(total)}</td>
           </tr>
         </tfoot>
       </table>
 
       <!-- VIGENCIA -->
-      <p style="margin: 18px 0 0; font-size: 14px; font-style: italic; color: #4b5563; font-family: ${baseFont};">Plan vigente hasta el <strong style="color: #00236f; font-style: normal;">${vigenciaStr}</strong>.</p>
+      <p style="margin: 14px 0 0; font-size: 13px; font-style: italic; color: #4b5563; font-family: ${baseFont};">Plan vigente hasta el <strong style="color: #00236f; font-style: normal;">${vigenciaStr}</strong>.</p>
 
       <!-- NOTAS -->
-      <p style="margin: 14px 0 0; font-size: 12px; color: #6b7280; line-height: 1.55; font-family: ${baseFont};">Los valores expresados están en dólares de los Estados Unidos de América (USD). El plan se renueva al cumplir 12 meses desde la fecha de contratación o al alcanzar el volumen anual contratado, lo que ocurra primero.</p>
+      <p style="margin: 12px 0 0; font-size: 11px; color: #6b7280; line-height: 1.55; font-family: ${baseFont};">Los valores expresados están en dólares de los Estados Unidos de América (USD). El plan se renueva al cumplir 12 meses desde la fecha de contratación o al alcanzar el volumen anual contratado, lo que ocurra primero.</p>
 
       <!-- SIGNATURE -->
-      <div style="margin-top: 38px; font-size: 14px; font-family: ${baseFont};">
+      <div style="margin-top: 28px; font-size: 13px; font-family: ${baseFont};">
         <p style="margin: 0;">Atentamente,</p>
-        <p style="margin: 6px 0 0; font-weight: 700; color: #00236f; font-size: 15px;">TributaSoft S.A.</p>
+        <p style="margin: 4px 0 0; font-weight: 700; color: #00236f; font-size: 14px;">TributaSoft S.A.</p>
         <p style="margin: 0; color: #4b5563;">Departamento de Facturación Electrónica Pre-Pago</p>
         <p style="margin: 0; color: #4b5563;">RUC: 0992703601001</p>
       </div>
 
-      <!-- FOOTER -->
-      <div style="position: absolute; left: 56px; right: 56px; bottom: 50px; font-family: ${baseFont};">
-        <hr style="border: 0; border-top: 1px solid #d1d5db; margin: 0 0 16px;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #6b7280;">
-          <tr>
-            <td style="padding: 4px 0; vertical-align: middle;">
-              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.home}<span>Machala 1002 y Hurtado, Edificio Coral, Piso 1, Oficina 15</span></span>
-            </td>
-            <td style="padding: 4px 0; vertical-align: middle; text-align: right;">
-              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.mail}<span>ventas@tributasoft.ec</span></span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 4px 0; vertical-align: middle;">
-              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.phone}<span>099-6345-284  ·  099-842-9901</span></span>
-              <span style="display: inline-flex; align-items: center; gap: 8px; margin-left: 18px;">${PDF_ICON.wa}<span>04-600-4992</span></span>
-            </td>
-            <td style="padding: 4px 0; vertical-align: middle; text-align: right;">
-              <span style="display: inline-flex; align-items: center; gap: 8px;">${PDF_ICON.globe}<span>www.tributasoft.ec</span></span>
-            </td>
-          </tr>
-        </table>
+      <!-- FOOTER: layout horizontal con flex-wrap, sin spread-out a los extremos.
+           Los íconos quedan agrupados naturalmente uno junto al otro. -->
+      <div style="position: absolute; left: 50px; right: 50px; bottom: 36px; font-family: ${baseFont};">
+        <hr style="border: 0; border-top: 1px solid #d1d5db; margin: 0 0 12px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 11px; color: #6b7280;">
+          <span style="display: inline-flex; align-items: center; gap: 7px;">${PDF_ICON.home}<span>Machala 1002 y Hurtado, Edificio Coral, Piso 1, Oficina 15</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px;">${PDF_ICON.mail}<span>ventas@tributasoft.ec</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px;">${PDF_ICON.phone}<span>099-6345-284  ·  099-842-9901</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px;">${PDF_ICON.wa}<span>04-600-4992</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px;">${PDF_ICON.globe}<span>www.tributasoft.ec</span></span>
+        </div>
       </div>
     </div>
   `;
