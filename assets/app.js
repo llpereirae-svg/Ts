@@ -267,8 +267,10 @@ function init() {
   // Tipo de contribuyente → mostrar/ocultar No. Resolución
   $('#tipo-contribuyente').addEventListener('change', onTipoContribuyenteChange);
 
-  // No. Resolución: filtrar a alfanuméricos + "-"
+  // No. Resolución: filtrar a alfanuméricos + "-" en input, y validar al blur
+  // (mín 10 / máx 30 alfanuméricos, sin contar guiones).
   $('#no-resolucion').addEventListener('input', onNoResolucionInput);
+  $('#no-resolucion').addEventListener('blur', onNoResolucionBlur);
 
   // Modo de facturación
   $$('input[name="modo-facturacion"]').forEach((r) =>
@@ -666,10 +668,28 @@ function onTerminosChange(e) {
 
 function onNoResolucionInput(e) {
   // Filtrar a alfanuméricos + "-"; max 30 caracteres totales (incluyendo guiones).
-  // La validación de longitud mínima vive en validators.js y no se expone al usuario.
+  // La validación de longitud (10-30 alfanuméricos) corre en blur y submit.
   const v = e.target.value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 30);
   if (v !== e.target.value) e.target.value = v;
   flow.noResolucion = v;
+  // Si el usuario corrige tras un error previo, limpiar el mensaje hasta el
+  // próximo blur — evita rojo permanente mientras tipea.
+  if ($('#no-resolucion').getAttribute('aria-invalid') === 'true') {
+    setFieldError('no-resolucion', '');
+  }
+}
+
+function onNoResolucionBlur() {
+  // Sólo validamos si el tipo de contribuyente exige resolución; en caso
+  // contrario el campo no debería estar visible y un mensaje sería ruido.
+  if (!TIPOS_CON_RESOLUCION.has(flow.tipoContribuyente)) {
+    setFieldError('no-resolucion', '');
+    return;
+  }
+  const val = ($('#no-resolucion').value || '').trim();
+  if (!val) { setFieldError('no-resolucion', ''); return; }
+  const v = validarNoResolucion(val);
+  setFieldError('no-resolucion', v.valid ? '' : v.reason);
 }
 
 // ---------- Celular + país + canales (Email + WhatsApp, sin SMS) ----------
@@ -1079,15 +1099,12 @@ function onClaveInput() {
   bar.setAttribute('aria-label', `Fuerza de clave: ${labels[v.fuerza]}`);
   bar.querySelector('span').textContent = labels[v.fuerza];
 
-  $$('#requisitos-clave li').forEach((li) => {
-    const key = li.dataset.req;
-    if (v.requisitos[key]) li.classList.add('cumplido');
-    else li.classList.remove('cumplido');
-  });
-
   const confirm = $('#confirmar-clave').value;
   const coincide = confirm && c === confirm;
   $('#confirmar-error').textContent = (confirm && !coincide) ? 'Las claves no coinciden.' : '';
+  // El botón "Continuar" se habilita en cuanto la clave cumpla el mínimo
+  // (4 caracteres) y la confirmación coincida. El nivel de fuerza es
+  // informativo, no bloquea el flujo.
   $('#continuar-clave').disabled = !(v.valid && coincide);
 }
 

@@ -181,37 +181,51 @@ export function validarEmail(email) {
 }
 
 /**
- * Clave: ≥8 chars, mayúscula, minúscula, número, símbolo. Devuelve también nivel de fuerza.
- * Niveles: 0 débil, 1 regular, 2 buena, 3 fuerte.
+ * Clave: única regla dura → mínimo 4 caracteres. Devolvemos un nivel de
+ * fuerza informativo (0-3) basado en una estimación de entropía de Shannon
+ * — `bits = length × log2(charset_size)` — el mismo enfoque que usan
+ * NIST 800-63B y los meters tipo zxcvbn-lite.
+ *
+ * Niveles de fuerza (umbrales aproximados de bits):
+ *   0 Débil    (< 28)   — fuerza bruta trivial
+ *   1 Regular  (28-49)  — soportable para usos no críticos
+ *   2 Buena    (50-69)  — razonable
+ *   3 Fuerte   (≥ 70)   — recomendada
+ *
+ * Penalizamos patrones obvios (repeticiones, "1234", "qwerty", "password").
  */
 export function validarClave(clave) {
   if (typeof clave !== 'string') return { valid: false, fuerza: 0, requisitos: {}, reason: 'Clave inválida.' };
 
-  const requisitos = {
-    longitud: clave.length >= 8,
-    mayuscula: /[A-Z]/.test(clave),
-    minuscula: /[a-z]/.test(clave),
-    numero: /\d/.test(clave),
-    simbolo: /[^A-Za-z0-9]/.test(clave),
-  };
-  const todasOk = Object.values(requisitos).every(Boolean);
+  const longitudOk = clave.length >= 4;
+  const requisitos = { longitud: longitudOk };
 
-  // Heurística de fuerza simple
-  let fuerza = 0;
-  if (clave.length >= 8) fuerza++;
-  if (clave.length >= 12) fuerza++;
-  const variedad = [requisitos.mayuscula, requisitos.minuscula, requisitos.numero, requisitos.simbolo].filter(Boolean).length;
-  if (variedad >= 3) fuerza++;
-  if (variedad === 4 && clave.length >= 14) fuerza++;
-  // Penaliza patrones comunes obvios
-  if (/^(.)\1+$/.test(clave) || /1234|abcd|qwerty|password|clave/i.test(clave)) fuerza = Math.max(0, fuerza - 2);
-  fuerza = Math.min(3, Math.max(0, fuerza));
+  // Tamaño del alfabeto efectivo: detectamos qué clases de caracteres usa.
+  let charset = 0;
+  if (/[a-z]/.test(clave)) charset += 26;
+  if (/[A-Z]/.test(clave)) charset += 26;
+  if (/\d/.test(clave))    charset += 10;
+  if (/[^A-Za-z0-9]/.test(clave)) charset += 32;
+  const entropy = clave.length === 0 ? 0 : clave.length * Math.log2(charset || 1);
+
+  let fuerza;
+  if (entropy < 28)      fuerza = 0;
+  else if (entropy < 50) fuerza = 1;
+  else if (entropy < 70) fuerza = 2;
+  else                   fuerza = 3;
+
+  // Patrones obvios: bajamos 2 escalones (la clave puede seguir siendo válida
+  // si cumple la longitud, pero el bar la pinta como Débil).
+  if (/^(.)\1+$/.test(clave) || /1234|abcd|qwerty|password|clave/i.test(clave)) {
+    fuerza = Math.max(0, fuerza - 2);
+  }
 
   return {
-    valid: todasOk,
+    valid: longitudOk,
     fuerza,
     requisitos,
-    reason: todasOk ? undefined : 'La clave no cumple todos los requisitos.',
+    entropy,
+    reason: longitudOk ? undefined : 'La clave debe tener al menos 4 caracteres.',
   };
 }
 

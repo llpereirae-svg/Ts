@@ -26,7 +26,7 @@
     .brand-mark{height:38px;width:auto;flex-shrink:0;display:block}
     .brand-name{font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
     .brand-name .b-tributa{font-family:'Avenida','DM Sans',sans-serif;color:#87C7DC;font-weight:400}
-    .brand-name .b-soft{font-family:'Avenida','DM Sans',sans-serif;color:#EF7306;font-weight:400}
+    .brand-name .b-soft{font-family:'Lobster',cursive;color:#EF7306;font-weight:400}
     .hero{padding:1.75rem 1rem .75rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
     .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.15;margin:0;letter-spacing:-.02em}
     .hero h1 .h-tiempo{display:block;color:#42A2BC;font-size:.78em;font-weight:600}
@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514i">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514j">
 </head>
 <body data-state="IDLE">
 
@@ -389,22 +389,15 @@
     <dialog id="modal-clave" aria-labelledby="modal-clave-h">
       <div class="modal-content">
         <h2 id="modal-clave-h">Crea tu clave</h2>
-        <p>Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.</p>
+        <p>Mínimo 4 caracteres. La barra te indica qué tan segura es tu clave.</p>
 
         <div class="field">
           <label for="clave">Clave</label>
           <input id="clave" type="password" autocomplete="new-password">
         </div>
-        <div id="fuerza-clave" class="fuerza-clave" data-nivel="0" role="status"><span>Débil</span></div>
-        <ul id="requisitos-clave" class="requisitos-clave" aria-live="polite">
-          <li data-req="longitud">Al menos 8 caracteres</li>
-          <li data-req="mayuscula">Una mayúscula</li>
-          <li data-req="minuscula">Una minúscula</li>
-          <li data-req="numero">Un número</li>
-          <li data-req="simbolo">Un símbolo</li>
-        </ul>
+        <div id="fuerza-clave" class="fuerza-clave" data-nivel="0" role="status" aria-live="polite"><span>Débil</span></div>
 
-        <div class="field">
+        <div class="field" style="margin-top:1.25rem">
           <label for="confirmar-clave">Confirma tu clave</label>
           <input id="confirmar-clave" type="password" autocomplete="new-password">
           <div id="confirmar-error" class="error" role="alert" aria-live="polite"></div>
@@ -479,7 +472,7 @@
 
         <div class="logo-options">
           <button type="button" id="logo-upload-btn" class="btn btn--ghost">Subir mi logo</button>
-          <button type="button" id="logo-generar-btn" class="btn btn--primary">Generar automáticamente</button>
+          <button type="button" id="logo-generar-btn" class="btn btn--primary">Generar uno</button>
         </div>
         <input type="file" id="logo-uploader" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden>
         <p id="logo-error" class="error" role="alert" aria-live="polite"></p>
@@ -678,7 +671,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514i';
+    const APP_VER = '20260514j';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

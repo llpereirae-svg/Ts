@@ -107,7 +107,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   line-height: 1;
 }
 .brand-name .b-tributa { font-family: var(--font-brand); color: var(--color-brand-tributa); }
-.brand-name .b-soft { font-family: var(--font-brand); color: var(--color-brand-soft); }
+/* "Soft" usa Lobster (no Avenida) — mantiene el guiño cursivo del logo histórico. */
+.brand-name .b-soft { font-family: 'Lobster', cursive; color: var(--color-brand-soft); }
 .site-header nav { display: flex; gap: .35rem; align-items: center; }
 
 /* ---------------- Banner de red ---------------- */
@@ -252,15 +253,16 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* Botón primario: armónico con los ghost (case normal, sin uppercase forzado).
+   Mantenemos height y sombra. La diferencia con los ghost es color/peso visual. */
 .btn--primary {
   background: var(--color-cta);
   color: white;
   width: 100%;
-  height: 3.25rem;
+  height: 3rem;
   margin-top: 1rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
   font-size: .95rem;
+  font-weight: 700;
   box-shadow: 0 4px 14px rgba(239, 115, 6, .3);
 }
 .btn--primary:hover:not(:disabled) { background: var(--color-cta-dark); }
@@ -846,7 +848,18 @@ dialog#modal-terms {
 }
 .modal-actions { display: flex; gap: .5rem; flex-direction: column; margin-top: 1rem; }
 .modal-actions[hidden] { display: none; } /* sobre-escribe display:flex cuando se oculta */
-.modal-actions .btn { width: 100%; }
+/* Dentro de un modal todos los botones tienen el MISMO alto y peso visual.
+   Esto evita que el primary (3.25rem + uppercase) se vea más grande que el
+   ghost (alto por padding). Misma regla para .firma-options (subir / saltar). */
+.modal-actions .btn,
+.firma-options .btn {
+  width: 100%;
+  height: 3rem;
+  min-height: 3rem;
+  margin-top: 0;
+  font-size: .95rem;
+  padding: 0 1rem;
+}
 .modal-actions.modal-actions--split { flex-direction: row; }
 .modal-actions--split .btn { flex: 1; width: auto; }
 .modal-hint { color: var(--color-info); font-size: .78rem; text-align: center; }
@@ -950,12 +963,12 @@ dialog#modal-terms {
 }
 .logo-options .btn {
   width: 100%;
-  height: auto;
-  padding: .8rem 1rem;
-  font-size: .9rem;
+  height: 3rem;
+  min-height: 3rem;
+  padding: 0 1rem;
+  font-size: .95rem;
   margin-top: 0;
-  text-transform: none;
-  letter-spacing: 0;
+  white-space: nowrap;
 }
 .logo-preview-wrap {
   margin-top: 1rem;
