@@ -11,8 +11,9 @@ import { COUNTRIES, findCountry } from './countries.js';
 import { citiesFor } from './cities.js';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
-  establecerClave, validarFirma, finalizarRegistro,
+  establecerClave, finalizarRegistro,
 } from './api-mocks.js';
+import { validarFirmaP12 } from './firma-validator.js';
 
 const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
 
@@ -1015,23 +1016,20 @@ async function onValidarFirma() {
   $('#firma-resumen').hidden = true;
 
   try {
-    const resp = await validarFirma({
-      file: firmaFileSeleccionada,
-      clave,
-      rucEsperado: flow.ruc,
-    });
+    // Validación REAL: parsea el .p12/.pfx, descifra con la clave,
+    // extrae el RUC del certificado y compara con flow.ruc.
+    const resp = await validarFirmaP12(firmaFileSeleccionada, clave, flow.ruc);
 
-    if (resp.valida) {
-      track('firma_uploaded_valid', { fechaCaducidad: resp.fechaCaducidad });
+    if (resp.valid) {
+      track('firma_uploaded_valid', { fechaCaducidad: resp.fechaCaducidad?.toISOString?.() });
       machine.send(EVENTS.FIRMA_OK);
 
-      // Mostrar resumen
-      $('#firma-titular').textContent = resp.subject || '—';
-      $('#firma-ruc').textContent = resp.rucCertificado || flow.ruc;
+      // Llenar el resumen con datos extraídos del certificado
+      $('#firma-titular').textContent = resp.titular || '—';
+      $('#firma-ruc').textContent = resp.ruc || flow.ruc;
       $('#firma-caducidad').textContent = formatearFecha(resp.fechaCaducidad);
       $('#firma-resumen').hidden = false;
 
-      // Pequeña pausa para que el usuario vea el resumen, luego finaliza
       setTimeout(() => {
         closeModal($('#modal-firma'));
         finalizarFlow();
@@ -1039,23 +1037,31 @@ async function onValidarFirma() {
     } else {
       track('firma_uploaded_invalid', { error: resp.error });
       machine.send(EVENTS.FIRMA_BAD);
-      // Mensaje específico según el motivo
-      let msg = resp.error || 'La firma no es válida.';
-      if (resp._mockHint) msg += ` (${resp._mockHint})`;
-      $('#firma-error').textContent = msg;
+      $('#firma-error').textContent = resp.reason || 'La firma no es válida.';
     }
   } catch (err) {
-    $('#firma-error').textContent = 'Error validando la firma.';
+    console.error('Error validando firma:', err);
+    $('#firma-error').textContent = 'Error inesperado validando la firma. Intenta de nuevo.';
   } finally {
     setBusy($('#firma-clave-confirmar'), false);
   }
 }
 
-function formatearFecha(yyyyMmDd) {
-  if (!yyyyMmDd || typeof yyyyMmDd !== 'string') return '—';
-  const [y, m, d] = yyyyMmDd.split('-');
-  if (!y || !m || !d) return yyyyMmDd;
-  return `${d}/${m}/${y}`;
+function formatearFecha(value) {
+  if (!value) return '—';
+  // Acepta Date (cert.validity.notAfter de forge) o string "YYYY-MM-DD"
+  if (value instanceof Date) {
+    const d = String(value.getDate()).padStart(2, '0');
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const y = value.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  if (typeof value === 'string') {
+    const [y, m, d] = value.split('-');
+    if (y && m && d) return `${d}/${m}/${y}`;
+    return value;
+  }
+  return '—';
 }
 
 async function finalizarFlow() {
