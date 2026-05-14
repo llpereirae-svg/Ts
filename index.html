@@ -49,7 +49,6 @@
   <main>
     <!-- HERO -->
     <section id="hero" class="hero">
-      <span class="badge">Para todos los ecuatorianos 🇪🇨</span>
       <h1>300 comprobantes electrónicos <span class="h-gratis">GRATIS</span></h1>
       <p>Todo Bajo Control por más de 10 años. La facilidad al alcance de tu mano.</p>
     </section>
@@ -322,7 +321,14 @@
         </div>
       </details>
 
-      <button id="submit-registro" type="submit" class="btn btn--primary">Registrarse</button>
+      <div class="terminos">
+        <label class="terminos-label">
+          <input type="checkbox" id="acepta-terminos" required>
+          <span>Acepto los <a href="#" id="link-terminos" target="_blank" rel="noopener">términos y condiciones</a>.</span>
+        </label>
+      </div>
+
+      <button id="submit-registro" type="submit" class="btn btn--primary" disabled>Registrarse</button>
     </form>
 
     <!-- MODAL TOKEN -->
@@ -432,8 +438,8 @@
   </main>
 
   <footer class="site-footer">
-    <p style="margin:0 0 .35rem">Todo Bajo Control · Pioneros en facturación electrónica del Ecuador 🇪🇨</p>
-    <p style="margin:0;color:#1a1c1c">© 2026 <span style="font-family:'Lobster',cursive;color:#1a1c1c">TributaSoft</span> S.A.</p>
+    <p style="margin:0 0 .35rem">Todo Bajo Control · Pioneros en facturación electrónica del Ecuador</p>
+    <p style="margin:0;color:#1a1c1c">© 2026 TributaSoft S.A.</p>
   </footer>
 
   <!-- noscript fallback -->

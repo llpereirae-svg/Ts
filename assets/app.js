@@ -172,6 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Botón "Editar" del bloque de facturación
   $('#btn-editar-est').addEventListener('click', onToggleEditar);
 
+  // Términos y condiciones: habilita/deshabilita el botón Registrarse
+  $('#acepta-terminos').addEventListener('change', onTerminosChange);
+
   // Inputs del bloque (códigos + nombre)
   setupBloqueEstablecimientoListeners();
 
@@ -389,6 +392,10 @@ function onTipoContribuyenteChange(e) {
     flow.noResolucion = '';
     setFieldError('no-resolucion', '');
   }
+}
+
+function onTerminosChange(e) {
+  $('#submit-registro').disabled = !e.target.checked;
 }
 
 function onNoResolucionInput(e) {
@@ -613,6 +620,12 @@ function validarBloqueFacturacion(silencioso = false) {
 // ---------- Submit ----------
 async function onFormSubmit(e) {
   e.preventDefault();
+
+  // Defensa: no permitir submit sin aceptar términos
+  if (!$('#acepta-terminos').checked) {
+    showBanner('Debes aceptar los términos y condiciones para continuar.', 'warn');
+    return;
+  }
 
   const razonSocial = $('#razon-social').value.trim();
   const nombreComercial = $('#nombre-comercial').value.trim();

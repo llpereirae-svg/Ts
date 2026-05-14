@@ -724,6 +724,36 @@ details[open] summary::after { transform: rotate(180deg); }
   font-size: .9rem; margin-bottom: 1rem;
 }
 
+/* Bloque de Términos y Condiciones */
+.terminos {
+  margin: 1.25rem 0 .5rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-low);
+}
+.terminos-label {
+  display: flex; align-items: flex-start; gap: .65rem;
+  cursor: pointer;
+  font-size: .9rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+.terminos-label input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1.1rem; height: 1.1rem;
+  margin: 0;
+  margin-top: 2px;
+  accent-color: var(--color-cta);
+  cursor: pointer;
+}
+.terminos-label a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.terminos-label a:hover { color: var(--color-cta); }
+
 /* ---------------- Modales ---------------- */
 dialog {
   border: 0; padding: 0; background: transparent;
