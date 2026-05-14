@@ -158,6 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Provincia → poblar ciudades
   $('#provincia').addEventListener('change', onProvinciaChange);
 
+  // Régimen → filtra opciones válidas de Tipo de Contribuyente
+  $('#regimen').addEventListener('change', onRegimenChange);
+
   // Tipo de contribuyente → mostrar/ocultar No. Resolución
   $('#tipo-contribuyente').addEventListener('change', onTipoContribuyenteChange);
 
@@ -306,6 +309,8 @@ function prefilledFormUI() {
     else if (upper.includes('GENERAL')) match = 'GENERAL';
     if (match) sel.value = match;
   }
+  // Filtra el Tipo de Contribuyente según el régimen actual (y bloquea si NEGOCIO POPULAR)
+  aplicarFiltroTipoContribuyente();
 
   $('#sri-banner').hidden = !!flow.rucInfo;
   $('#razon-social-static').textContent = flow.razonSocial || flow.ruc;
@@ -409,6 +414,73 @@ function poblarCiudadesPara(provinciaCode) {
 }
 
 // ---------- Tipo de contribuyente → No. Resolución condicional ----------
+// Tipos de contribuyente permitidos por régimen.
+// - GENERAL: todos.
+// - RIMPE - EMPRENDEDOR: no obligado, obligado, agente de retención.
+// - RIMPE - NEGOCIO POPULAR: sólo "no obligado" (auto y bloqueado).
+const TIPOS_CONTRIBUYENTE_POR_REGIMEN = {
+  'GENERAL': ['NO_OBLIGADO', 'OBLIGADO', 'AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE'],
+  'RIMPE - EMPRENDEDOR': ['NO_OBLIGADO', 'OBLIGADO', 'AGENTE_RETENCION'],
+  'RIMPE - NEGOCIO POPULAR': ['NO_OBLIGADO'],
+};
+
+// Cache de las opciones originales del select para poder re-poblar al filtrar.
+let _tiposOpcionesOriginales = null;
+function _getTiposOpcionesOriginales() {
+  if (_tiposOpcionesOriginales) return _tiposOpcionesOriginales;
+  const sel = $('#tipo-contribuyente');
+  _tiposOpcionesOriginales = Array.from(sel.options).map((o) => ({
+    value: o.value, text: o.textContent,
+  }));
+  return _tiposOpcionesOriginales;
+}
+
+function onRegimenChange() {
+  aplicarFiltroTipoContribuyente();
+}
+
+function aplicarFiltroTipoContribuyente() {
+  const regimen = $('#regimen').value;
+  const sel = $('#tipo-contribuyente');
+  const todas = _getTiposOpcionesOriginales();
+  const permitidos = TIPOS_CONTRIBUYENTE_POR_REGIMEN[regimen];
+
+  // Sin régimen: dejamos todas (estado neutro al inicio).
+  const valoresValidos = permitidos || todas.map((o) => o.value).filter(Boolean);
+
+  // Re-popular el select sólo con las opciones permitidas.
+  const valorActual = sel.value;
+  sel.innerHTML = '';
+  todas.forEach((o) => {
+    if (o.value === '' || valoresValidos.includes(o.value)) {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.text;
+      sel.appendChild(opt);
+    }
+  });
+
+  if (regimen === 'RIMPE - NEGOCIO POPULAR') {
+    // Bloqueado en "No Obligado a Llevar Contabilidad".
+    sel.value = 'NO_OBLIGADO';
+    sel.disabled = true;
+    flow.tipoContribuyente = 'NO_OBLIGADO';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  } else {
+    sel.disabled = false;
+    if (valorActual && valoresValidos.includes(valorActual)) {
+      sel.value = valorActual;
+    } else {
+      sel.value = '';
+      flow.tipoContribuyente = '';
+      // Limpia No. Resolución si quedó visible
+      $('#no-resolucion-wrap').hidden = true;
+      $('#no-resolucion').value = '';
+      flow.noResolucion = '';
+    }
+  }
+}
+
 function onTipoContribuyenteChange(e) {
   flow.tipoContribuyente = e.target.value;
   const wrap = $('#no-resolucion-wrap');
