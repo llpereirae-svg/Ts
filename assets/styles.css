@@ -823,8 +823,11 @@ dialog.is-open .modal-content {
 .modal-actions { display: flex; gap: .5rem; flex-direction: column; margin-top: 1rem; }
 .modal-actions[hidden] { display: none; } /* sobre-escribe display:flex cuando se oculta */
 .modal-actions .btn { width: 100%; }
-/* Variante con dos botones lado a lado en mobile (Continuar / Cancelar) */
-.modal-actions--split { flex-direction: row; }
+/* Variante con dos botones lado a lado en todos los breakpoints (Cancelar / Continuar).
+   Forzamos flex-direction:row (no row-reverse) para que Cancelar quede a la izquierda
+   y Continuar a la derecha — convención web/Material. La doble clase
+   `.modal-actions.modal-actions--split` gana al @media (min-width: 768px) más abajo. */
+.modal-actions.modal-actions--split { flex-direction: row; }
 .modal-actions--split .btn { flex: 1; width: auto; }
 .modal-hint { color: var(--color-info); font-size: .78rem; text-align: center; }
 

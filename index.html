@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514f">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514g">
 </head>
 <body data-state="IDLE">
 
@@ -453,7 +453,7 @@
           <!-- Acciones después de validar OK: el usuario decide cuándo continuar -->
           <div class="modal-actions modal-actions--split" id="firma-actions-confirmar" hidden>
             <button type="button" id="firma-cancelar" class="btn btn--ghost">Cancelar</button>
-            <button type="button" id="firma-continuar" class="btn btn--primary">Continuar al portal</button>
+            <button type="button" id="firma-continuar" class="btn btn--primary">Continuar</button>
           </div>
         </div>
       </div>
@@ -483,7 +483,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514f';
+    const APP_VER = '20260514g';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });
