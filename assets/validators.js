@@ -182,15 +182,14 @@ export function validarEmail(email) {
 
 /**
  * Clave: única regla dura → mínimo 4 caracteres. Devolvemos un nivel de
- * fuerza informativo (0-3) basado en una estimación de entropía de Shannon
+ * fuerza informativo (0-2) basado en una estimación de entropía de Shannon
  * — `bits = length × log2(charset_size)` — el mismo enfoque que usan
  * NIST 800-63B y los meters tipo zxcvbn-lite.
  *
  * Niveles de fuerza (umbrales aproximados de bits):
- *   0 Débil    (< 28)   — fuerza bruta trivial
- *   1 Regular  (28-49)  — soportable para usos no críticos
- *   2 Buena    (50-69)  — razonable
- *   3 Fuerte   (≥ 70)   — recomendada
+ *   0 Baja     (< 35)   — pocas combinaciones, fuerza bruta posible
+ *   1 Media    (35-59)  — soportable para usos no críticos
+ *   2 Alta     (≥ 60)   — recomendada
  *
  * Penalizamos patrones obvios (repeticiones, "1234", "qwerty", "password").
  */
@@ -209,15 +208,14 @@ export function validarClave(clave) {
   const entropy = clave.length === 0 ? 0 : clave.length * Math.log2(charset || 1);
 
   let fuerza;
-  if (entropy < 28)      fuerza = 0;
-  else if (entropy < 50) fuerza = 1;
-  else if (entropy < 70) fuerza = 2;
-  else                   fuerza = 3;
+  if (entropy < 35)      fuerza = 0;
+  else if (entropy < 60) fuerza = 1;
+  else                   fuerza = 2;
 
-  // Patrones obvios: bajamos 2 escalones (la clave puede seguir siendo válida
-  // si cumple la longitud, pero el bar la pinta como Débil).
+  // Patrones obvios: bajamos al mínimo (la clave puede seguir siendo válida
+  // si cumple la longitud, pero el bar la pinta como Baja).
   if (/^(.)\1+$/.test(clave) || /1234|abcd|qwerty|password|clave/i.test(clave)) {
-    fuerza = Math.max(0, fuerza - 2);
+    fuerza = 0;
   }
 
   return {

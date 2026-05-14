@@ -106,7 +106,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   letter-spacing: .005em;
   line-height: 1;
 }
-.brand-name .b-tributa { font-family: var(--font-brand); color: var(--color-brand-tributa); }
+/* "Tributa" en celeste pálido (color del logo más actualizado). */
+.brand-name .b-tributa { font-family: var(--font-brand); color: #c9dee9; }
 /* "Soft" usa Lobster (no Avenida) — mantiene el guiño cursivo del logo histórico. */
 .brand-name .b-soft { font-family: 'Lobster', cursive; color: var(--color-brand-soft); }
 .site-header nav { display: flex; gap: .35rem; align-items: center; }
@@ -482,7 +483,44 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   border-bottom: 1px solid var(--color-border);
   padding-bottom: .9rem; margin-bottom: 1rem;
 }
+.form-header-row {
+  display: flex; align-items: center; gap: .65rem;
+  margin-bottom: .25rem;
+}
+.form-header-row h2 { margin: 0; }
 .form-header .small { color: var(--color-muted); font-size: .85rem; }
+
+/* Back button — flecha redonda con borde, usada en form-header y en modales. */
+.back-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem; height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--color-outline);
+  border-radius: 50%;
+  background: white;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), transform .1s ease;
+}
+.back-btn:hover {
+  background: var(--color-surface-low);
+  border-color: var(--color-primary);
+}
+.back-btn:active { transform: scale(.92); }
+.back-btn:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
+.back-btn svg { width: 1rem; height: 1rem; pointer-events: none; }
+
+/* Versión que va dentro de un modal (anclada arriba-izquierda) */
+.modal-content { position: relative; }
+.modal-content .back-btn {
+  position: absolute;
+  top: .85rem;
+  left: .85rem;
+  width: 2rem;
+  height: 2rem;
+}
+.modal-content .back-btn + h2 { padding-left: 2.5rem; }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(24px); }
@@ -507,7 +545,12 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(0, 35, 111, .15);
 }
-.field input[aria-invalid="true"] { border-color: var(--color-error); }
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px rgba(186, 26, 26, .12);
+}
 .field input:disabled, .field select:disabled, .field input[readonly] {
   background: var(--color-surface-low);
   color: var(--color-muted);
@@ -681,6 +724,17 @@ details[open] summary::after { transform: rotate(180deg); }
   animation: slideUp 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .establecimiento-bloque[hidden] { display: none; }
+.establecimiento-bloque.is-required {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px rgba(186, 26, 26, .12);
+  animation: shake 360ms cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); }
+  40%, 60% { transform: translateX(3px); }
+}
 .establecimiento-bloque-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: .75rem;
@@ -864,24 +918,32 @@ dialog#modal-terms {
 .modal-actions--split .btn { flex: 1; width: auto; }
 .modal-hint { color: var(--color-info); font-size: .78rem; text-align: center; }
 
-/* Fuerza de clave — coherente con paleta del logo */
+/* Fuerza de clave — 3 niveles (Baja / Media / Alta) con la paleta del logo */
 .fuerza-clave {
   height: 8px; background: var(--color-border); border-radius: 999px;
-  position: relative; overflow: hidden; margin: .5rem 0;
+  position: relative; overflow: hidden; margin: .5rem 0 .25rem;
 }
 .fuerza-clave::after {
   content: "";
   position: absolute; inset: 0; right: auto;
   width: 0%;
-  background: var(--color-error);
+  background: #ff931e;
   border-radius: 999px;
   transition: width var(--transition), background var(--transition);
 }
-.fuerza-clave[data-nivel="0"]::after { width: 25%; background: var(--color-error); }
-.fuerza-clave[data-nivel="1"]::after { width: 50%; background: var(--color-warn); }
-.fuerza-clave[data-nivel="2"]::after { width: 75%; background: var(--color-teal); }
-.fuerza-clave[data-nivel="3"]::after { width: 100%; background: var(--color-teal-dark); }
-.fuerza-clave span { position: absolute; right: 0; top: -1.4rem; font-size: .8rem; color: var(--color-muted); }
+.fuerza-clave[data-nivel="0"]::after { width: 33%; background: #ff931e; }       /* Baja */
+.fuerza-clave[data-nivel="1"]::after { width: 66%; background: #c9dee9; }       /* Media */
+.fuerza-clave[data-nivel="2"]::after { width: 100%; background: #42A2BC; }      /* Alta */
+
+.fuerza-clave-label {
+  margin: 0 0 .85rem;
+  font-size: .82rem;
+  color: var(--color-muted);
+}
+.fuerza-clave-label strong { font-weight: 700; }
+.fuerza-clave-label[data-nivel="0"] strong { color: #c95e02; }
+.fuerza-clave-label[data-nivel="1"] strong { color: #2E7A95; }
+.fuerza-clave-label[data-nivel="2"] strong { color: #1E5666; }
 
 .requisitos-clave { list-style: none; padding: 0; margin: .5rem 0 1rem; font-size: .85rem; color: var(--color-muted); }
 .requisitos-clave li { padding-left: 1.4rem; position: relative; line-height: 1.8; }
@@ -949,6 +1011,30 @@ dialog#modal-terms {
 .firma-resumen-value {
   color: var(--color-primary); font-weight: 600; text-align: right;
   font-family: ui-monospace, monospace; font-size: .82rem;
+}
+
+/* ---------------- Modal Confirmación final ---------------- */
+.confirm-credentials {
+  margin-top: .85rem;
+  padding: .85rem 1rem;
+  background: var(--color-teal-light);
+  border: 1px solid var(--color-teal);
+  border-radius: var(--radius-md);
+}
+.confirm-credentials-line {
+  margin: 0;
+  font-size: .9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: baseline;
+}
+.confirm-credentials-line span { color: var(--color-muted); }
+.confirm-credentials-line strong {
+  font-family: ui-monospace, monospace;
+  color: var(--color-primary);
+  font-size: 1.05rem;
+  letter-spacing: .04em;
 }
 
 /* ---------------- Modal Logo / Banner ---------------- */

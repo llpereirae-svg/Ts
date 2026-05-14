@@ -25,7 +25,7 @@
     .brand{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
     .brand-mark{height:38px;width:auto;flex-shrink:0;display:block}
     .brand-name{font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
-    .brand-name .b-tributa{font-family:'Avenida','DM Sans',sans-serif;color:#87C7DC;font-weight:400}
+    .brand-name .b-tributa{font-family:'Avenida','DM Sans',sans-serif;color:#c9dee9;font-weight:400}
     .brand-name .b-soft{font-family:'Lobster',cursive;color:#EF7306;font-weight:400}
     .hero{padding:1.75rem 1rem .75rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
     .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.15;margin:0;letter-spacing:-.02em}
@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514n">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514o">
 </head>
 <body data-state="IDLE">
 
@@ -121,7 +121,12 @@
     <!-- FORMULARIO EXPANDIDO -->
     <form id="registration-form" class="registration-form" hidden novalidate>
       <header class="form-header">
-        <h2>Completa tus datos</h2>
+        <div class="form-header-row">
+          <button type="button" class="back-btn" id="form-back-btn" aria-label="Volver">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h2>Completa tus datos</h2>
+        </div>
         <p class="small">RUC: <strong id="ruc-display">—</strong></p>
       </header>
 
@@ -361,6 +366,9 @@
     <!-- MODAL TOKEN -->
     <dialog id="modal-token" aria-labelledby="modal-token-h">
       <div class="modal-content">
+        <button type="button" class="back-btn" data-back="modal-token" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <h2 id="modal-token-h">Verifica tu código</h2>
         <p>Te enviamos un código a <strong id="token-destino"></strong></p>
         <fieldset id="codigo-input" class="codigo-input" aria-label="Código de 6 dígitos">
@@ -383,6 +391,9 @@
     <!-- MODAL CLAVE -->
     <dialog id="modal-clave" aria-labelledby="modal-clave-h">
       <div class="modal-content">
+        <button type="button" class="back-btn" data-back="modal-clave" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <h2 id="modal-clave-h">Crea tu clave</h2>
         <p>Mínimo 4 caracteres. La barra te indica qué tan segura es tu clave.</p>
 
@@ -390,9 +401,10 @@
           <label for="clave">Clave</label>
           <input id="clave" type="password" autocomplete="new-password">
         </div>
-        <div id="fuerza-clave" class="fuerza-clave" data-nivel="0" role="status" aria-live="polite"><span>Débil</span></div>
+        <div id="fuerza-clave" class="fuerza-clave" data-nivel="0" role="status" aria-live="polite"></div>
+        <p id="fuerza-clave-label" class="fuerza-clave-label" data-nivel="0">Nivel de seguridad: <strong id="fuerza-clave-label-text">Baja</strong></p>
 
-        <div class="field" style="margin-top:1.25rem">
+        <div class="field">
           <label for="confirmar-clave">Confirma tu clave</label>
           <input id="confirmar-clave" type="password" autocomplete="new-password">
           <div id="confirmar-error" class="error" role="alert" aria-live="polite"></div>
@@ -407,6 +419,9 @@
     <!-- MODAL FIRMA -->
     <dialog id="modal-firma" aria-labelledby="modal-firma-h">
       <div class="modal-content">
+        <button type="button" class="back-btn" data-back="modal-firma" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <h2 id="modal-firma-h">Sube tu firma electrónica</h2>
         <p>Es opcional. Puedes subirla ahora o más tarde desde tu cuenta. Aceptamos archivos .p12 o .pfx. La clave nunca sale de tu navegador.</p>
 
@@ -462,6 +477,9 @@
     <!-- MODAL LOGO / BANNER (paso opcional tras la firma) -->
     <dialog id="modal-logo" aria-labelledby="modal-logo-h">
       <div class="modal-content modal-content--wide">
+        <button type="button" class="back-btn" data-back="modal-logo" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <h2 id="modal-logo-h">Tu logo (opcional)</h2>
         <p>Sube tu logo o, si prefieres, generamos uno con tu nombre comercial. El banner final tendrá 2970×300 px (PNG).</p>
 
@@ -483,6 +501,33 @@
         <div class="modal-actions modal-actions--split" id="logo-actions" hidden>
           <button type="button" id="logo-rehacer" class="btn btn--ghost">Rehacer</button>
           <button type="button" id="logo-continuar" class="btn btn--primary">Continuar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL CONFIRMACIÓN FINAL — antes de saltar a tbc.tributasoft.com.ec -->
+    <dialog id="modal-confirm-final" aria-labelledby="modal-confirm-h">
+      <div class="modal-content">
+        <button type="button" class="back-btn" data-back="modal-confirm-final" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h2 id="modal-confirm-h">Estás a punto de finalizar</h2>
+        <p>Una vez confirmes, creamos tu cuenta y te llevamos al portal. Después <strong>no podrás cambiar</strong> los datos directamente desde aquí — para modificaciones tendrás que contactar a soporte.</p>
+
+        <div class="confirm-credentials">
+          <p class="confirm-credentials-line"><span>Tu usuario será:</span> <strong id="confirm-user">—</strong></p>
+        </div>
+
+        <div class="terminos" style="background:white;border:1px solid var(--color-border);margin-top:1rem">
+          <label class="terminos-label">
+            <input type="checkbox" id="save-credentials" checked>
+            <span>Guardar mi clave en este navegador para no tener que recordarla al iniciar sesión.</span>
+          </label>
+        </div>
+
+        <div class="modal-actions modal-actions--split">
+          <button type="button" id="confirm-cancelar" class="btn btn--ghost">Volver</button>
+          <button type="button" id="confirm-aceptar" class="btn btn--primary">Confirmar y continuar</button>
         </div>
       </div>
     </dialog>
@@ -666,7 +711,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514n';
+    const APP_VER = '20260514o';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

@@ -15,7 +15,11 @@ import {
 } from './api-mocks.js';
 import { validarFirmaP12 } from './firma-validator.js';
 
-const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
+// URL del portal de inicio de sesión final. Cuando el usuario confirma,
+// lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint
+// en la query (?u=...) — útil para que la página de login pre-rellene el
+// campo si soporta ese parámetro.
+const PORTAL_URL = 'https://tbc.tributasoft.com.ec';
 
 // Tipos de contribuyente que requieren No. Resolución
 const TIPOS_CON_RESOLUCION = new Set(['AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE']);
@@ -183,9 +187,13 @@ function showBanner(msg, tipo = 'info', auto = 5000) {
 // ---------- Modales ----------
 function openModal(modal) {
   if (!modal) return;
+  // Empujamos un estado al historial para que el botón Atrás del navegador
+  // cierre este modal (popstate). Útil tanto para móvil como para usuarios
+  // que usan la flecha del navegador en escritorio.
+  pushHistoryStep(modal.id);
   modal.showModal?.();
   modal.classList.add('is-open');
-  const firstFocus = modal.querySelector('[autofocus], input:not([readonly]), button, select, textarea');
+  const firstFocus = modal.querySelector('[autofocus], input:not([readonly]), button:not(.back-btn), select, textarea');
   firstFocus?.focus();
 }
 function closeModal(modal) {
@@ -226,6 +234,11 @@ const flow = {
   },
   tokenSentTo: '',
   firmaPendienteDespues: false,
+  // Tracking del bloque "Continuar facturación": true sólo cuando el usuario
+  // tocó "Guardar configuración" y los datos pasaron validación. Cualquier
+  // edición posterior lo vuelve a false.
+  bloqueGuardado: false,
+  clave: '', // sólo en memoria, para la PasswordCredential del modal final
 };
 
 // ---------- Wire up ----------
@@ -346,9 +359,16 @@ function init() {
   $('#logo-generar-btn').addEventListener('click', onLogoGenerar);
   $('#logo-rehacer').addEventListener('click', resetLogoStep);
   $('#logo-continuar').addEventListener('click', () => {
+    // Tras firma + logo, antes de saltar al portal, pedimos confirmación
+    // explícita ("¿estás seguro? no podrás cambiar"). El usuario también
+    // decide ahí si quiere guardar credenciales en el navegador.
     closeModal($('#modal-logo'));
-    finalizarFlow();
+    openFinalConfirm();
   });
+
+  // Modal de confirmación final
+  $('#confirm-cancelar').addEventListener('click', () => closeModal($('#modal-confirm-final')));
+  $('#confirm-aceptar').addEventListener('click', onConfirmAceptar);
 
   // Success — usa la URL devuelta por el backend si está disponible
   $('#go-to-account').addEventListener('click', () => {
@@ -399,6 +419,10 @@ function init() {
 
   // Inyectar los íconos SVG en todos los .copy-btn — un solo lugar de mantenimiento.
   injectCopyIcons();
+
+  // Botón Atrás del navegador (y de los .back-btn dentro del DOM) — el popstate
+  // cierra el modal abierto o vuelve del formulario al RUC.
+  window.addEventListener('popstate', onPopState);
 
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
@@ -478,6 +502,7 @@ async function onContinuar() {
 function prefilledFormUI() {
   const form = $('#registration-form');
   show(form);
+  pushHistoryStep('form');
 
   // Prefill
   $('#razon-social').value = flow.razonSocial || '';
@@ -757,10 +782,12 @@ function aplicarModoFacturacion() {
   if (flow.modoFacturacion === 'nuevo') {
     // "Empezar desde cero": ocultamos el bloque y forzamos defaults.
     bloque.hidden = true;
+    bloque.classList.remove('is-required');
     flow.facturacion.establecimiento = '001';
     flow.facturacion.puntoEmision = '001';
     flow.facturacion.nombrePunto = 'Electrónicas';
     TIPOS_DOCUMENTO.forEach((t) => { flow.facturacion.secuencias[t.id] = '000000001'; });
+    flow.bloqueGuardado = false;  // no aplica en modo "nuevo"
   } else {
     // "Continuar con mi facturación": muestra el bloque con TODOS los campos
     // habilitados desde el primer momento. Pre-rellenamos punto de emisión
@@ -778,12 +805,22 @@ function aplicarModoFacturacion() {
 
 function onGuardarBloque() {
   if (!validarBloqueFacturacion()) return;
+  flow.bloqueGuardado = true;
   const ok = $('#bloque-guardado');
-  if (ok) {
-    ok.hidden = false;
-    setTimeout(() => { ok.hidden = true; }, 2500);
-  }
+  if (ok) ok.hidden = false;  // queda visible hasta que el usuario edite algo
+  const bloque = $('#establecimiento-bloque');
+  if (bloque) bloque.classList.remove('is-required');
   track('bloque_facturacion_guardado', { ...flow.facturacion });
+}
+
+function marcarBloqueComoNoGuardado() {
+  // Llamada desde los listeners de los inputs del bloque: cualquier cambio
+  // invalida el "guardado" anterior y obliga a tocar Guardar de nuevo.
+  if (flow.modoFacturacion !== 'continuar') return;
+  if (!flow.bloqueGuardado) return;
+  flow.bloqueGuardado = false;
+  const ok = $('#bloque-guardado');
+  if (ok) ok.hidden = true;
 }
 
 function renderSecuencias() {
@@ -801,6 +838,7 @@ function renderSecuencias() {
 
   grid.querySelectorAll('input[data-secuencia]').forEach((inp) => {
     inp.addEventListener('input', (e) => {
+      marcarBloqueComoNoGuardado();
       const original = e.target.value;
       const v = original.replace(/\D/g, '');
       if (v.length > 9) {
@@ -833,6 +871,7 @@ function setupBloqueEstablecimientoListeners() {
   [estInp, punInp].forEach((inp) => {
     if (!inp) return;
     inp.addEventListener('input', (e) => {
+      marcarBloqueComoNoGuardado();
       const v = e.target.value.replace(/\D/g, '').slice(0, 3);
       e.target.value = v;
     });
@@ -855,6 +894,7 @@ function setupBloqueEstablecimientoListeners() {
 
   if (nomInp) {
     nomInp.addEventListener('input', (e) => {
+      marcarBloqueComoNoGuardado();
       // Sólo alfanuméricos + espacio (sin . , _ -)
       const filtered = e.target.value
         .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]/g, '')
@@ -928,17 +968,30 @@ async function onFormSubmit(e) {
   if (!ciudad) { setFieldError('ciudad', 'Selecciona la ciudad.'); hayError = true; }
   else setFieldError('ciudad', '');
 
-  if (!regimen) { showBanner('Selecciona un régimen tributario.', 'warn'); hayError = true; }
+  // Régimen y tipo de contribuyente: marcar aria-invalid en el select mismo
+  // (para que el borde se ponga en rojo). Los selects no tienen un nodo de
+  // error inline propio, así que usamos un id de error compartido o sólo
+  // pintamos el borde.
+  if (!regimen) {
+    $('#regimen').setAttribute('aria-invalid', 'true');
+    hayError = true;
+  } else {
+    $('#regimen').setAttribute('aria-invalid', 'false');
+  }
 
   if (!tipoContribuyente) {
-    showBanner('Selecciona el tipo de contribuyente.', 'warn'); hayError = true;
-  } else if (TIPOS_CON_RESOLUCION.has(tipoContribuyente)) {
-    const v = validarNoResolucion(noResolucion);
-    if (!v.valid) {
-      setFieldError('no-resolucion', v.reason); hayError = true;
-    } else {
-      setFieldError('no-resolucion', '');
-      flow.noResolucion = v.normalizado;
+    $('#tipo-contribuyente').setAttribute('aria-invalid', 'true');
+    hayError = true;
+  } else {
+    $('#tipo-contribuyente').setAttribute('aria-invalid', 'false');
+    if (TIPOS_CON_RESOLUCION.has(tipoContribuyente)) {
+      const v = validarNoResolucion(noResolucion);
+      if (!v.valid) {
+        setFieldError('no-resolucion', v.reason); hayError = true;
+      } else {
+        setFieldError('no-resolucion', '');
+        flow.noResolucion = v.normalizado;
+      }
     }
   }
 
@@ -950,11 +1003,20 @@ async function onFormSubmit(e) {
   setFieldError('celular', celularV.valid ? '' : celularV.reason);
   if (!celularV.valid) hayError = true;
 
-  if (flow.modoFacturacion === 'continuar' && !validarBloqueFacturacion()) {
+  // Modo "Continuar con mi facturación": el bloque debe estar GUARDADO
+  // (no sólo válido). Forzamos al usuario a tocar "Guardar configuración"
+  // antes de poder enviar el registro.
+  if (flow.modoFacturacion === 'continuar' && !flow.bloqueGuardado) {
+    showBanner('Guarda primero tu configuración de facturación.', 'warn', 5000);
+    const bloque = $('#establecimiento-bloque');
+    if (bloque) bloque.classList.add('is-required');
     hayError = true;
   }
 
-  if (hayError) return;
+  if (hayError) {
+    scrollToFirstError();
+    return;
+  }
 
   flow.razonSocial = razonSocial;
   flow.nombreComercial = nombreComercialNA ? '' : nombreComercial;
@@ -1114,10 +1176,14 @@ function onClaveInput() {
   const c = $('#clave').value;
   const v = validarClave(c);
   const bar = $('#fuerza-clave');
+  const labelP = $('#fuerza-clave-label');
+  const labelText = $('#fuerza-clave-label-text');
+  const labels = ['Baja', 'Media', 'Alta'];
+
   bar.dataset.nivel = String(v.fuerza);
-  const labels = ['Débil', 'Regular', 'Buena', 'Fuerte'];
-  bar.setAttribute('aria-label', `Fuerza de clave: ${labels[v.fuerza]}`);
-  bar.querySelector('span').textContent = labels[v.fuerza];
+  bar.setAttribute('aria-label', `Nivel de seguridad: ${labels[v.fuerza]}`);
+  if (labelP) labelP.dataset.nivel = String(v.fuerza);
+  if (labelText) labelText.textContent = labels[v.fuerza];
 
   const confirm = $('#confirmar-clave').value;
   const coincide = confirm && c === confirm;
@@ -1141,6 +1207,10 @@ async function onContinuarClave() {
       showBanner('No pudimos guardar la clave. Intenta de nuevo.', 'error');
       return;
     }
+    // Guardamos la clave en memoria del flow para poder ofrecerla al
+    // navegador (PasswordCredential) en el modal de confirmación final.
+    // No se persiste en sessionStorage — saveDraft la borra al serializar.
+    flow.clave = clave;
     track('password_created');
     machine.send(EVENTS.PASSWORD_OK);
     closeModal($('#modal-clave'));
@@ -1444,6 +1514,17 @@ function onTermsAceptar() {
 let _tooltipAnchor = null;
 
 function onDocumentClick(e) {
+  // 0) Botón Atrás (flecha) — disparable desde el form o desde cualquier
+  //    modal. Simplemente delega en history.back() para que el manejador
+  //    popstate haga la limpieza visual.
+  const backTrigger = e.target.closest('.back-btn');
+  if (backTrigger) {
+    e.preventDefault();
+    e.stopPropagation();
+    try { history.back(); } catch { /* ignore */ }
+    return;
+  }
+
   // 1) Botones Copiar al portapapeles
   const copyTrigger = e.target.closest('.copy-btn');
   if (copyTrigger) {
@@ -1773,7 +1854,127 @@ async function onLogoUploaded(e) {
   }
 }
 
-// ---------- Render según estado ----------
+// =========================================================================
+//   SCROLL A PRIMER ERROR — usado al enviar el formulario si hay campos
+//   inválidos. Encuentra el primer elemento con aria-invalid="true" o el
+//   primer mensaje de error visible, y hace scroll suave hasta él.
+// =========================================================================
+function scrollToFirstError() {
+  // Prioridad: campos marcados como aria-invalid="true" (input/select/textarea)
+  const fields = Array.from(document.querySelectorAll(
+    '.registration-form [aria-invalid="true"]'
+  )).filter((el) => el.offsetParent !== null);
+
+  // Bloque "Continuar facturación" sin guardar — también cuenta como error
+  const bloqueRequired = document.querySelector('.establecimiento-bloque.is-required');
+  if (bloqueRequired && bloqueRequired.offsetParent !== null) {
+    fields.push(bloqueRequired);
+  }
+
+  if (!fields.length) return;
+
+  // Ordenar por posición vertical en el documento y tomar el más alto.
+  fields.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+  const target = fields[0];
+  const targetWrap = target.closest('.field') || target;
+  const top = targetWrap.getBoundingClientRect().top + window.pageYOffset - 100;
+  window.scrollTo({ top, behavior: 'smooth' });
+  // Focus en el input si es focuseable — ayuda a screen readers y deja
+  // listo al usuario para corregir.
+  if (target.matches('input, select, textarea')) {
+    try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
+  }
+}
+
+// =========================================================================
+//   CONFIRMACIÓN FINAL — modal antes de saltar a tbc.tributasoft.com.ec.
+//   Pregunta si el usuario quiere guardar credenciales y luego redirige.
+// =========================================================================
+
+function openFinalConfirm() {
+  // Mostrar el usuario que tendrá: primeros 10 dígitos del RUC.
+  const usuario = (flow.ruc || '').substring(0, 10);
+  $('#confirm-user').textContent = usuario || '—';
+  // Por defecto dejamos el checkbox marcado — lo más cómodo para el usuario.
+  $('#save-credentials').checked = true;
+  openModal($('#modal-confirm-final'));
+}
+
+async function onConfirmAceptar() {
+  const usuario = (flow.ruc || '').substring(0, 10);
+  const guardarCreds = $('#save-credentials').checked;
+
+  // 1) Si pidió guardar credenciales, intentamos almacenar la PasswordCredential.
+  //    NOTA: el navegador guarda esto vinculado al ORIGEN actual (donde corre
+  //    el frontend). El autocompletado en tbc.tributasoft.com.ec sólo será
+  //    automático cuando frontend y portal compartan el mismo dominio raíz
+  //    (ej. *.tributasoft.com.ec). En todo caso el guardado queda hecho.
+  if (guardarCreds && flow.clave && 'PasswordCredential' in window) {
+    try {
+      const cred = new window.PasswordCredential({
+        id: usuario,
+        password: flow.clave,
+        name: flow.razonSocial || 'TributaSoft',
+      });
+      await navigator.credentials.store(cred);
+      track('credentials_saved');
+    } catch (err) {
+      console.warn('No se pudieron guardar credenciales:', err);
+    }
+  }
+
+  // 2) Cerrar modal de confirmación
+  closeModal($('#modal-confirm-final'));
+
+  // 3) Finalizar el registro contra el backend (mock por ahora) y redirigir.
+  try {
+    const resp = await finalizarRegistro({ registroId: flow.registroId });
+    clearDraft();
+    track('registration_complete', {
+      redirectUrl: resp.redirectUrl,
+      firmaPendienteDespues: flow.firmaPendienteDespues,
+      bannerSource: flow.bannerSource,
+    });
+    machine.send(EVENTS.FINALIZED);
+    // Pasamos el usuario como hint en la URL para que el portal pueda
+    // pre-rellenar el campo (?u=0930452024). El portal puede ignorarlo.
+    const portal = resp.redirectUrl || PORTAL_URL;
+    const sep = portal.includes('?') ? '&' : '?';
+    window.location.href = `${portal}${sep}u=${encodeURIComponent(usuario)}`;
+  } catch (err) {
+    showBanner('Error finalizando el registro. Intenta de nuevo.', 'error');
+  }
+}
+
+// =========================================================================
+//   HISTORIAL (back button) — push state al avanzar; popstate cierra el
+//   modal/paso más reciente. El usuario puede usar la flecha del navegador
+//   o cualquier botón con clase .back-btn dentro del DOM.
+// =========================================================================
+
+function pushHistoryStep(name) {
+  try {
+    history.pushState({ tsoftStep: name, t: Date.now() }, '');
+  } catch { /* algunos navegadores antiguos no soportan pushState */ }
+}
+
+function onPopState() {
+  // Cierra el modal abierto (si hay) o esconde el formulario y vuelve al RUC.
+  const openDialog = document.querySelector('dialog[open]');
+  if (openDialog) {
+    closeModal(openDialog);
+    return;
+  }
+  const form = $('#registration-form');
+  if (form && !form.hidden) {
+    form.hidden = true;
+    const card = $('#ruc-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => $('#ruc')?.focus(), 200);
+  }
+}
+
+// Render según estado ----------
 function render({ state, context }) {
   document.body.dataset.state = state;
 
