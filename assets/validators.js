@@ -99,21 +99,65 @@ function verificarJuridica(ruc) {
   return verificador === parseInt(ruc.charAt(9), 10);
 }
 
-/**
- * Normaliza y valida celular Ecuador.
- * Acepta: 09XXXXXXXX, +5939XXXXXXXX, 5939XXXXXXXX, 09 XXXX-XXXX, etc.
- * Devuelve el número normalizado a 10 dígitos: 09XXXXXXXX.
- */
-export function validarCelular(input) {
-  if (typeof input !== 'string') return { valid: false, reason: 'Celular inválido.' };
-  let limpio = input.replace(/[\s\-()]/g, '');
-  if (limpio.startsWith('+593')) limpio = '0' + limpio.substring(4);
-  else if (limpio.startsWith('593')) limpio = '0' + limpio.substring(3);
+import { findCountry } from './countries.js';
 
-  if (!/^09\d{8}$/.test(limpio)) {
-    return { valid: false, reason: 'Debe ser un celular ecuatoriano de 10 dígitos que empiece con 09.' };
+/**
+ * Normaliza y valida celular según el país seleccionado.
+ *
+ * @param {string} input - Lo que tipeó el usuario (sólo el número nacional, sin prefijo).
+ * @param {string} paisCode - ISO alpha-2 (por defecto 'EC').
+ * @returns {{
+ *   valid: boolean,
+ *   esEcuador?: boolean,
+ *   pais?: string,
+ *   normalizado?: string,  // Para EC: 09XXXXXXXX (legacy). Para otros: E.164 (+...)
+ *   e164?: string,         // Siempre formato internacional con +
+ *   reason?: string,
+ * }}
+ *
+ * Reglas:
+ *  - Para EC: el número nacional debe tener 9 dígitos empezando con 9. Se devuelve "09XXXXXXXX".
+ *  - Para otros países: longitud según minLen/maxLen del país. Se devuelve E.164.
+ *  - SMS sólo está disponible para EC (lo gestiona la UI).
+ */
+export function validarCelular(input, paisCode = 'EC') {
+  if (typeof input !== 'string') return { valid: false, reason: 'Celular inválido.' };
+  const pais = findCountry(paisCode);
+  let nacional = input.replace(/[\s\-()]/g, '');
+
+  // Si el usuario pegó el número con +<dial> o con dial pegado, lo limpiamos.
+  if (nacional.startsWith('+' + pais.dial)) nacional = nacional.substring(1 + pais.dial.length);
+  else if (nacional.startsWith('00' + pais.dial)) nacional = nacional.substring(2 + pais.dial.length);
+  else if (nacional.startsWith('+')) {
+    return { valid: false, reason: 'El número no coincide con el código del país seleccionado.' };
   }
-  return { valid: true, normalizado: limpio };
+
+  // Para EC, si tipearon "09XXXXXXXX" (con el 0 inicial), quitamos el 0.
+  if (pais.code === 'EC' && nacional.startsWith('0') && nacional.length === 10) {
+    nacional = nacional.substring(1);
+  }
+
+  if (!/^\d+$/.test(nacional)) {
+    return { valid: false, reason: 'El celular sólo debe tener dígitos.' };
+  }
+  if (nacional.length < pais.minLen || nacional.length > pais.maxLen) {
+    const rango = pais.minLen === pais.maxLen ? `${pais.minLen} dígitos` : `${pais.minLen} a ${pais.maxLen} dígitos`;
+    return { valid: false, reason: `Para ${pais.name}, el número debe tener ${rango}.` };
+  }
+  if (pais.leadingDigit && !nacional.startsWith(pais.leadingDigit)) {
+    return { valid: false, reason: `El celular de ${pais.name} debe empezar con ${pais.leadingDigit}.` };
+  }
+
+  const e164 = '+' + pais.dial + nacional;
+  const normalizado = pais.code === 'EC' ? '0' + nacional : e164;
+
+  return {
+    valid: true,
+    esEcuador: pais.code === 'EC',
+    pais: pais.code,
+    normalizado,
+    e164,
+  };
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 } from './validators.js';
 import { createMachine, STATES, EVENTS } from './state-machine.js';
 import { consultarRUC } from './sri-client.js';
+import { COUNTRIES, findCountry, regionalIndicator } from './countries.js';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
   establecerClave, validarFirma, finalizarRegistro,
@@ -15,7 +16,6 @@ import {
 // ---------- Analytics ----------
 function track(name, detail = {}) {
   window.dispatchEvent(new CustomEvent('tributasoft:event', { detail: { name, ...detail } }));
-  // Eco a consola para que durante el prototipo se vea qué se está disparando.
   console.log('[analytics]', name, detail);
 }
 
@@ -61,7 +61,7 @@ function showBanner(msg, tipo = 'info', auto = 5000) {
   if (auto) setTimeout(() => { banner.hidden = true; }, auto);
 }
 
-// ---------- Modales con focus trap simple ----------
+// ---------- Modales ----------
 function openModal(modal) {
   if (!modal) return;
   modal.showModal?.();
@@ -86,19 +86,35 @@ const flow = {
   canal: 'email',
   email: '',
   celular: '',
+  celularPais: 'EC',          // ISO alpha-2 del país del celular
+  celularEsEcuador: true,
   razonSocial: '',
+  nombreComercial: '',
+  nombreComercialNA: false,
+  direccion: '',
+  provincia: '',
+  ciudad: '',
+  regimen: '',
+  modoFacturacion: 'nuevo',
+  establecimientos: [],
   tokenSentTo: '',
 };
+
+// Tipos de documento para configurar secuencia
+const TIPOS_DOCUMENTO = [
+  { id: 'factura', label: 'Facturas' },
+  { id: 'nc', label: 'Notas de crédito' },
+  { id: 'nd', label: 'Notas de débito' },
+  { id: 'retencion', label: 'Comprobantes de retención' },
+  { id: 'guia', label: 'Guías de remisión' },
+];
 
 // ---------- Wire up ----------
 document.addEventListener('DOMContentLoaded', () => {
   track('landing_view', { url: location.href });
 
-  // Restaura draft si existe
   const draft = loadDraft();
-  if (draft?.ruc) {
-    $('#ruc').value = draft.ruc;
-  }
+  if (draft?.ruc) { $('#ruc').value = draft.ruc; }
 
   // RUC input
   const rucInput = $('#ruc');
@@ -110,18 +126,36 @@ document.addEventListener('DOMContentLoaded', () => {
     flow.ruc = v;
     saveDraft(flow);
   });
-
   rucInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && flow.ruc.length === 13) {
       e.preventDefault();
       ctaPrimary.click();
     }
   });
-
   ctaPrimary.addEventListener('click', onContinuar);
 
   // Form principal
   $('#registration-form').addEventListener('submit', onFormSubmit);
+
+  // Nombre comercial "No aplica"
+  $('#nombre-comercial-na').addEventListener('change', onNombreComercialNAToggle);
+
+  // Poblar select de país y configurar listener
+  poblarSelectPaises();
+  $('#celular-pais').addEventListener('change', onPaisChange);
+
+  // Celular: re-evaluar canales disponibles al escribir
+  $('#celular').addEventListener('input', onCelularInput);
+
+  // Modo de facturación
+  $$('input[name="modo-facturacion"]').forEach((r) =>
+    r.addEventListener('change', onModoFacturacionChange)
+  );
+
+  // Agregar establecimiento
+  $('#btn-add-establecimiento').addEventListener('click', () => {
+    addEstablecimiento();
+  });
 
   // Modal token
   setupTokenInputs();
@@ -150,12 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      $$('dialog.is-open').forEach(closeModal);
-    }
+    if (e.key === 'Escape') $$('dialog.is-open').forEach(closeModal);
   });
 
-  // Suscripción a cambios de estado para renderizar la UI según el estado.
   machine.subscribe(render);
 });
 
@@ -182,17 +213,20 @@ async function onContinuar() {
     if (dbResp.existe) {
       track('ruc_existing_redirect', { url: dbResp.url_redirect });
       machine.send(EVENTS.DB_EXISTS, { redirectUrl: dbResp.url_redirect });
-      // Da un breve respiro al usuario para ver el mensaje antes de redirigir.
       setTimeout(() => { window.location.href = dbResp.url_redirect; }, 1500);
       return;
     }
     machine.send(EVENTS.DB_NEW);
 
-    // Consulta SRI sin bloquear el render
     const sri = await consultarRUC(ruc);
     if (sri && sri.found) {
       flow.rucInfo = sri;
       flow.razonSocial = sri.razonSocial || '';
+      flow.nombreComercial = sri.nombreComercial || '';
+      flow.direccion = sri.direccion || '';
+      flow.provincia = sri.provincia || '';
+      flow.ciudad = sri.ciudad || '';
+      flow.regimen = sri.regimen || '';
       track('sri_query_success');
       machine.send(EVENTS.SRI_OK, { rucInfo: sri });
     } else {
@@ -214,44 +248,538 @@ function prefilledFormUI() {
   show(form);
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  if (flow.rucInfo) {
-    $('#razon-social').value = flow.rucInfo.razonSocial || '';
-    $('#regimen').value = flow.rucInfo.regimen || '';
-    $('#sri-banner').hidden = true;
-  } else {
-    $('#razon-social').value = '';
-    $('#sri-banner').hidden = false;
+  // Razón social
+  $('#razon-social').value = flow.razonSocial || '';
+
+  // Nombre comercial
+  $('#nombre-comercial').value = flow.nombreComercial || '';
+
+  // Dirección / Provincia / Ciudad
+  $('#direccion').value = flow.direccion || '';
+  if (flow.provincia) {
+    const sel = $('#provincia');
+    // Buscar match case-insensitive
+    const opt = Array.from(sel.options).find(
+      (o) => o.value.toUpperCase() === (flow.provincia || '').toUpperCase()
+    );
+    if (opt) sel.value = opt.value;
+  }
+  $('#ciudad').value = flow.ciudad || '';
+
+  // Régimen — match a una de las 3 opciones del combobox
+  if (flow.regimen) {
+    const sel = $('#regimen');
+    const upper = flow.regimen.toUpperCase();
+    let match = '';
+    if (upper.includes('NEGOCIO POPULAR')) match = 'RIMPE - NEGOCIO POPULAR';
+    else if (upper.includes('EMPRENDEDOR')) match = 'RIMPE - EMPRENDEDOR';
+    else if (upper.includes('GENERAL')) match = 'GENERAL';
+    if (match) sel.value = match;
   }
 
-  $('#razon-social-static').textContent = flow.rucInfo?.razonSocial || '—';
+  // Banner SRI: si falló → mostrar y resaltar campos editables
+  $('#sri-banner').hidden = !!flow.rucInfo;
+
+  // Header
+  $('#razon-social-static').textContent = flow.razonSocial || flow.ruc;
   $('#ruc-display').textContent = flow.ruc;
 
-  // Mueve foco al primer campo nuevo (accesibilidad)
+  // Inicializa establecimientos según modo (por defecto "nuevo")
+  flow.modoFacturacion = $('input[name="modo-facturacion"]:checked')?.value || 'nuevo';
+  flow.establecimientos = [crearEstablecimientoVacio(true)];
+  renderEstablecimientos();
+
+  // Inicializa canales según celular actual (vacío al inicio)
+  actualizarCanalesDisponibles();
+
+  // Foco al primer campo
   setTimeout(() => $('#email').focus(), 250);
 }
 
+// ---------- Nombre Comercial — "No aplica" ----------
+function onNombreComercialNAToggle(e) {
+  const na = e.target.checked;
+  flow.nombreComercialNA = na;
+  const input = $('#nombre-comercial');
+  if (na) {
+    input.value = '';
+    input.disabled = true;
+    input.setAttribute('aria-invalid', 'false');
+    setFieldError('nombre-comercial', '');
+  } else {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// ---------- Celular + país + canales ----------
+function poblarSelectPaises() {
+  const sel = $('#celular-pais');
+  if (!sel) return;
+  sel.innerHTML = '';
+  COUNTRIES.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = `${regionalIndicator(c.code)} ${c.name} (+${c.dial})`;
+    sel.appendChild(opt);
+  });
+  sel.value = 'EC';
+  flow.celularPais = 'EC';
+}
+
+function onPaisChange(e) {
+  flow.celularPais = e.target.value;
+  const pais = findCountry(flow.celularPais);
+  // Actualizar placeholder e input
+  const input = $('#celular');
+  input.placeholder = pais.placeholder || 'XXXXXXXX';
+  input.value = ''; // reset al cambiar de país para evitar mezcla
+  actualizarCanalesDisponibles();
+  input.focus();
+}
+
+function onCelularInput() {
+  actualizarCanalesDisponibles();
+}
+
+function actualizarCanalesDisponibles() {
+  const pais = findCountry(flow.celularPais);
+  const esEcuador = pais.code === 'EC';
+  flow.celularEsEcuador = esEcuador;
+
+  const warn = $('#celular-warn');
+  const hint = $('#celular-hint');
+
+  // Actualizar hint con el formato esperado del país
+  if (hint) {
+    hint.textContent = `Formato para ${pais.name}: ${pais.placeholder || 'sólo dígitos'}.`;
+  }
+
+  // Habilitar/deshabilitar SMS sólo si el país es Ecuador
+  const smsLabel = $('#canal-options label[data-canal="sms"]');
+  const smsRadio = smsLabel.querySelector('input[type="radio"]');
+  if (!esEcuador) {
+    smsLabel.classList.add('canal-disabled');
+    smsRadio.disabled = true;
+    if (smsRadio.checked) {
+      const waRadio = $('#canal-options input[value="whatsapp"]');
+      waRadio.checked = true;
+      flow.canal = 'whatsapp';
+    }
+    warn.textContent = `Para ${pais.name} sólo disponible WhatsApp o Email (SMS bloqueado fuera de Ecuador).`;
+  } else {
+    smsLabel.classList.remove('canal-disabled');
+    smsRadio.disabled = false;
+    warn.textContent = '';
+  }
+}
+
+// ---------- Modo de facturación + Establecimientos ----------
+const MAX_ESTABLECIMIENTOS = 3;
+const MAX_PUNTOS_POR_EST = 2;
+const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]{0,50}$/;
+
+function onModoFacturacionChange(e) {
+  flow.modoFacturacion = e.target.value;
+  // En todos los modos arranca con 001/Matriz por defecto.
+  // El lápiz le permite al usuario editarlo después.
+  flow.establecimientos = [crearEstablecimientoVacio(true)];
+  renderEstablecimientos();
+}
+
+function crearPuntoEmision(codigo = '', nombre = '') {
+  const secuencias = {};
+  TIPOS_DOCUMENTO.forEach((t) => { secuencias[t.id] = '1'; });
+  return {
+    id: 'pe-' + Math.random().toString(36).slice(2, 9),
+    codigo,
+    nombre,
+    secuencias,
+  };
+}
+
+function crearEstablecimientoVacio(esDefault = false) {
+  return {
+    id: 'est-' + Math.random().toString(36).slice(2, 9),
+    establecimiento: esDefault ? '001' : '',
+    editando: false,
+    puntos: [crearPuntoEmision(esDefault ? '001' : '', esDefault ? 'Matriz' : '')],
+  };
+}
+
+function addEstablecimiento() {
+  if (flow.establecimientos.length >= MAX_ESTABLECIMIENTOS) return;
+  const usados = flow.establecimientos
+    .map((e) => parseInt(e.establecimiento, 10))
+    .filter((n) => !isNaN(n));
+  const siguiente = (Math.max(0, ...usados) + 1).toString().padStart(3, '0');
+
+  const nuevo = {
+    id: 'est-' + Math.random().toString(36).slice(2, 9),
+    establecimiento: siguiente,
+    editando: false, // arranca bloqueado; el usuario hace clic en el lápiz para editar
+    puntos: [crearPuntoEmision('001', 'Matriz')],
+  };
+  flow.establecimientos.push(nuevo);
+  renderEstablecimientos();
+}
+
+function removeEstablecimiento(id) {
+  if (flow.establecimientos.length <= 1) return;
+  flow.establecimientos = flow.establecimientos.filter((e) => e.id !== id);
+  renderEstablecimientos();
+}
+
+function toggleEditEstablecimiento(id) {
+  const est = flow.establecimientos.find((e) => e.id === id);
+  if (!est) return;
+  // Si estábamos editando y vamos a cerrar, validamos el código antes de guardar.
+  if (est.editando) {
+    const raw = (est.establecimiento || '').replace(/\D/g, '');
+    if (!raw) est.establecimiento = '001';
+    else {
+      const padded = raw.padStart(3, '0'); // pad SÓLO a la izquierda
+      if (padded === '000') {
+        showBanner('El código del establecimiento debe estar entre 001 y 999.', 'warn');
+        est.establecimiento = '001';
+      } else {
+        est.establecimiento = padded;
+      }
+    }
+  }
+  est.editando = !est.editando;
+  renderEstablecimientos();
+}
+
+function addPunto(estId) {
+  const est = flow.establecimientos.find((e) => e.id === estId);
+  if (!est || est.puntos.length >= MAX_PUNTOS_POR_EST) return;
+  const usados = est.puntos.map((p) => parseInt(p.codigo, 10)).filter((n) => !isNaN(n));
+  const siguiente = (Math.max(0, ...usados) + 1).toString().padStart(3, '0');
+  est.puntos.push(crearPuntoEmision(siguiente, ''));
+  renderEstablecimientos();
+}
+
+function removePunto(estId, puntoId) {
+  const est = flow.establecimientos.find((e) => e.id === estId);
+  if (!est || est.puntos.length <= 1) return;
+  est.puntos = est.puntos.filter((p) => p.id !== puntoId);
+  renderEstablecimientos();
+}
+
+function renderEstablecimientos() {
+  const list = $('#establecimientos-list');
+  const counter = $('#establecimientos-counter');
+  const addBtn = $('#btn-add-establecimiento');
+  if (!list) return;
+
+  const modo = flow.modoFacturacion;
+  const muestraSecuencia = modo === 'continuar' || modo === 'reiniciar';
+
+  counter.textContent = `${flow.establecimientos.length} de ${MAX_ESTABLECIMIENTOS}`;
+  addBtn.disabled = flow.establecimientos.length >= MAX_ESTABLECIMIENTOS;
+
+  list.innerHTML = '';
+  flow.establecimientos.forEach((est, idx) => {
+    const div = document.createElement('div');
+    div.className = 'establecimiento-item';
+    div.dataset.id = est.id;
+
+    // Por defecto el código del establecimiento queda bloqueado tras crearse.
+    // Sólo se edita cuando el usuario hace clic en el lápiz (toggle est.editando).
+    const puedeEditarCodigo = !!est.editando;
+
+    const puntosHtml = est.puntos.map((punto, pIdx) => `
+      <div class="punto-item" data-punto-id="${punto.id}">
+        <div class="punto-header">
+          <span class="punto-label">Punto de emisión #${pIdx + 1}</span>
+          ${est.puntos.length > 1 ? `
+            <button type="button" class="btn-icon" data-action="remove-punto" aria-label="Quitar punto de emisión">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <line x1="6" y1="6" x2="18" y2="18"/>
+                <line x1="6" y1="18" x2="18" y2="6"/>
+              </svg>
+            </button>
+          ` : ''}
+        </div>
+        <div class="punto-fields">
+          <div class="field">
+            <label>Código</label>
+            <input type="text" maxlength="3" class="punto-codigo" data-punto-campo="codigo" value="${punto.codigo}" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>Nombre corto (máx 50)</label>
+            <input type="text" maxlength="50" data-punto-campo="nombre" value="${escapeAttr(punto.nombre)}" placeholder="Ej: Matriz, Sucursal Norte">
+          </div>
+        </div>
+        ${muestraSecuencia ? `
+          <div class="secuencias">
+            <p class="secuencias-titulo">Próxima secuencia por tipo de documento</p>
+            <div class="secuencias-grid">
+              ${TIPOS_DOCUMENTO.map((t) => `
+                <div class="secuencia-row">
+                  <span class="secuencia-label">${t.label}</span>
+                  <input type="text" data-punto-secuencia="${t.id}" value="${punto.secuencias[t.id] || '1'}" inputmode="numeric" maxlength="9">
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+
+    div.innerHTML = `
+      <div class="establecimiento-header">
+        <span class="establecimiento-label">Establecimiento #${idx + 1}</span>
+        <div class="establecimiento-actions">
+          <button type="button" class="btn-icon" data-action="edit" aria-label="${est.editando ? 'Guardar' : 'Editar establecimiento'}" title="${est.editando ? 'Guardar' : 'Editar código'}">
+            ${est.editando ? `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            ` : `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            `}
+          </button>
+          ${flow.establecimientos.length > 1 ? `
+            <button type="button" class="btn-icon" data-action="remove" aria-label="Quitar establecimiento">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <line x1="6" y1="6" x2="18" y2="18"/>
+                <line x1="6" y1="18" x2="18" y2="6"/>
+              </svg>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+      <div class="establecimiento-codigos">
+        <div class="field">
+          <label>Código de establecimiento</label>
+          <input type="text" maxlength="3" class="establecimiento-codigo-input" data-campo="establecimiento" value="${est.establecimiento}" ${puedeEditarCodigo ? '' : 'disabled'} inputmode="numeric">
+        </div>
+      </div>
+      <div class="puntos-emision">
+        <p class="puntos-emision-titulo">
+          <span>Puntos de emisión</span>
+          <span class="hint" style="margin:0;text-transform:none;letter-spacing:0">${est.puntos.length} de ${MAX_PUNTOS_POR_EST}</span>
+        </p>
+        ${puntosHtml}
+        <button type="button" class="btn-add-punto" data-action="add-punto" ${est.puntos.length >= MAX_PUNTOS_POR_EST ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Agregar punto de emisión
+        </button>
+      </div>
+    `;
+
+    list.appendChild(div);
+
+    // Listeners: establecimiento código
+    // - Sólo dígitos, máx 3.
+    // - Al perder foco, completa con ceros a la izquierda (NUNCA a la derecha).
+    // - Rechaza "000": revierte al último valor válido o, en su defecto, a "001".
+    div.querySelectorAll('input[data-campo]').forEach((inp) => {
+      inp.addEventListener('input', (e) => {
+        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+        e.target.value = v;
+        est[e.target.dataset.campo] = v;
+      });
+      inp.addEventListener('blur', (e) => {
+        const raw = e.target.value.replace(/\D/g, '');
+        if (!raw) {
+          // Vacío: revertir al valor previo o a 001
+          const fallback = (est[e.target.dataset.campo] && /^\d{3}$/.test(est[e.target.dataset.campo]) && est[e.target.dataset.campo] !== '000')
+            ? est[e.target.dataset.campo]
+            : '001';
+          e.target.value = fallback;
+          est[e.target.dataset.campo] = fallback;
+          return;
+        }
+        // Pad SÓLO a la izquierda (padStart, nunca padEnd)
+        const padded = raw.padStart(3, '0');
+        if (padded === '000') {
+          showBanner('El código del establecimiento debe estar entre 001 y 999.', 'warn');
+          e.target.value = '001';
+          est[e.target.dataset.campo] = '001';
+          return;
+        }
+        e.target.value = padded;
+        est[e.target.dataset.campo] = padded;
+      });
+    });
+
+    // Listeners: puntos
+    div.querySelectorAll('.punto-item').forEach((puntoDiv) => {
+      const puntoId = puntoDiv.dataset.puntoId;
+      const punto = est.puntos.find((p) => p.id === puntoId);
+      if (!punto) return;
+
+      // Código del punto (3 dígitos, 001-999, pad sólo a la izquierda)
+      const codigoInp = puntoDiv.querySelector('input[data-punto-campo="codigo"]');
+      codigoInp.addEventListener('input', (e) => {
+        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+        e.target.value = v;
+        punto.codigo = v;
+      });
+      codigoInp.addEventListener('blur', (e) => {
+        const raw = e.target.value.replace(/\D/g, '');
+        if (!raw) {
+          const fallback = (punto.codigo && /^\d{3}$/.test(punto.codigo) && punto.codigo !== '000') ? punto.codigo : '001';
+          e.target.value = fallback;
+          punto.codigo = fallback;
+          return;
+        }
+        const padded = raw.padStart(3, '0'); // pad SÓLO a la izquierda
+        if (padded === '000') {
+          showBanner('El código del punto de emisión debe estar entre 001 y 999.', 'warn');
+          e.target.value = '001';
+          punto.codigo = '001';
+          return;
+        }
+        e.target.value = padded;
+        punto.codigo = padded;
+      });
+
+      // Nombre corto (sin caracteres especiales, máx 50)
+      const nombreInp = puntoDiv.querySelector('input[data-punto-campo="nombre"]');
+      nombreInp.addEventListener('input', (e) => {
+        const filtered = e.target.value
+          .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]/g, '')
+          .slice(0, 50);
+        if (filtered !== e.target.value) e.target.value = filtered;
+        punto.nombre = filtered;
+        nombreInp.setAttribute('aria-invalid', NOMBRE_PUNTO_REGEX.test(punto.nombre) ? 'false' : 'true');
+      });
+
+      // Secuencias por tipo de documento (sólo si modo lo muestra)
+      puntoDiv.querySelectorAll('input[data-punto-secuencia]').forEach((inp) => {
+        inp.addEventListener('input', (e) => {
+          const v = e.target.value.replace(/\D/g, '');
+          e.target.value = v;
+          punto.secuencias[e.target.dataset.puntoSecuencia] = v || '1';
+        });
+      });
+
+      const removePuntoBtn = puntoDiv.querySelector('[data-action="remove-punto"]');
+      if (removePuntoBtn) removePuntoBtn.addEventListener('click', () => removePunto(est.id, punto.id));
+    });
+
+    const editBtn = div.querySelector('[data-action="edit"]');
+    if (editBtn) editBtn.addEventListener('click', () => toggleEditEstablecimiento(est.id));
+    const removeBtn = div.querySelector('[data-action="remove"]');
+    if (removeBtn) removeBtn.addEventListener('click', () => removeEstablecimiento(est.id));
+    const addPuntoBtn = div.querySelector('[data-action="add-punto"]');
+    if (addPuntoBtn) addPuntoBtn.addEventListener('click', () => addPunto(est.id));
+  });
+}
+
+function escapeAttr(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------- Submit del form ----------
 async function onFormSubmit(e) {
   e.preventDefault();
+
+  const razonSocial = $('#razon-social').value.trim();
+  const nombreComercial = $('#nombre-comercial').value.trim();
+  const nombreComercialNA = $('#nombre-comercial-na').checked;
+  const direccion = $('#direccion').value.trim();
+  const provincia = $('#provincia').value;
+  const ciudad = $('#ciudad').value.trim();
+  const regimen = $('#regimen').value;
   const email = $('#email').value;
   const celular = $('#celular').value;
   const canal = $('input[name="canal-token"]:checked')?.value || 'email';
-  const razonSocial = $('#razon-social').value.trim();
 
   // Validaciones
+  let hayError = false;
+
+  if (!razonSocial) {
+    setFieldError('razon-social', 'Ingresa la razón social.');
+    hayError = true;
+  } else setFieldError('razon-social', '');
+
+  if (!nombreComercial && !nombreComercialNA) {
+    setFieldError('nombre-comercial', 'Ingresa el nombre comercial o marca "No aplica".');
+    hayError = true;
+  } else setFieldError('nombre-comercial', '');
+
+  if (!direccion) {
+    setFieldError('direccion', 'Ingresa la dirección.');
+    hayError = true;
+  } else setFieldError('direccion', '');
+
+  if (!provincia) {
+    setFieldError('provincia', 'Selecciona una provincia.');
+    hayError = true;
+  } else setFieldError('provincia', '');
+
+  if (!ciudad) {
+    setFieldError('ciudad', 'Ingresa la ciudad.');
+    hayError = true;
+  } else setFieldError('ciudad', '');
+
+  if (!regimen) {
+    showBanner('Selecciona un régimen tributario.', 'warn');
+    hayError = true;
+  }
+
   const emailV = validarEmail(email);
-  const celularV = validarCelular(celular);
-
   setFieldError('email', emailV.valid ? '' : emailV.reason);
-  setFieldError('celular', celularV.valid ? '' : celularV.reason);
-  if (!emailV.valid || !celularV.valid) return;
-  if (!razonSocial) { setFieldError('razon-social', 'Ingresa la razón social.'); return; }
+  if (!emailV.valid) hayError = true;
 
+  const celularV = validarCelular(celular, flow.celularPais);
+  setFieldError('celular', celularV.valid ? '' : celularV.reason);
+  if (!celularV.valid) hayError = true;
+
+  // Validar establecimientos: código de 3 dígitos + al menos 1 punto válido con nombre
+  let estsError = null;
+  for (const est of flow.establecimientos) {
+    if (!/^\d{3}$/.test(est.establecimiento)) {
+      estsError = 'Cada establecimiento debe tener un código de 3 dígitos.'; break;
+    }
+    if (!est.puntos.length) {
+      estsError = 'Cada establecimiento debe tener al menos un punto de emisión.'; break;
+    }
+    for (const p of est.puntos) {
+      if (!/^\d{3}$/.test(p.codigo)) {
+        estsError = 'Cada punto de emisión debe tener un código de 3 dígitos.'; break;
+      }
+      if (!p.nombre || !p.nombre.trim()) {
+        estsError = 'Cada punto de emisión debe tener un nombre corto.'; break;
+      }
+      if (!NOMBRE_PUNTO_REGEX.test(p.nombre)) {
+        estsError = 'El nombre del punto de emisión sólo admite letras, números y . , _ - (máx 50).'; break;
+      }
+    }
+    if (estsError) break;
+  }
+  if (estsError) {
+    showBanner(estsError, 'warn');
+    hayError = true;
+  }
+
+  if (hayError) return;
+
+  // Persistir en flow
+  flow.razonSocial = razonSocial;
+  flow.nombreComercial = nombreComercialNA ? '' : nombreComercial;
+  flow.nombreComercialNA = nombreComercialNA;
+  flow.direccion = direccion;
+  flow.provincia = provincia;
+  flow.ciudad = ciudad;
+  flow.regimen = regimen;
   flow.email = emailV.normalizado;
   flow.celular = celularV.normalizado;
+  flow.celularEsEcuador = celularV.esEcuador;
   flow.canal = canal;
-  flow.razonSocial = razonSocial;
   saveDraft(flow);
-  track('form_submitted', { canal });
+  track('form_submitted', { canal, modoFacturacion: flow.modoFacturacion, esEcuador: celularV.esEcuador });
 
   const submitBtn = $('#submit-registro');
   setBusy(submitBtn, true);
@@ -260,9 +788,17 @@ async function onFormSubmit(e) {
     const resp = await iniciarRegistro({
       ruc: flow.ruc,
       razonSocial,
+      nombreComercial: flow.nombreComercial,
+      direccion,
+      provincia,
+      ciudad,
+      regimen,
       email: flow.email,
       celular: flow.celular,
+      celularPais: flow.celularPais,
       canal,
+      modoFacturacion: flow.modoFacturacion,
+      establecimientos: flow.establecimientos,
       datosSRI: flow.rucInfo,
     });
     flow.registroId = resp.registroId;
@@ -392,14 +928,12 @@ function onClaveInput() {
   bar.setAttribute('aria-label', `Fuerza de clave: ${labels[v.fuerza]}`);
   bar.querySelector('span').textContent = labels[v.fuerza];
 
-  // Lista de requisitos
   $$('#requisitos-clave li').forEach((li) => {
     const key = li.dataset.req;
     if (v.requisitos[key]) li.classList.add('cumplido');
     else li.classList.remove('cumplido');
   });
 
-  // Confirmación
   const confirm = $('#confirmar-clave').value;
   const coincide = confirm && c === confirm;
   $('#confirmar-error').textContent = (confirm && !coincide) ? 'Las claves no coinciden.' : '';
@@ -481,7 +1015,6 @@ async function finalizarFlow() {
     machine.send(EVENTS.FINALIZED);
     show($('#success'));
     $('#success').scrollIntoView({ behavior: 'smooth' });
-
     setTimeout(() => {
       window.location.href = resp.redirectUrl || 'https://app.tributasoft.ec/login';
     }, 3000);
