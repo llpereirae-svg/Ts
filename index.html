@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#00236f">
   <meta name="description" content="TributaSoft — 300 comprobantes electrónicos GRATIS. Pioneros en facturación electrónica del Ecuador.">
+
+  <!-- Cache control para que el navegador no aguante el HTML viejo entre deploys -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <title>TributaSoft — 300 comprobantes electrónicos GRATIS</title>
 
   <!-- Fuentes Google: Lobster (logo), DM Sans (headlines), Inter (body) -->
@@ -29,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514c">
 </head>
 <body data-state="IDLE">
 
@@ -450,6 +456,12 @@
     </div>
   </noscript>
 
-  <script type="module" defer src="./assets/app.js"></script>
+  <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
+  <script type="module">
+    const APP_VER = '20260514c';
+    import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
+      console.error('Error cargando app.js', err);
+    });
+  </script>
 </body>
 </html>

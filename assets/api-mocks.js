@@ -98,77 +98,8 @@ export async function establecerClave({ registroId, clave }) {
   return { ok: true };
 }
 
-/**
- * POST /api/registro/firma (multipart)
- * TODO BACKEND: replace with real endpoint
- * El backend real usa el módulo existente del ERP para validar el .p12/.pfx
- * con BouncyCastle/SunJSSE: descifra con la clave, extrae el certificado,
- * lee el subject/Common Name (que en Ecuador contiene el RUC del firmante)
- * y compara con el RUC ingresado en el flujo.
- *
- * Mock:
- *   - clave === 'firma123': válida.
- *   - Si en el nombre del archivo aparece el RUC ingresado → coincide.
- *     Caso contrario → rucCoincide=false (error específico).
- *   - Devuelve fechaCaducidad y subject (nombre del firmante) simulados.
- */
-export async function validarFirma({ file, clave, rucEsperado }) {
-  await delay(1200);
-  if (!file) return { valida: false, error: 'No se recibió el archivo.' };
-  if (!clave) return { valida: false, error: 'Falta la clave de la firma.' };
-
-  if (clave !== 'firma123') {
-    return {
-      valida: false,
-      vigente: false,
-      rucCoincide: false,
-      error: 'Clave incorrecta. No se puede continuar.',
-      _mockHint: 'En el mock usa la clave "firma123" para que la firma se valide.',
-    };
-  }
-
-  // Verificación de pertenencia al RUC del flujo.
-  // En el mock asumimos que si el nombre del archivo contiene el RUC, pertenece.
-  // Si no se pasó rucEsperado o el nombre no lo contiene, asumimos sí pertenece
-  // (modo demo permisivo). Para forzar el caso de "no pertenece", el archivo
-  // debe llamarse "wrong-ruc.p12".
-  const nombre = (file.name || '').toLowerCase();
-  let rucCoincide = true;
-  let rucCertificado = rucEsperado || '0000000000001';
-  if (nombre.includes('wrong-ruc') || nombre.includes('otro-ruc')) {
-    rucCoincide = false;
-    rucCertificado = '9999999999001';
-  } else if (rucEsperado && nombre.includes(rucEsperado)) {
-    rucCertificado = rucEsperado;
-  }
-
-  if (!rucCoincide) {
-    return {
-      valida: false,
-      vigente: true,
-      rucCoincide: false,
-      rucCertificado,
-      error: `La firma pertenece al RUC ${rucCertificado} y no coincide con ${rucEsperado}. No se puede continuar.`,
-    };
-  }
-
-  // Firma OK. Mock de la fecha de caducidad: 2 años a partir de hoy.
-  const expira = new Date();
-  expira.setFullYear(expira.getFullYear() + 2);
-  const fechaCaducidad = expira.toISOString().slice(0, 10);
-
-  // Mock del subject (Common Name del certificado).
-  const subject = 'JUAN PEREZ - REPRESENTANTE LEGAL';
-
-  return {
-    valida: true,
-    vigente: true,
-    rucCoincide: true,
-    rucCertificado,
-    subject,
-    fechaCaducidad,
-  };
-}
+// La validación de firma electrónica ahora se hace 100% client-side en
+// assets/firma-validator.js usando node-forge. Aquí ya no hay mock.
 
 /**
  * POST /api/registro/finalizar
