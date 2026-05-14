@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#00236f">
-  <meta name="description" content="TributaSoft — 300 comprobantes electrónicos GRATIS. Pioneros en facturación electrónica del Ecuador.">
+  <meta name="description" content="TributaSoft — 300 comprobantes electrónicos GRATIS por tiempo limitado.">
 
   <!-- Cache control para que el navegador no aguante el HTML viejo entre deploys -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -13,45 +13,47 @@
 
   <title>TributaSoft — 300 comprobantes electrónicos GRATIS</title>
 
-  <!-- Fuentes Google: Lobster (logo), DM Sans (headlines), Inter (body) -->
+  <!-- Fuentes Google: DM Sans (headlines) + Inter (body). 'Avenida' se carga vía @font-face en styles.css. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lobster&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- CSS crítico inline mínimo para LCP rápido -->
   <style>
     body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1c1c;background:#f9f9f9;line-height:1.5;-webkit-font-smoothing:antialiased}
     .site-header{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;background:rgba(249,249,249,.92);backdrop-filter:saturate(180%) blur(10px);border-bottom:1px solid #e2e2e2;z-index:50}
     .brand{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
-    .brand-mark{width:36px;height:36px;flex-shrink:0;display:block}
-    .brand-name{font-family:'Lobster',cursive;font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
-    .brand-name .b-tributa{color:#87C7DC}
-    .brand-name .b-soft{color:#EF7306}
+    .brand-mark{height:38px;width:auto;flex-shrink:0;display:block}
+    .brand-name{font-size:1.5rem;font-weight:400;letter-spacing:.01em;line-height:1}
+    .brand-name .b-tributa{font-family:'Avenida','DM Sans',sans-serif;color:#87C7DC;font-weight:400}
+    .brand-name .b-soft{font-family:'Avenida','DM Sans',sans-serif;color:#EF7306;font-weight:400}
     .hero{padding:1.75rem 1rem .75rem;text-align:center;opacity:0;animation:fadeUp 600ms ease-out forwards}
-    .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.2;margin:0 0 .65rem;letter-spacing:-.02em;color:#87C7DC}
-    .hero h1 .h-gratis{color:#EF7306}
-    .hero p{color:#6b7280;max-width:32rem;margin:0 auto;font-size:.95rem}
-    .badge{display:inline-flex;align-items:center;gap:.4rem;background:#e3f2f8;color:#87C7DC;font-size:.82rem;font-weight:700;padding:.45rem 1rem;border-radius:999px;margin-bottom:1.1rem;font-family:'Inter',sans-serif;letter-spacing:.02em;line-height:1.2}
+    .hero h1{font-family:'DM Sans',sans-serif;font-weight:700;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.15;margin:0;letter-spacing:-.02em}
+    .hero h1 .h-tiempo{display:block;color:#42A2BC;font-size:.78em;font-weight:600}
+    .hero h1 .h-docs{display:block;color:#c9dee9;font-size:1em}
+    .hero h1 .h-gratis{display:block;color:#ff931e;font-size:1.4em;letter-spacing:.04em;margin-top:.15em}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514g">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514h">
 </head>
 <body data-state="IDLE">
 
   <header class="site-header">
     <a class="brand" href="/" aria-label="TributaSoft — Ir al inicio">
-      <img class="brand-mark" src="./assets/tributasoft-icon.png" alt="" aria-hidden="true">
+      <img class="brand-mark" src="./assets/Logo%20TributaSoft.png" alt="" aria-hidden="true">
       <span class="brand-name"><span class="b-tributa">Tributa</span><span class="b-soft">Soft</span></span>
     </a>
     <nav>
-      <button class="btn-pill" id="btn-login" type="button" onclick="window.location.href='https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true'">
+      <button class="btn-pill" id="btn-cotizar" type="button">
         <svg class="btn-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-          <polyline points="10 17 15 12 10 7"/>
-          <line x1="15" y1="12" x2="3" y2="12"/>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="13" x2="15" y2="13"/>
+          <line x1="9" y1="17" x2="15" y2="17"/>
+          <line x1="9" y1="9" x2="11" y2="9"/>
         </svg>
-        <span class="btn-pill__label">Iniciar sesión</span>
+        <span class="btn-pill__label">Cotizar</span>
       </button>
       <button class="btn-pill" id="btn-help" type="button" aria-label="Abrir ayuda">
         <svg class="btn-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -67,10 +69,13 @@
   <div id="network-banner" class="network-banner" hidden role="status" aria-live="polite"></div>
 
   <main>
-    <!-- HERO -->
+    <!-- HERO: 3 líneas con colores específicos -->
     <section id="hero" class="hero">
-      <h1>300 comprobantes electrónicos <span class="h-gratis">GRATIS</span></h1>
-      <p>Todo Bajo Control por más de 10 años. La facilidad al alcance de tu mano.</p>
+      <h1>
+        <span class="h-tiempo">Por Tiempo Limitado!</span>
+        <span class="h-docs">300 Comprobantes Electrónicos</span>
+        <span class="h-gratis">GRATIS</span>
+      </h1>
     </section>
 
     <!-- TARJETA RUC -->
@@ -90,21 +95,25 @@
       <button id="cta-primary" type="button" class="btn btn--primary">Continuar</button>
     </section>
 
-    <!-- CÓMO FUNCIONA -->
+    <!-- CÓMO FUNCIONA — 4 pasos -->
     <section class="section" aria-labelledby="cf-h">
       <h2 id="cf-h">¿Cómo funciona?</h2>
       <div class="como-funciona">
         <article data-step="1">
-          <h3>Registra tu RUC</h3>
-          <p>Validamos tus datos directamente con el SRI en segundos.</p>
+          <h3>Ingresa tu RUC</h3>
+          <p>Validamos la estructura de tu identificación.</p>
         </article>
         <article data-step="2">
-          <h3>Sube tu Firma Electrónica</h3>
-          <p>Compatible con todos los proveedores autorizados del Ecuador.</p>
+          <h3>Registra tus datos</h3>
+          <p>Ingresa tus datos principales para facturar.</p>
         </article>
         <article data-step="3">
-          <h3>Empieza a Facturar</h3>
-          <p>Crea facturas, notas de crédito y retenciones al instante.</p>
+          <h3>Sube tu firma electrónica</h3>
+          <p>Compatible con los emisores autorizados del Ecuador.</p>
+        </article>
+        <article data-step="4">
+          <h3>Empieza a facturar</h3>
+          <p>Emite facturas, notas de crédito y otros al instante.</p>
         </article>
       </div>
     </section>
@@ -208,10 +217,10 @@
         <small id="celular-warn" class="canal-warn"></small>
       </div>
 
-      <!-- Canal: íconos sobrios -->
+      <!-- Canal: sólo Email y WhatsApp -->
       <div class="field">
         <span class="field-label" style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Por dónde quieres recibir tu código?</span>
-        <div class="canal-options" role="radiogroup" aria-label="Canal para enviar código" id="canal-options">
+        <div class="canal-options canal-options--two" role="radiogroup" aria-label="Canal para enviar código" id="canal-options">
           <label data-canal="email">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="5" width="18" height="14" rx="2"/>
@@ -219,14 +228,6 @@
             </svg>
             <input type="radio" name="canal-token" value="email" checked>
             <span>Email</span>
-          </label>
-          <label data-canal="sms">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="6" y="3" width="12" height="18" rx="2"/>
-              <line x1="11" y1="18" x2="13" y2="18"/>
-            </svg>
-            <input type="radio" name="canal-token" value="sms">
-            <span>SMS</span>
           </label>
           <label data-canal="whatsapp">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -266,11 +267,10 @@
           </select>
         </div>
 
-        <!-- 3. No. Resolución (condicional) -->
+        <!-- 3. No. Resolución (condicional) — validación interna 10-30, sin hint visible. -->
         <div class="field" id="no-resolucion-wrap" hidden>
           <label for="no-resolucion">No. Resolución</label>
-          <input id="no-resolucion" type="text" maxlength="50" autocomplete="off" placeholder="Ej: NAC-DGERCGC23-00000000001" aria-describedby="no-resolucion-error">
-          <p class="hint">Alfanumérico. Se permite el carácter "-".</p>
+          <input id="no-resolucion" type="text" maxlength="30" autocomplete="off" placeholder="Ej: NAC-DGERCGC23-00000000001" aria-describedby="no-resolucion-error">
           <div id="no-resolucion-error" class="error" role="alert" aria-live="polite"></div>
         </div>
 
@@ -288,8 +288,8 @@
                 </svg>
               </span>
               <div class="modo-content">
-                <span class="modo-title">Soy nuevo facturando</span>
-                <span class="modo-desc">Empezarás con establecimiento 001 y punto de emisión 001. Las secuencias comienzan en 1.</span>
+                <span class="modo-title">Empezar desde cero</span>
+                <span class="modo-desc">Opción para contribuyentes que no hayan facturado electrónicamente anteriormente.</span>
               </div>
             </label>
             <label>
@@ -303,40 +303,52 @@
                 </svg>
               </span>
               <div class="modo-content">
-                <span class="modo-title">Quiero seguir facturando</span>
-                <span class="modo-desc">Configura tu establecimiento, punto de emisión y las secuencias en curso.</span>
+                <span class="modo-title">Continuar con mi facturación</span>
+                <span class="modo-desc">Opción para contribuyentes que ya han facturado electrónicamente. Configura tu punto de emisión, establecimiento y secuencia por tipo de documento.</span>
               </div>
             </label>
           </div>
         </div>
 
-        <!-- 5. Bloque único de establecimiento + punto (visible sólo en modo "continuar") -->
+        <!-- 5. Bloque único de establecimiento + punto (visible sólo en modo "continuar")
+             Ahora los campos están directamente habilitados (sin Editar). Un botón
+             "Guardar" valida la configuración. -->
         <div id="establecimiento-bloque" class="establecimiento-bloque" hidden>
           <div class="establecimiento-bloque-header">
             <h4>Establecimiento y punto de emisión</h4>
-            <button type="button" id="btn-editar-est" class="btn-editar">Editar</button>
           </div>
           <div class="codigos-fila">
             <div class="field">
-              <label for="cod-establecimiento">Establecimiento</label>
-              <input id="cod-establecimiento" type="text" maxlength="3" value="001" inputmode="numeric" disabled>
+              <label for="cod-establecimiento">
+                Establecimiento
+                <button type="button" class="tooltip-i" data-tooltip="est" aria-label="Información sobre Establecimiento">i</button>
+              </label>
+              <input id="cod-establecimiento" type="text" maxlength="3" value="001" inputmode="numeric">
             </div>
             <div class="field">
-              <label for="cod-punto">Punto de emisión</label>
-              <input id="cod-punto" type="text" maxlength="3" value="001" inputmode="numeric" disabled>
+              <label for="cod-punto">
+                Punto de emisión
+                <button type="button" class="tooltip-i" data-tooltip="punto" aria-label="Información sobre Punto de emisión">i</button>
+              </label>
+              <input id="cod-punto" type="text" maxlength="3" value="001" inputmode="numeric">
             </div>
           </div>
           <div class="field">
             <label for="nombre-punto">Nombre corto del punto de emisión</label>
-            <input id="nombre-punto" type="text" maxlength="50" value="Matriz" placeholder="Ej: Matriz, Sucursal Norte" disabled>
+            <input id="nombre-punto" type="text" maxlength="50" value="Matriz" placeholder="Ej: Matriz, Sucursal Norte">
             <p class="hint">Máx 50 caracteres. Sólo letras, números y . , _ -</p>
           </div>
 
           <div class="secuencias" id="secuencias-wrap">
-            <p class="secuencias-titulo">Próxima secuencia por tipo de documento</p>
+            <p class="secuencias-titulo">Última secuencia emitida por tipo de documento</p>
             <div class="secuencias-grid" id="secuencias-grid">
-              <!-- Generado por JS: 5 tipos de documento, 9 dígitos cada uno -->
+              <!-- Generado por JS: 5 tipos de documento, 9 dígitos cada uno, con tooltip -->
             </div>
+          </div>
+
+          <div class="bloque-actions">
+            <button type="button" id="btn-guardar-est" class="btn btn--ghost btn--guardar">Guardar configuración</button>
+            <span id="bloque-guardado" class="bloque-guardado" hidden>✓ Configuración guardada</span>
           </div>
         </div>
       </details>
@@ -344,7 +356,7 @@
       <div class="terminos">
         <label class="terminos-label">
           <input type="checkbox" id="acepta-terminos" required>
-          <span>Acepto los <a href="#" id="link-terminos" target="_blank" rel="noopener">términos y condiciones</a>.</span>
+          <span>Acepto los <button type="button" class="link-button" id="link-terminos">términos y condiciones</button>.</span>
         </label>
       </div>
 
@@ -459,6 +471,161 @@
       </div>
     </dialog>
 
+    <!-- MODAL COTIZAR -->
+    <dialog id="modal-cotizar" aria-labelledby="modal-cotizar-h">
+      <div class="modal-content modal-content--wide">
+        <h2 id="modal-cotizar-h">Cotizador TributaSoft</h2>
+        <p>Calcula el costo anual de tu plan según el volumen de comprobantes que emites cada mes.</p>
+
+        <div class="cotizar-grid">
+          <div class="field">
+            <label for="cot-ruc">RUC / ID</label>
+            <input id="cot-ruc" type="text" value="0999999999001" readonly>
+          </div>
+          <div class="field">
+            <label for="cot-docs">Documentos promedio por mes</label>
+            <input id="cot-docs" type="number" min="1" max="100000000" placeholder="Ej: 50" inputmode="numeric">
+            <div id="cot-docs-error" class="error" role="alert" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="modal-actions modal-actions--split">
+          <button type="button" id="cot-refrescar" class="btn btn--ghost">Refrescar</button>
+          <button type="button" id="cot-calcular" class="btn btn--primary">Calcular</button>
+        </div>
+
+        <div id="cot-resumen" class="cot-resumen" hidden>
+          <h3>Resumen de tu plan</h3>
+          <div class="cot-row"><span>Documentos por año</span><strong id="cot-anual">—</strong></div>
+          <div class="cot-row"><span>Subtotal</span><strong id="cot-subtotal">—</strong></div>
+          <div class="cot-row"><span>IVA (15%)</span><strong id="cot-iva">—</strong></div>
+          <div class="cot-row cot-row--total"><span>Total</span><strong id="cot-total">—</strong></div>
+          <p class="cot-vigencia">Plan vigente hasta el <strong id="cot-vigencia-fecha">—</strong></p>
+          <button type="button" id="cot-contratar" class="btn btn--primary">Contratar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL PAGO (renovación prepago) -->
+    <dialog id="modal-pago" aria-labelledby="modal-pago-h">
+      <div class="modal-content modal-content--wide">
+        <h2 id="modal-pago-h">Confirma tu pago</h2>
+        <p>Reporta tu transferencia o depósito. Validamos el pago en un máximo de 2 horas.</p>
+
+        <div class="field">
+          <label for="pago-banco">Banco</label>
+          <select id="pago-banco" required>
+            <option value="">Selecciona el banco…</option>
+            <option value="Banco Procredit S.A.">Banco Procredit S.A.</option>
+            <option value="Banco Pichincha C.A.">Banco Pichincha C.A.</option>
+            <option value="Banco Del Pacífico S.A.">Banco Del Pacífico S.A.</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="pago-fecha">Fecha de la transacción</label>
+          <input id="pago-fecha" type="date" required>
+        </div>
+
+        <div class="field">
+          <label for="pago-forma">Forma de pago</label>
+          <select id="pago-forma" required>
+            <option value="">Selecciona…</option>
+            <option value="Depósito">Depósito</option>
+            <option value="Transferencia">Transferencia</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="pago-archivo">Comprobante de pago (JPG, PNG o PDF · máx. 400 KB)</label>
+          <input id="pago-archivo" type="file" accept=".jpg,.jpeg,.png,.pdf" required>
+          <div id="pago-archivo-error" class="error" role="alert" aria-live="polite"></div>
+        </div>
+
+        <button type="button" id="btn-info-bank" class="btn btn--ghost btn--inline">
+          Ver información bancaria
+        </button>
+
+        <div class="pago-importante">
+          <h4>Importante</h4>
+          <ul>
+            <li>Indica con precisión el banco en el que realizas el pago.</li>
+            <li>Si el pago es con depósito, debe ser en efectivo.</li>
+            <li>Si el pago es con transferencia, debe ser directa, de preferencia desde el mismo banco.</li>
+            <li>Nuestro sistema envía la factura a tu correo en segundos.</li>
+            <li>Nuestros operadores validarán el pago en un máximo de 2 horas. Si no está efectivizado o no coincide, se suspenderá el servicio hasta confirmar.</li>
+          </ul>
+        </div>
+
+        <div class="terminos">
+          <label class="terminos-label">
+            <input type="checkbox" id="pago-acepta-terminos">
+            <span>Acepto los <button type="button" class="link-button" id="pago-link-terms">términos y condiciones</button> de uso y de pago.</span>
+          </label>
+        </div>
+
+        <div class="modal-actions modal-actions--split">
+          <a href="https://wa.me/593969173466?text=Hola%2C+tuve+problemas+al+momento+de+la+renovaci%C3%B3n+del+servicio+prepago." target="_blank" rel="noopener" class="btn btn--ghost btn--soporte" id="btn-soporte">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16">
+              <path d="M20.5 12a8.5 8.5 0 1 1-3.6-6.93L20.5 3.5l-1.6 3.6A8.46 8.46 0 0 1 20.5 12z"/>
+            </svg>
+            Soporte
+          </a>
+          <button type="button" id="pago-enviar" class="btn btn--primary" disabled>Enviar pago</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL INFORMACIÓN BANCARIA -->
+    <dialog id="modal-bank" aria-labelledby="modal-bank-h">
+      <div class="modal-content">
+        <h2 id="modal-bank-h">Cuentas bancarias</h2>
+        <p class="bank-titular">A nombre de <strong>TributaSoft S.A.</strong></p>
+        <p class="bank-ruc">RUC: <span class="mono">0992703601001</span></p>
+
+        <ul class="bank-list">
+          <li>
+            <span class="bank-label">Banco del Pacífico — Ahorros</span>
+            <span class="bank-num mono">1043401667</span>
+          </li>
+          <li>
+            <span class="bank-label">Banco Pichincha — Corriente</span>
+            <span class="bank-num mono">2100146073</span>
+          </li>
+          <li>
+            <span class="bank-label">Banco Procredit — Ahorros</span>
+            <span class="bank-num mono">17030123262</span>
+          </li>
+        </ul>
+
+        <p class="bank-email">Notifica tu pago a <a href="mailto:cobranza@tributasoft.ec">cobranza@tributasoft.ec</a></p>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-bank-close" class="btn btn--primary">Entendido</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- MODAL TÉRMINOS Y CONDICIONES (scroll-to-bottom para habilitar Aceptar) -->
+    <dialog id="modal-terms" aria-labelledby="modal-terms-h">
+      <div class="modal-content modal-content--terms">
+        <h2 id="modal-terms-h">Términos y condiciones</h2>
+        <div id="terms-body" class="terms-body" tabindex="0"></div>
+        <p id="terms-hint" class="terms-hint">Desliza hasta el final del documento para habilitar la aceptación.</p>
+        <div class="modal-actions modal-actions--split">
+          <button type="button" id="terms-cancelar" class="btn btn--ghost">Cancelar</button>
+          <button type="button" id="terms-aceptar" class="btn btn--primary" disabled>Acepto</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- POPOVER GLOBAL DE TOOLTIPS (i) — reutilizable -->
+    <div id="tooltip-popover" class="tooltip-popover" hidden role="dialog" aria-modal="false" aria-labelledby="tooltip-popover-title">
+      <button type="button" class="tooltip-popover__close" id="tooltip-popover-close" aria-label="Cerrar">×</button>
+      <h4 id="tooltip-popover-title" class="tooltip-popover__title"></h4>
+      <p id="tooltip-popover-body" class="tooltip-popover__body"></p>
+    </div>
+
     <!-- SUCCESS -->
     <section id="success" class="success" hidden aria-live="polite">
       <div class="check-icon" aria-hidden="true"></div>
@@ -469,7 +636,7 @@
   </main>
 
   <footer class="site-footer">
-    <p style="margin:0 0 .35rem">Todo Bajo Control · Pioneros en facturación electrónica del Ecuador</p>
+    <p style="margin:0 0 .35rem">T.B.C.</p>
     <p style="margin:0;color:#1a1c1c">© 2026 TributaSoft S.A.</p>
   </footer>
 
@@ -477,13 +644,13 @@
   <noscript>
     <div style="position:fixed;inset:0;background:white;padding:2rem;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
       <h2>Necesitamos JavaScript activo</h2>
-      <p>Para registrarte sin JavaScript, escríbenos por WhatsApp al <a href="https://wa.me/593999999999">+593 99 999 9999</a> y te ayudamos manualmente.</p>
+      <p>Para registrarte sin JavaScript, escríbenos por WhatsApp al <a href="https://wa.me/593969173466">+593 96 917 3466</a> y te ayudamos manualmente.</p>
     </div>
   </noscript>
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514g';
+    const APP_VER = '20260514h';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

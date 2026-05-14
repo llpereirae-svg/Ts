@@ -241,15 +241,20 @@ export function validarCodigoToken(codigo) {
 /**
  * Número de resolución del SRI:
  *   - Alfanumérico, permite el carácter especial "-".
- *   - No vacío. Máx 50 caracteres.
+ *   - Validación interna: longitud (sin guiones) entre 10 y 30 dígitos/letras.
+ *     No exponemos los límites concretos en mensajes — sólo decimos si es válido o no.
  */
 export function validarNoResolucion(input) {
-  if (typeof input !== 'string') return { valid: false, reason: 'Valor inválido.' };
+  if (typeof input !== 'string') return { valid: false, reason: 'Número de resolución inválido.' };
   const trimmed = input.trim();
   if (!trimmed) return { valid: false, reason: 'Ingresa el número de resolución.' };
-  if (trimmed.length > 50) return { valid: false, reason: 'Máximo 50 caracteres.' };
   if (!/^[A-Za-z0-9-]+$/.test(trimmed)) {
-    return { valid: false, reason: 'Sólo se permiten letras, números y el guión "-".' };
+    return { valid: false, reason: 'Número de resolución inválido.' };
+  }
+  // Contamos sólo alfanuméricos (los guiones son separadores estéticos).
+  const alnum = trimmed.replace(/-/g, '');
+  if (alnum.length < 10 || alnum.length > 30) {
+    return { valid: false, reason: 'Número de resolución inválido.' };
   }
   return { valid: true, normalizado: trimmed.toUpperCase() };
 }

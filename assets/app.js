@@ -30,6 +30,99 @@ const TIPOS_DOCUMENTO = [
 
 const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,_-]{1,50}$/;
 
+const NOMBRE_MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+// Textos de los tooltips informativos (íconos "i" en establecimiento, punto y secuencias)
+const TOOLTIPS = {
+  est: {
+    title: 'Establecimiento',
+    body:
+      'Sucursal o local desde donde se emite el comprobante.\n\n' +
+      'Ejemplo: en 001-002-000000123, el establecimiento es 001.',
+  },
+  punto: {
+    title: 'Punto de emisión',
+    body:
+      'Punto autorizado dentro del establecimiento desde donde se emite el comprobante.\n\n' +
+      'Ejemplo: en 001-002-000000123, el punto de emisión es 002.',
+  },
+  factura: {
+    title: 'Facturas',
+    body:
+      'Ingrese la última secuencia emitida en facturas.\n\n' +
+      'Ejemplo: si la última factura fue 000000026, registre 000000026 y el sistema emitirá la siguiente como 000000027.',
+  },
+  nc: {
+    title: 'Notas de crédito',
+    body:
+      'Ingrese la última secuencia emitida en notas de crédito.\n\n' +
+      'Ejemplo: si la última nota de crédito fue 000000010, registre 000000010 y el sistema emitirá la siguiente como 000000011.',
+  },
+  nd: {
+    title: 'Notas de débito',
+    body:
+      'Ingrese la última secuencia emitida en notas de débito.\n\n' +
+      'Ejemplo: si la última nota de débito fue 000000005, registre 000000005 y el sistema emitirá la siguiente como 000000006.',
+  },
+  retencion: {
+    title: 'Comprobantes de retención',
+    body:
+      'Ingrese la última secuencia emitida en comprobantes de retención.\n\n' +
+      'Ejemplo: si el último comprobante fue 000000018, registre 000000018 y el sistema emitirá el siguiente como 000000019.',
+  },
+  guia: {
+    title: 'Guías de remisión',
+    body:
+      'Ingrese la última secuencia emitida en guías de remisión.\n\n' +
+      'Ejemplo: si la última guía fue 000000003, registre 000000003 y el sistema emitirá la siguiente como 000000004.',
+  },
+};
+
+// Términos y condiciones — redactados en estilo jurídico formal y aplicables
+// tanto al registro inicial como al pago de renovación prepago.
+const TERMS_HTML = `
+  <h3>1. Objeto</h3>
+  <p>TRIBUTASOFT S.A., en adelante "TRIBUTASOFT", pone a disposición del usuario (en adelante, el "USUARIO" o el "CLIENTE") una plataforma electrónica destinada a la emisión, registro, anulación y administración de comprobantes electrónicos autorizados por el Servicio de Rentas Internas del Ecuador (SRI), conforme a la normativa tributaria vigente.</p>
+
+  <h3>2. Promoción inicial</h3>
+  <p>TRIBUTASOFT otorga al USUARIO una promoción inicial sin costo correspondiente a:</p>
+  <ol>
+    <li>Trescientos (300) documentos electrónicos; o</li>
+    <li>Un periodo máximo de tres (3) meses calendario,</li>
+  </ol>
+  <p>contados desde la fecha de activación de la cuenta, lo que ocurra primero. Cumplido cualquiera de los dos límites, el servicio quedará sujeto a la contratación de un plan vigente.</p>
+
+  <h3>3. Cómputo de documentos electrónicos</h3>
+  <p>Para los efectos del cómputo previsto en la cláusula anterior y de cualquier plan o renovación posterior, se considerará un (1) "documento electrónico" todo aquel que, de manera indistinta:</p>
+  <ol>
+    <li>Sea <strong>emitido</strong> por el USUARIO a través de la plataforma;</li>
+    <li>Sea <strong>registrado</strong> en el sistema, aun cuando no se hubiere autorizado por el SRI; o</li>
+    <li>Sea <strong>anulado</strong> dentro del sistema, conforme la normativa tributaria aplicable.</li>
+  </ol>
+
+  <h3>4. Modificaciones al sistema</h3>
+  <p>El USUARIO reconoce y acepta que TRIBUTASOFT podrá efectuar, en cualquier momento y a su entera discreción, modificaciones, mejoras, actualizaciones o cambios en la plataforma, sus funcionalidades, interfaces y procesos, atendiendo a sus propias necesidades técnicas, operativas, comerciales o regulatorias. Dichos cambios no requerirán autorización previa del USUARIO y se entenderán aceptados con el uso continuado del servicio.</p>
+
+  <h3>5. Protección de datos personales</h3>
+  <p>TRIBUTASOFT trata los datos personales del USUARIO con estricta sujeción a la <strong>Ley Orgánica de Protección de Datos Personales del Ecuador</strong> y sus normas reglamentarias. Los datos serán utilizados exclusivamente para los fines del servicio contratado, su facturación, su soporte y el cumplimiento de obligaciones legales o tributarias. El USUARIO podrá ejercer en cualquier momento sus derechos de acceso, rectificación, actualización, eliminación, oposición, anulación y portabilidad mediante comunicación dirigida a TRIBUTASOFT por los canales habilitados.</p>
+
+  <h3>6. Responsabilidad del USUARIO</h3>
+  <p>El USUARIO es responsable de la veracidad de la información proporcionada al registrarse, del resguardo y uso adecuado de sus credenciales de acceso y del contenido de los comprobantes que emita a través de la plataforma. Cualquier perjuicio derivado de un uso indebido, negligente o fraudulento será de su exclusiva responsabilidad.</p>
+
+  <h3>7. Condiciones del pago (renovación prepago)</h3>
+  <p>El reporte del pago de planes prepago se entiende efectuado al momento de cargar el comprobante en la plataforma. La validación del pago será realizada por los operadores de TRIBUTASOFT dentro de un plazo máximo de <strong>dos (2) horas</strong> desde el reporte.</p>
+  <p>En caso de que el valor reportado no corresponda al efectivamente acreditado en las cuentas bancarias de TRIBUTASOFT, o de detectarse indicios de pago erróneo, duplicado o fraudulento, el servicio será <strong>suspendido de manera inmediata</strong> hasta la regularización del pago o la baja definitiva del servicio, según corresponda. TRIBUTASOFT no asume responsabilidad alguna por las interrupciones derivadas de pagos no acreditados o inexactos.</p>
+
+  <h3>8. Suspensión y terminación</h3>
+  <p>TRIBUTASOFT se reserva el derecho de suspender o dar por terminado el servicio en caso de incumplimiento de los presentes términos, uso indebido de la plataforma o causal legal aplicable, sin que ello genere responsabilidad alguna a su cargo, y sin perjuicio de las acciones legales que correspondan.</p>
+
+  <h3>9. Aceptación</h3>
+  <p>La marcación de la casilla de aceptación, una vez deslizado hasta el final del presente documento, constituye declaración expresa de conocimiento y aceptación íntegra de estos términos por parte del USUARIO, conforme a lo previsto en el Código de Comercio Electrónico, Firmas Electrónicas y Mensajes de Datos, el Código Civil y demás normativa aplicable de la República del Ecuador.</p>
+`;
+
 // ---------- Analytics ----------
 function track(name, detail = {}) {
   window.dispatchEvent(new CustomEvent('tributasoft:event', { detail: { name, ...detail } }));
@@ -83,7 +176,7 @@ function openModal(modal) {
   if (!modal) return;
   modal.showModal?.();
   modal.classList.add('is-open');
-  const firstFocus = modal.querySelector('[autofocus], input, button, select, textarea');
+  const firstFocus = modal.querySelector('[autofocus], input:not([readonly]), button, select, textarea');
   firstFocus?.focus();
 }
 function closeModal(modal) {
@@ -138,6 +231,10 @@ function init() {
   const draft = loadDraft();
   if (draft?.ruc) { $('#ruc').value = draft.ruc; }
 
+  // Inyectar contenido de Términos en el modal
+  const termsBody = $('#terms-body');
+  if (termsBody) termsBody.innerHTML = TERMS_HTML;
+
   // RUC input
   const rucInput = $('#ruc');
   const ctaPrimary = $('#cta-primary');
@@ -178,8 +275,9 @@ function init() {
     r.addEventListener('change', onModoFacturacionChange)
   );
 
-  // Botón "Editar" del bloque de facturación
-  $('#btn-editar-est').addEventListener('click', onToggleEditar);
+  // Botón "Guardar" del bloque de facturación (ya no hay Editar — los campos
+  // empiezan habilitados desde el primer momento).
+  $('#btn-guardar-est').addEventListener('click', onGuardarBloque);
 
   // Términos y condiciones: habilita/deshabilita el botón Registrarse
   $('#acepta-terminos').addEventListener('change', onTerminosChange);
@@ -205,18 +303,15 @@ function init() {
   $('#subir-firma').addEventListener('click', () => $('#firma-uploader').click());
   $('#firma-uploader').addEventListener('change', onFirmaFile);
   $('#firma-clave-confirmar').addEventListener('click', onValidarFirma);
-  // Permitir cambiar el archivo si se equivocó (resetea clave/error/resumen)
   $('#cambiar-firma').addEventListener('click', () => {
-    $('#firma-uploader').value = ''; // limpiar el input para que disparar change con el mismo archivo también funcione
+    $('#firma-uploader').value = '';
     $('#firma-uploader').click();
   });
-  // Tras validar OK: el usuario decide cuándo continuar
   $('#firma-continuar').addEventListener('click', () => {
     track('firma_confirmada');
     closeModal($('#modal-firma'));
     finalizarFlow();
   });
-  // Cancelar: vuelve a la pantalla de carga de firma — permite cambiar archivo
   $('#firma-cancelar').addEventListener('click', () => {
     track('firma_cancelada_tras_validar');
     resetFirmaActions();
@@ -224,7 +319,7 @@ function init() {
     $('#firma-clave-step').hidden = true;
     $('#firma-uploader').value = '';
     firmaFileSeleccionada = null;
-    machine.send(EVENTS.FIRMA_BAD); // vuelve a ERROR_FIRMA para permitir reintentar / skip
+    machine.send(EVENTS.FIRMA_BAD);
   });
   $('#saltar-firma').addEventListener('click', () => {
     track('firma_skipped');
@@ -238,9 +333,54 @@ function init() {
     window.location.href = flow.redirectUrlFinal || PORTAL_URL;
   });
 
+  // Header: Cotizar (abre modal-cotizar) + Ayuda (mock)
+  $('#btn-cotizar').addEventListener('click', openCotizar);
+  $('#btn-help').addEventListener('click', () => {
+    // De momento, mostramos un banner. Más adelante puede abrir un modal de FAQ
+    // o redirigir a un chat de soporte.
+    showBanner('Soporte: escríbenos por WhatsApp al +593 96 917 3466.', 'info');
+  });
+
+  // Cotizador
+  $('#cot-calcular').addEventListener('click', onCotCalcular);
+  $('#cot-refrescar').addEventListener('click', onCotRefrescar);
+  $('#cot-contratar').addEventListener('click', onCotContratar);
+  $('#cot-docs').addEventListener('input', (e) => {
+    // Filtrar a sólo dígitos y limitar al máximo
+    const v = e.target.value.replace(/\D/g, '').slice(0, 9);
+    e.target.value = v;
+    $('#cot-docs-error').textContent = '';
+  });
+
+  // Pago: información bancaria, cambios de inputs, soporte, envío
+  $('#btn-info-bank').addEventListener('click', () => openModal($('#modal-bank')));
+  $('#btn-bank-close').addEventListener('click', () => closeModal($('#modal-bank')));
+  $('#pago-archivo').addEventListener('change', onPagoArchivoChange);
+  ['#pago-banco', '#pago-fecha', '#pago-forma'].forEach((sel) => {
+    $(sel).addEventListener('change', updatePagoSubmit);
+  });
+  $('#pago-acepta-terminos').addEventListener('change', updatePagoSubmit);
+  $('#pago-enviar').addEventListener('click', onPagoEnviar);
+
+  // Términos y condiciones (modal con scroll-to-bottom)
+  $('#link-terminos').addEventListener('click', (e) => openTerms('acepta-terminos'));
+  $('#pago-link-terms').addEventListener('click', (e) => openTerms('pago-acepta-terminos'));
+  $('#terms-body').addEventListener('scroll', checkTermsBottom);
+  $('#terms-aceptar').addEventListener('click', onTermsAceptar);
+  $('#terms-cancelar').addEventListener('click', () => closeModal($('#modal-terms')));
+
+  // Tooltips (íconos "i") — delegación global de clicks
+  document.addEventListener('click', onDocumentClick);
+  $('#tooltip-popover-close').addEventListener('click', closeTooltip);
+  window.addEventListener('resize', closeTooltip);
+  window.addEventListener('scroll', closeTooltip, { passive: true });
+
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') $$('dialog.is-open').forEach(closeModal);
+    if (e.key === 'Escape') {
+      closeTooltip();
+      $$('dialog.is-open').forEach(closeModal);
+    }
   });
 
   machine.subscribe(render);
@@ -343,7 +483,6 @@ function prefilledFormUI() {
     else if (upper.includes('GENERAL')) match = 'GENERAL';
     if (match) sel.value = match;
   }
-  // Filtra el Tipo de Contribuyente según el régimen actual (y bloquea si NEGOCIO POPULAR)
   aplicarFiltroTipoContribuyente();
 
   $('#sri-banner').hidden = !!flow.rucInfo;
@@ -355,16 +494,8 @@ function prefilledFormUI() {
   flow.modoFacturacion = 'nuevo';
   aplicarModoFacturacion();
 
-  // Inicializar canales y país
   actualizarCanalesDisponibles();
 
-  // Scroll suave a Razón social + animación de highlight.
-  // - Esperamos a que las fuentes web carguen para evitar saltos de layout.
-  // - Doble rAF + un re-scroll defensivo 600ms después corrigen cualquier
-  //   reflow tardío (animación slideUp del form, fonts.ready en navegadores
-  //   donde no resuelve antes del primer paint, etc.).
-  // - No hacemos focus al input: el preventScroll no es 100% confiable en
-  //   Safari/Chrome móvil y provocaba que el viewport saltara a otro campo.
   scrollARazonSocial();
 }
 
@@ -388,8 +519,6 @@ function scrollARazonSocial() {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       doScroll();
       animate();
-      // Re-scroll defensivo: si el smooth scroll se desvía por relayout
-      // tardío (fuente cargando, imagen apareciendo), corregimos.
       setTimeout(doScroll, 700);
     }));
   };
@@ -448,17 +577,12 @@ function poblarCiudadesPara(provinciaCode) {
 }
 
 // ---------- Tipo de contribuyente → No. Resolución condicional ----------
-// Tipos de contribuyente permitidos por régimen.
-// - GENERAL: todos.
-// - RIMPE - EMPRENDEDOR: no obligado, obligado, agente de retención.
-// - RIMPE - NEGOCIO POPULAR: sólo "no obligado" (auto y bloqueado).
 const TIPOS_CONTRIBUYENTE_POR_REGIMEN = {
   'GENERAL': ['NO_OBLIGADO', 'OBLIGADO', 'AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE'],
   'RIMPE - EMPRENDEDOR': ['NO_OBLIGADO', 'OBLIGADO', 'AGENTE_RETENCION'],
   'RIMPE - NEGOCIO POPULAR': ['NO_OBLIGADO'],
 };
 
-// Cache de las opciones originales del select para poder re-poblar al filtrar.
 let _tiposOpcionesOriginales = null;
 function _getTiposOpcionesOriginales() {
   if (_tiposOpcionesOriginales) return _tiposOpcionesOriginales;
@@ -479,10 +603,8 @@ function aplicarFiltroTipoContribuyente() {
   const todas = _getTiposOpcionesOriginales();
   const permitidos = TIPOS_CONTRIBUYENTE_POR_REGIMEN[regimen];
 
-  // Sin régimen: dejamos todas (estado neutro al inicio).
   const valoresValidos = permitidos || todas.map((o) => o.value).filter(Boolean);
 
-  // Re-popular el select sólo con las opciones permitidas.
   const valorActual = sel.value;
   sel.innerHTML = '';
   todas.forEach((o) => {
@@ -495,7 +617,6 @@ function aplicarFiltroTipoContribuyente() {
   });
 
   if (regimen === 'RIMPE - NEGOCIO POPULAR') {
-    // Bloqueado en "No Obligado a Llevar Contabilidad".
     sel.value = 'NO_OBLIGADO';
     sel.disabled = true;
     flow.tipoContribuyente = 'NO_OBLIGADO';
@@ -507,7 +628,6 @@ function aplicarFiltroTipoContribuyente() {
     } else {
       sel.value = '';
       flow.tipoContribuyente = '';
-      // Limpia No. Resolución si quedó visible
       $('#no-resolucion-wrap').hidden = true;
       $('#no-resolucion').value = '';
       flow.noResolucion = '';
@@ -534,13 +654,14 @@ function onTerminosChange(e) {
 }
 
 function onNoResolucionInput(e) {
-  // Filtrar a alfanuméricos + "-"
-  const v = e.target.value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 50);
+  // Filtrar a alfanuméricos + "-"; max 30 caracteres totales (incluyendo guiones).
+  // La validación de longitud mínima vive en validators.js y no se expone al usuario.
+  const v = e.target.value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 30);
   if (v !== e.target.value) e.target.value = v;
   flow.noResolucion = v;
 }
 
-// ---------- Celular + país + canales ----------
+// ---------- Celular + país + canales (Email + WhatsApp, sin SMS) ----------
 function poblarSelectPaises() {
   const sel = $('#celular-pais');
   if (!sel) return;
@@ -548,7 +669,6 @@ function poblarSelectPaises() {
   COUNTRIES.forEach((c) => {
     const opt = document.createElement('option');
     opt.value = c.code;
-    // Nombre + código (sin abreviación/bandera)
     opt.textContent = `${c.name} (+${c.dial})`;
     sel.appendChild(opt);
   });
@@ -567,36 +687,20 @@ function onPaisChange(e) {
 }
 
 function actualizarCanalesDisponibles() {
+  // Ya sólo manejamos dos canales: Email y WhatsApp. Ambos están disponibles
+  // en todos los países, por lo que no hay nada que deshabilitar.
   const pais = findCountry(flow.celularPais);
-  const esEcuador = pais.code === 'EC';
-
   const hint = $('#celular-hint');
   if (hint) {
-    hint.textContent = esEcuador
+    hint.textContent = pais.code === 'EC'
       ? 'Formato para Ecuador: 09XXXXXXXX (10 dígitos).'
       : `Formato para ${pais.name}: ${pais.placeholder || 'sólo dígitos'}.`;
   }
-
   const warn = $('#celular-warn');
-  const smsLabel = $('#canal-options label[data-canal="sms"]');
-  const smsRadio = smsLabel.querySelector('input[type="radio"]');
-  if (!esEcuador) {
-    smsLabel.classList.add('canal-disabled');
-    smsRadio.disabled = true;
-    if (smsRadio.checked) {
-      const waRadio = $('#canal-options input[value="whatsapp"]');
-      waRadio.checked = true;
-      flow.canal = 'whatsapp';
-    }
-    warn.textContent = `Para ${pais.name} sólo está disponible WhatsApp o Email (SMS bloqueado fuera de Ecuador).`;
-  } else {
-    smsLabel.classList.remove('canal-disabled');
-    smsRadio.disabled = false;
-    warn.textContent = '';
-  }
+  if (warn) warn.textContent = '';
 }
 
-// ---------- Modos de facturación + Bloque único ----------
+// ---------- Modos de facturación + Bloque único (siempre editable) ----------
 function onModoFacturacionChange(e) {
   flow.modoFacturacion = e.target.value;
   aplicarModoFacturacion();
@@ -604,49 +708,32 @@ function onModoFacturacionChange(e) {
 
 function aplicarModoFacturacion() {
   const bloque = $('#establecimiento-bloque');
-  const editBtn = $('#btn-editar-est');
-  const inputs = [$('#cod-establecimiento'), $('#cod-punto'), $('#nombre-punto')];
-  const secuenciasInputs = $$('#secuencias-grid input');
+  const guardado = $('#bloque-guardado');
 
   if (flow.modoFacturacion === 'nuevo') {
-    // "Soy nuevo facturando": ocultamos el bloque y forzamos defaults.
+    // "Empezar desde cero": ocultamos el bloque y forzamos defaults.
     bloque.hidden = true;
     flow.facturacion.establecimiento = '001';
     flow.facturacion.puntoEmision = '001';
     flow.facturacion.nombrePunto = 'Matriz';
     TIPOS_DOCUMENTO.forEach((t) => { flow.facturacion.secuencias[t.id] = '000000001'; });
   } else {
-    // "Quiero seguir facturando": muestra bloque, todo bloqueado hasta tocar "Editar".
+    // "Continuar con mi facturación": muestra el bloque con TODOS los campos
+    // habilitados desde el primer momento. No hay paso de "Editar".
     bloque.hidden = false;
+    if (guardado) guardado.hidden = true;
     bloque.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    inputs.forEach((i) => { if (i) i.disabled = true; });
-    secuenciasInputs.forEach((i) => { i.disabled = true; });
-    editBtn.classList.remove('is-active');
-    editBtn.textContent = 'Editar';
   }
 }
 
-function onToggleEditar() {
-  const editBtn = $('#btn-editar-est');
-  const inputs = [$('#cod-establecimiento'), $('#cod-punto'), $('#nombre-punto')];
-  const secuenciasInputs = $$('#secuencias-grid input');
-  const editing = editBtn.classList.contains('is-active');
-
-  if (editing) {
-    // Cerrar edición: validar y guardar
-    if (!validarBloqueFacturacion(true)) return;
-    inputs.forEach((i) => { if (i) i.disabled = true; });
-    secuenciasInputs.forEach((i) => { i.disabled = true; });
-    editBtn.classList.remove('is-active');
-    editBtn.textContent = 'Editar';
-  } else {
-    // Abrir edición
-    inputs.forEach((i) => { if (i) i.disabled = false; });
-    secuenciasInputs.forEach((i) => { i.disabled = false; });
-    editBtn.classList.add('is-active');
-    editBtn.textContent = 'Guardar';
-    setTimeout(() => $('#cod-establecimiento').focus(), 80);
+function onGuardarBloque() {
+  if (!validarBloqueFacturacion()) return;
+  const ok = $('#bloque-guardado');
+  if (ok) {
+    ok.hidden = false;
+    setTimeout(() => { ok.hidden = true; }, 2500);
   }
+  track('bloque_facturacion_guardado', { ...flow.facturacion });
 }
 
 function renderSecuencias() {
@@ -654,12 +741,14 @@ function renderSecuencias() {
   if (!grid) return;
   grid.innerHTML = TIPOS_DOCUMENTO.map((t) => `
     <div class="secuencia-row">
-      <span class="secuencia-label">${t.label}</span>
-      <input type="text" data-secuencia="${t.id}" value="${flow.facturacion.secuencias[t.id] || '1'}" inputmode="numeric" maxlength="9" disabled>
+      <span class="secuencia-label">
+        ${t.label}
+        <button type="button" class="tooltip-i" data-tooltip="${t.id}" aria-label="Información sobre ${t.label}">i</button>
+      </span>
+      <input type="text" data-secuencia="${t.id}" value="${flow.facturacion.secuencias[t.id] || '000000001'}" inputmode="numeric" maxlength="9">
     </div>
   `).join('');
 
-  // Listeners para cada secuencia: sólo dígitos, máx 9, error si >9
   grid.querySelectorAll('input[data-secuencia]').forEach((inp) => {
     inp.addEventListener('input', (e) => {
       const original = e.target.value;
@@ -675,12 +764,10 @@ function renderSecuencias() {
     inp.addEventListener('blur', (e) => {
       const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
       if (!raw) {
-        // Vacío → 000000001 (secuencia inicial)
         e.target.value = '000000001';
         flow.facturacion.secuencias[e.target.dataset.secuencia] = '000000001';
         return;
       }
-      // Pad SÓLO a la izquierda hasta 9 dígitos
       const padded = raw.padStart(9, '0');
       e.target.value = padded;
       flow.facturacion.secuencias[e.target.dataset.secuencia] = padded;
@@ -693,7 +780,6 @@ function setupBloqueEstablecimientoListeners() {
   const punInp = $('#cod-punto');
   const nomInp = $('#nombre-punto');
 
-  // Establecimiento + Punto: 3 dígitos, pad sólo a la izquierda, 001-999
   [estInp, punInp].forEach((inp) => {
     if (!inp) return;
     inp.addEventListener('input', (e) => {
@@ -717,7 +803,6 @@ function setupBloqueEstablecimientoListeners() {
     });
   });
 
-  // Nombre corto del punto: máx 50, sólo alfanuméricos + . , _ -
   if (nomInp) {
     nomInp.addEventListener('input', (e) => {
       const filtered = e.target.value
@@ -756,7 +841,6 @@ function validarBloqueFacturacion(silencioso = false) {
 async function onFormSubmit(e) {
   e.preventDefault();
 
-  // Defensa: no permitir submit sin aceptar términos
   if (!$('#acepta-terminos').checked) {
     showBanner('Debes aceptar los términos y condiciones para continuar.', 'warn');
     return;
@@ -815,14 +899,12 @@ async function onFormSubmit(e) {
   setFieldError('celular', celularV.valid ? '' : celularV.reason);
   if (!celularV.valid) hayError = true;
 
-  // Validación del bloque facturación (sólo si modo === "continuar")
   if (flow.modoFacturacion === 'continuar' && !validarBloqueFacturacion()) {
     hayError = true;
   }
 
   if (hayError) return;
 
-  // Persistir
   flow.razonSocial = razonSocial;
   flow.nombreComercial = nombreComercialNA ? '' : nombreComercial;
   flow.nombreComercialNA = nombreComercialNA;
@@ -1025,15 +1107,12 @@ async function onContinuarClave() {
 let firmaFileSeleccionada = null;
 function onFirmaFile(e) {
   const file = e.target.files[0];
-  if (!file) return; // el usuario canceló el diálogo
+  if (!file) return;
   const v = validarFirmaArchivo(file);
   if (!v.valid) {
-    // Archivo con extensión incorrecta — mantenemos el step abierto pero mostramos error
     $('#firma-error').textContent = v.reason;
     return;
   }
-  // Archivo nuevo válido: reseteamos por completo el estado del paso
-  // (clave anterior, error rojo, resumen verde) para que el usuario empiece limpio.
   firmaFileSeleccionada = file;
   $('#firma-nombre').textContent = file.name;
   $('#firma-clave').value = '';
@@ -1057,22 +1136,17 @@ async function onValidarFirma() {
   $('#firma-resumen').hidden = true;
 
   try {
-    // Validación REAL: parsea el .p12/.pfx, descifra con la clave,
-    // extrae el RUC del certificado y compara con flow.ruc.
     const resp = await validarFirmaP12(firmaFileSeleccionada, clave, flow.ruc);
 
     if (resp.valid) {
       track('firma_uploaded_valid', { fechaCaducidad: resp.fechaCaducidad?.toISOString?.() });
       machine.send(EVENTS.FIRMA_OK);
 
-      // Llenar el resumen con datos extraídos del certificado
       $('#firma-titular').textContent = resp.titular || '—';
       $('#firma-ruc').textContent = resp.ruc || flow.ruc;
       $('#firma-caducidad').textContent = formatearFecha(resp.fechaCaducidad);
       $('#firma-resumen').hidden = false;
 
-      // No autoredirigir: mostramos los botones Continuar / Cancelar y dejamos
-      // que el usuario revise el resumen antes de decidir.
       $('#firma-actions-validar').hidden = true;
       $('#firma-actions-confirmar').hidden = false;
     } else {
@@ -1090,7 +1164,6 @@ async function onValidarFirma() {
 
 function formatearFecha(value) {
   if (!value) return '—';
-  // Acepta Date (cert.validity.notAfter de forge) o string "YYYY-MM-DD"
   if (value instanceof Date) {
     const d = String(value.getDate()).padStart(2, '0');
     const m = String(value.getMonth() + 1).padStart(2, '0');
@@ -1114,8 +1187,6 @@ async function finalizarFlow() {
       firmaPendienteDespues: flow.firmaPendienteDespues,
     });
     machine.send(EVENTS.FINALIZED);
-    // Guardamos la URL final para usarla cuando el usuario presione "Ir a mi cuenta".
-    // Ya no redirigimos automáticamente — el usuario decide cuándo continuar.
     flow.redirectUrlFinal = resp.redirectUrl || PORTAL_URL;
     show($('#success'));
     $('#success').scrollIntoView({ behavior: 'smooth' });
@@ -1124,13 +1195,267 @@ async function finalizarFlow() {
   }
 }
 
-// Helper para volver al estado inicial del modal de firma cuando el usuario cancela.
 function resetFirmaActions() {
   $('#firma-actions-validar').hidden = false;
   $('#firma-actions-confirmar').hidden = true;
   $('#firma-resumen').hidden = true;
   $('#firma-clave').value = '';
   $('#firma-error').textContent = '';
+}
+
+// =========================================================================
+//   COTIZADOR (modal independiente al flujo de registro)
+// =========================================================================
+
+function openCotizar() {
+  track('cotizador_abierto');
+  // Reset siempre que se abre
+  $('#cot-docs').value = '';
+  $('#cot-docs-error').textContent = '';
+  $('#cot-resumen').hidden = true;
+  openModal($('#modal-cotizar'));
+  setTimeout(() => $('#cot-docs').focus(), 120);
+}
+
+function onCotCalcular() {
+  const raw = $('#cot-docs').value;
+  const docs = parseInt(raw, 10);
+  if (!Number.isInteger(docs) || docs < 1 || docs > 100000000) {
+    $('#cot-docs-error').textContent = 'Ingresa un número entre 1 y 100,000,000.';
+    return;
+  }
+  $('#cot-docs-error').textContent = '';
+
+  const anual = docs * 12;
+  const subtotal = 6 + anual * 0.20;
+  const iva = subtotal * 0.15;
+  const total = subtotal + iva;
+
+  $('#cot-anual').textContent = formatMiles(anual);
+  $('#cot-subtotal').textContent = formatMoney(subtotal);
+  $('#cot-iva').textContent = formatMoney(iva);
+  $('#cot-total').textContent = formatMoney(total);
+
+  const hoy = new Date();
+  const vence = new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate());
+  $('#cot-vigencia-fecha').textContent = formatFechaLarga(vence);
+
+  $('#cot-resumen').hidden = false;
+  $('#cot-resumen').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  track('cotizador_calculado', { docs, anual, total: total.toFixed(2) });
+}
+
+function onCotRefrescar() {
+  $('#cot-docs').value = '';
+  $('#cot-docs-error').textContent = '';
+  $('#cot-resumen').hidden = true;
+  $('#cot-docs').focus();
+  track('cotizador_refrescado');
+}
+
+function onCotContratar() {
+  closeModal($('#modal-cotizar'));
+  resetPagoForm();
+  $('#pago-fecha').value = todayISO();
+  openModal($('#modal-pago'));
+  track('cotizador_contratar');
+}
+
+function formatMoney(n) {
+  return '$' + n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatMiles(n) {
+  return n.toLocaleString('es-EC');
+}
+function formatFechaLarga(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mes = NOMBRE_MESES[d.getMonth()];
+  const yy = d.getFullYear();
+  return `${dd}-${mes}-${yy}`;
+}
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// =========================================================================
+//   PAGO (renovación prepago)
+// =========================================================================
+
+const PAGO_MAX_BYTES = 400 * 1024;
+const PAGO_MIME_OK = new Set(['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']);
+
+function onPagoArchivoChange(e) {
+  const err = $('#pago-archivo-error');
+  err.textContent = '';
+  const file = e.target.files[0];
+  if (!file) { updatePagoSubmit(); return; }
+
+  // Algunos navegadores reportan jpg como image/jpeg; aceptamos ambos.
+  const lower = (file.name || '').toLowerCase();
+  const extOk = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.pdf');
+  const mimeOk = PAGO_MIME_OK.has(file.type) || (!file.type && extOk);
+
+  if (!extOk || !mimeOk) {
+    err.textContent = 'Sólo se aceptan archivos JPG, PNG o PDF.';
+    e.target.value = '';
+    updatePagoSubmit();
+    return;
+  }
+  if (file.size > PAGO_MAX_BYTES) {
+    err.textContent = 'El archivo no puede pesar más de 400 KB.';
+    e.target.value = '';
+    updatePagoSubmit();
+    return;
+  }
+  updatePagoSubmit();
+}
+
+function updatePagoSubmit() {
+  const ok =
+    !!$('#pago-banco').value &&
+    !!$('#pago-fecha').value &&
+    !!$('#pago-forma').value &&
+    $('#pago-archivo').files.length > 0 &&
+    !!$('#pago-acepta-terminos').checked;
+  $('#pago-enviar').disabled = !ok;
+}
+
+function onPagoEnviar() {
+  // Mock: en el backend real haríamos POST con FormData (archivo + datos).
+  track('pago_enviado', {
+    banco: $('#pago-banco').value,
+    fecha: $('#pago-fecha').value,
+    forma: $('#pago-forma').value,
+    tamaño: $('#pago-archivo').files[0]?.size || 0,
+  });
+  showBanner('Pago reportado. Validaremos en máximo 2 horas y te avisaremos por correo.', 'info', 7000);
+  closeModal($('#modal-pago'));
+  resetPagoForm();
+}
+
+function resetPagoForm() {
+  $('#pago-banco').value = '';
+  $('#pago-fecha').value = '';
+  $('#pago-forma').value = '';
+  $('#pago-archivo').value = '';
+  $('#pago-acepta-terminos').checked = false;
+  $('#pago-archivo-error').textContent = '';
+  $('#pago-enviar').disabled = true;
+}
+
+// =========================================================================
+//   TÉRMINOS Y CONDICIONES (modal con scroll-to-bottom)
+// =========================================================================
+
+// Quién (qué checkbox) recibirá el "tick" cuando el usuario acepta.
+let _termsTargetId = null;
+
+function openTerms(targetCheckboxId) {
+  _termsTargetId = targetCheckboxId || null;
+  const body = $('#terms-body');
+  body.scrollTop = 0;
+  $('#terms-aceptar').disabled = true;
+  $('#terms-hint').textContent = 'Desliza hasta el final del documento para habilitar la aceptación.';
+  $('#terms-hint').classList.remove('is-bottom');
+  openModal($('#modal-terms'));
+  // En caso de que el contenido sea corto o no haya scroll, marcar como leído.
+  setTimeout(checkTermsBottom, 60);
+}
+
+function checkTermsBottom() {
+  const body = $('#terms-body');
+  if (!body) return;
+  const reached = body.scrollTop + body.clientHeight >= body.scrollHeight - 8;
+  if (reached) {
+    $('#terms-aceptar').disabled = false;
+    $('#terms-hint').textContent = '✓ Ya puedes aceptar los términos.';
+    $('#terms-hint').classList.add('is-bottom');
+  }
+}
+
+function onTermsAceptar() {
+  if (_termsTargetId) {
+    const cb = document.getElementById(_termsTargetId);
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+  track('terms_aceptados', { context: _termsTargetId });
+  closeModal($('#modal-terms'));
+}
+
+// =========================================================================
+//   TOOLTIPS (íconos "i" en establecimiento / punto / secuencias)
+// =========================================================================
+
+let _tooltipAnchor = null;
+
+function onDocumentClick(e) {
+  const trigger = e.target.closest('.tooltip-i');
+  if (trigger) {
+    e.preventDefault();
+    e.stopPropagation();
+    const key = trigger.dataset.tooltip;
+    // Si el mismo botón se vuelve a clicar, alternar
+    if (_tooltipAnchor === trigger && !$('#tooltip-popover').hidden) {
+      closeTooltip();
+      return;
+    }
+    showTooltip(key, trigger);
+    return;
+  }
+  // Click fuera del popover (y no en otro tooltip-i) → cerrar
+  if (!e.target.closest('#tooltip-popover')) {
+    closeTooltip();
+  }
+}
+
+function showTooltip(key, anchor) {
+  const data = TOOLTIPS[key];
+  if (!data) return;
+  _tooltipAnchor = anchor;
+  const pop = $('#tooltip-popover');
+  $('#tooltip-popover-title').textContent = data.title;
+  $('#tooltip-popover-body').textContent = data.body;
+  pop.hidden = false;
+  // Posicionar inmediatamente. `getBoundingClientRect()` fuerza un layout
+  // síncrono, así que las medidas son válidas aunque acabemos de mostrar el
+  // elemento. No usamos requestAnimationFrame porque no es confiable cuando
+  // la pestaña está en background (motores headless / tabs ocultos).
+  positionTooltip(pop, anchor);
+}
+
+function positionTooltip(pop, anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const margin = 12;
+
+  let top = rect.bottom + 8;
+  let left = rect.left;
+
+  if (left + popRect.width > vw - margin) left = vw - popRect.width - margin;
+  if (left < margin) left = margin;
+
+  if (top + popRect.height > vh - margin) {
+    top = rect.top - popRect.height - 8;
+  }
+  if (top < margin) top = margin;
+
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+}
+
+function closeTooltip() {
+  const pop = $('#tooltip-popover');
+  if (pop) pop.hidden = true;
+  _tooltipAnchor = null;
 }
 
 // ---------- Render según estado ----------

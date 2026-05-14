@@ -1,6 +1,16 @@
 /* styles.css — Mobile-first, minimalista, con animaciones suaves.
    Paleta basada exclusivamente en los colores del logo: Navy, Teal, Naranja. */
 
+/* Fuente custom para la marca "TributaSoft" (sólo el wordmark del logo).
+   Cargada vía @font-face con font-display:swap para que no bloquee el render. */
+@font-face {
+  font-family: 'Avenida';
+  src: url('./Avenida.otf') format('opentype');
+  font-display: swap;
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   /* Paleta TributaSoft — sólo colores del logo */
   --color-primary: #00236f;            /* Deep Navy (texto, headers) */
@@ -36,7 +46,7 @@
   --color-warn-container: #fdecde;
   --color-error: #ba1a1a;
   --color-error-container: #ffdad6;
-  --color-edit: #d92e2e;               /* Botón "Editar" en rojo */
+  --color-edit: #d92e2e;               /* Botón "Editar" en rojo (legacy) */
   --color-info: #00236f;
 
   --shadow-sm: 0 1px 2px rgba(0,35,111,.04), 0 1px 3px rgba(0,35,111,.06);
@@ -49,10 +59,10 @@
 
   --transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  /* Tipografía dual: DM Sans (headlines) + Inter (body) */
+  /* Tipografía dual: DM Sans (headlines) + Inter (body) + Avenida (marca) */
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: 'DM Sans', 'Inter', sans-serif;
-  --font-brand: 'Lobster', cursive;
+  --font-brand: 'Avenida', 'DM Sans', sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -88,17 +98,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 }
 .brand:hover { opacity: .85; }
 .brand:active { transform: scale(.97); }
-.brand-mark { width: 36px; height: 36px; flex-shrink: 0; display: block; }
+.brand-mark { height: 38px; width: auto; flex-shrink: 0; display: block; }
 .brand-name {
   font-family: var(--font-brand);
-  font-size: 1.5rem;
+  font-size: 1.55rem;
   font-weight: 400;
-  letter-spacing: .01em;
+  letter-spacing: .005em;
   line-height: 1;
 }
-.brand-name .b-tributa { color: var(--color-brand-tributa); }
-.brand-name .b-soft { color: var(--color-brand-soft); }
-.site-header nav { display: flex; gap: .25rem; align-items: center; }
+.brand-name .b-tributa { font-family: var(--font-brand); color: var(--color-brand-tributa); }
+.brand-name .b-soft { font-family: var(--font-brand); color: var(--color-brand-soft); }
+.site-header nav { display: flex; gap: .35rem; align-items: center; }
 
 /* ---------------- Banner de red ---------------- */
 .network-banner {
@@ -117,44 +127,53 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
-/* ---------------- Hero ---------------- */
+/* ---------------- Hero (3 líneas con colores específicos) ---------------- */
 .hero {
-  padding: 1.75rem 1rem .75rem;
+  padding: 1.75rem 1rem 1rem;
   text-align: center;
   animation: fadeUp 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.badge {
-  display: inline-flex; align-items: center; gap: .4rem;
-  background: var(--color-teal-light);
-  color: var(--color-brand-tributa);
-  font-size: .82rem; font-weight: 700; letter-spacing: .02em;
-  padding: .45rem 1rem; border-radius: 999px;
-  margin-bottom: 1.1rem;
-  line-height: 1.2;
-}
-.badge::before {
-  content: "★";
-  font-size: .85rem;
-  color: var(--color-cta);
 }
 .hero h1 {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(1.4rem, 4.5vw, 2.1rem);
-  line-height: 1.2;
-  margin: 0 0 .65rem;
+  line-height: 1.15;
+  margin: 0;
   letter-spacing: -.02em;
-  color: var(--color-brand-tributa);
 }
-.hero h1 .h-gratis { color: var(--color-cta); }
-.hero p { color: #6b7280; max-width: 32rem; margin: 0 auto; font-size: .95rem; }
+.hero h1 .h-tiempo {
+  display: block;
+  color: #42A2BC;
+  font-size: .78em;
+  font-weight: 600;
+  letter-spacing: .01em;
+  margin-bottom: .15em;
+}
+.hero h1 .h-docs {
+  display: block;
+  color: #c9dee9;
+  font-size: 1em;
+  /* Para legibilidad sobre fondos claros, le añadimos un sutil contorno
+     en el color teal oscuro del logo. */
+  text-shadow:
+    0 1px 0 rgba(46,122,149,.15),
+    0 0 1px rgba(46,122,149,.30);
+}
+.hero h1 .h-gratis {
+  display: block;
+  color: #ff931e;
+  font-size: 1.4em;
+  letter-spacing: .04em;
+  margin-top: .15em;
+  text-shadow: 0 2px 12px rgba(255,147,30,.15);
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------------- Tarjeta RUC (compacta para laptop) ---------------- */
+/* ---------------- Tarjeta RUC ---------------- */
 .ruc-card {
   margin: 1rem auto;
   padding: 1.1rem 1rem;
@@ -228,6 +247,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   font-family: inherit;
   transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
   -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
 }
 .btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -260,8 +280,21 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .btn--text { background: none; color: var(--color-primary); padding: .5rem .8rem; font-weight: 600; font-size: .9rem; }
 .btn--text:hover { color: var(--color-cta); }
 
-/* Píldoras del header (Iniciar sesión / Ayuda) — ícono minimalista + label.
-   En pantallas muy angostas mostramos sólo el ícono para no romper el layout. */
+/* Variante "inline" para botones secundarios dentro de un formulario.
+   No ocupa ancho completo ni hereda el alto/tipografía del primario. */
+.btn--inline {
+  width: auto;
+  height: auto;
+  padding: .55rem 1rem;
+  font-size: .85rem;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 0;
+  font-weight: 600;
+}
+
+/* Píldoras del header (Cotizar / Ayuda) — ícono minimalista + label.
+   En pantallas de móvil mostramos sólo el ícono para no romper el layout. */
 .btn-pill {
   display: inline-flex;
   align-items: center;
@@ -284,12 +317,21 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .btn-pill__icon { width: 16px; height: 16px; flex-shrink: 0; }
 .btn-pill__label { line-height: 1; }
 
-@media (max-width: 360px) {
-  .btn-pill { padding: .4rem; gap: 0; }
+/* Mobile (todo lo que no sea tablet/pc): sólo ícono.
+   Convertimos la píldora en un círculo táctil para mantener el área de toque. */
+@media (max-width: 600px) {
+  .btn-pill {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    gap: 0;
+    justify-content: center;
+  }
   .btn-pill__label { display: none; }
+  .btn-pill__icon { width: 18px; height: 18px; }
 }
 
-/* Botones de icono pequeños (+/lapiz) */
+/* Botones de icono pequeños (+/lapiz) — legacy, aún usado en variantes */
 .btn-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 2.25rem; height: 2.25rem;
@@ -307,7 +349,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------------- Cómo funciona ---------------- */
+/* ---------------- Cómo funciona (4 pasos) ---------------- */
 .section { padding: 1.5rem 1rem; }
 .section h2 { font-size: 1.25rem; margin: 0 0 1rem; }
 .como-funciona { display: grid; gap: 1.5rem; }
@@ -337,6 +379,92 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   color: var(--color-text);
 }
 .como-funciona p { margin: 0; color: var(--color-muted); font-size: .88rem; }
+
+/* ---------------- Link button (parece <a>, es <button>) ---------------- */
+.link-button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--color-cta); }
+
+/* ---------------- Tooltip "i" + popover ---------------- */
+.tooltip-i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: .35rem;
+  padding: 0;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 50%;
+  background: white;
+  color: var(--color-primary);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: .72rem;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+.tooltip-i:hover {
+  background: var(--color-primary);
+  color: white;
+}
+.tooltip-i:active { transform: scale(.92); }
+.tooltip-i:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
+
+.tooltip-popover {
+  position: fixed;
+  z-index: 200;
+  max-width: 18rem;
+  width: calc(100% - 2rem);
+  padding: .85rem 1rem;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: tooltipPop 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tooltip-popover[hidden] { display: none; }
+@keyframes tooltipPop {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tooltip-popover__close {
+  position: absolute;
+  top: .3rem; right: .4rem;
+  width: 22px; height: 22px;
+  border: 0; background: transparent;
+  color: var(--color-muted);
+  font-size: 1.25rem; line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.tooltip-popover__close:hover { background: var(--color-surface-low); color: var(--color-primary); }
+.tooltip-popover__title {
+  margin: 0 0 .35rem;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  padding-right: 1.5rem;
+}
+.tooltip-popover__body {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--color-text);
+  line-height: 1.5;
+  white-space: pre-line;
+}
 
 /* ---------------- Formulario expandido ---------------- */
 .registration-form {
@@ -378,7 +506,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   box-shadow: 0 0 0 3px rgba(0, 35, 111, .15);
 }
 .field input[aria-invalid="true"] { border-color: var(--color-error); }
-.field input:disabled, .field select:disabled {
+.field input:disabled, .field select:disabled, .field input[readonly] {
   background: var(--color-surface-low);
   color: var(--color-muted);
   cursor: not-allowed;
@@ -442,9 +570,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   }
 }
 
-/* Canal de verificación — íconos sobrios, sin fondo */
+/* Canal de verificación — íconos sobrios, sin fondo. 2 columnas (Email + WhatsApp). */
 .canal-options {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .35rem;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; margin-top: .35rem;
 }
 .canal-options label {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -541,7 +669,7 @@ details[open] summary::after { transform: rotate(180deg); }
   line-height: 1.4;
 }
 
-/* Bloque único de establecimiento + punto de emisión */
+/* Bloque único de establecimiento + punto de emisión (siempre editable cuando aparece) */
 .establecimiento-bloque {
   margin-top: 1rem;
   padding: 1rem;
@@ -558,23 +686,27 @@ details[open] summary::after { transform: rotate(180deg); }
 .establecimiento-bloque-header h4 {
   margin: 0; font-size: .92rem; font-weight: 600; color: var(--color-primary);
 }
-.btn-editar {
-  display: inline-flex; align-items: center; gap: .3rem;
-  padding: .35rem .7rem;
-  background: transparent;
-  border: 1.5px solid var(--color-edit);
-  color: var(--color-edit);
-  border-radius: var(--radius-sm);
-  font-weight: 700; font-size: .78rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  transition: all var(--transition);
+
+.bloque-actions {
+  display: flex; align-items: center; gap: .75rem;
+  margin-top: .75rem;
+  flex-wrap: wrap;
 }
-.btn-editar:hover { background: var(--color-edit); color: white; }
-.btn-editar.is-active {
-  background: var(--color-edit); color: white;
+.btn--guardar {
+  width: auto;
+  height: auto;
+  padding: .55rem 1rem;
+  font-size: .85rem;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 0;
 }
+.bloque-guardado {
+  color: var(--color-teal-dark);
+  font-weight: 600;
+  font-size: .85rem;
+}
+
 .codigos-fila {
   display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
   margin-bottom: .75rem;
@@ -589,120 +721,7 @@ details[open] summary::after { transform: rotate(180deg); }
   letter-spacing: .08em;
 }
 
-/* Lista legacy (puede que aún se use en variantes) */
-.establecimientos {
-  margin-top: 1rem;
-}
-.establecimientos-titulo {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: .5rem;
-}
-.establecimientos-titulo h4 {
-  font-size: .92rem; font-weight: 600; margin: 0;
-  color: var(--color-primary);
-}
-.establecimiento-item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: .85rem;
-  margin-bottom: .65rem;
-  background: white;
-  animation: slideUp 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.establecimiento-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: .5rem;
-}
-.establecimiento-label {
-  font-weight: 600; font-size: .88rem; color: var(--color-primary);
-}
-.establecimiento-actions {
-  display: flex; gap: .35rem;
-}
-.establecimiento-codigos {
-  display: grid; grid-template-columns: 1fr; gap: .5rem;
-  margin-bottom: .75rem;
-}
-.establecimiento-codigos .field { margin-bottom: 0; }
-.establecimiento-codigos .field label {
-  font-size: .8rem; font-weight: 500; color: var(--color-muted); margin-bottom: .25rem;
-}
-.establecimiento-codigos .establecimiento-codigo-input {
-  width: 6rem;
-  padding: .55rem .65rem;
-  font-size: .92rem;
-  font-family: ui-monospace, monospace;
-  letter-spacing: .05em;
-  text-align: center;
-}
-
-/* Lista de Puntos de emisión dentro de cada Establecimiento */
-.puntos-emision {
-  background: var(--color-surface-low);
-  border-radius: var(--radius-md);
-  padding: .65rem;
-  margin-top: .5rem;
-}
-.puntos-emision-titulo {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: .82rem; font-weight: 600; color: var(--color-muted);
-  margin: 0 0 .5rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.punto-item {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: .65rem;
-  margin-bottom: .5rem;
-  animation: slideUp 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.punto-item:last-child { margin-bottom: 0; }
-.punto-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: .5rem;
-}
-.punto-label {
-  font-size: .82rem; font-weight: 600; color: var(--color-primary);
-}
-.punto-fields {
-  display: grid; grid-template-columns: 5rem 1fr; gap: .5rem; align-items: end;
-}
-.punto-fields .field { margin: 0; }
-.punto-fields .field label {
-  font-size: .76rem; font-weight: 500; color: var(--color-muted);
-  margin-bottom: .2rem;
-}
-.punto-fields input {
-  padding: .5rem .6rem;
-  font-size: .88rem;
-}
-.punto-fields .punto-codigo {
-  text-align: center;
-  font-family: ui-monospace, monospace;
-  letter-spacing: .05em;
-}
-.btn-add-punto {
-  display: inline-flex; align-items: center; gap: .35rem;
-  margin-top: .15rem;
-  padding: .45rem .75rem;
-  background: transparent;
-  border: 1.5px dashed var(--color-outline);
-  color: var(--color-primary);
-  border-radius: var(--radius-sm);
-  font-weight: 600; font-size: .8rem;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.btn-add-punto:hover:not(:disabled) {
-  border-color: var(--color-teal);
-  color: var(--color-teal-dark);
-  background: var(--color-teal-light);
-}
-.btn-add-punto:disabled { opacity: .4; cursor: not-allowed; }
-
-/* Secuencias por tipo de documento */
+/* Secuencias por tipo de documento (con tooltip por label) */
 .secuencias {
   margin-top: .75rem;
   padding-top: .75rem;
@@ -720,6 +739,7 @@ details[open] summary::after { transform: rotate(180deg); }
 }
 .secuencia-row .secuencia-label {
   font-size: .82rem; color: var(--color-text);
+  display: inline-flex; align-items: center;
 }
 .secuencia-row input {
   padding: .5rem .6rem;
@@ -729,23 +749,23 @@ details[open] summary::after { transform: rotate(180deg); }
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
-.btn-add-establecimiento {
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .55rem .9rem;
+
+/* Botones legacy del bloque establecimiento (mantenidos para compatibilidad) */
+.btn-editar {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .35rem .7rem;
   background: transparent;
-  border: 1.5px dashed var(--color-teal);
-  color: var(--color-teal-dark);
-  border-radius: var(--radius-md);
-  font-weight: 600; font-size: .88rem;
+  border: 1.5px solid var(--color-edit);
+  color: var(--color-edit);
+  border-radius: var(--radius-sm);
+  font-weight: 700; font-size: .78rem;
   cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .04em;
   transition: all var(--transition);
 }
-.btn-add-establecimiento:hover {
-  background: var(--color-teal-light);
-}
-.btn-add-establecimiento:disabled {
-  opacity: .4; cursor: not-allowed;
-}
+.btn-editar:hover { background: var(--color-edit); color: white; }
+.btn-editar.is-active { background: var(--color-edit); color: white; }
 
 .banner-warn {
   background: var(--color-warn-container); border: 1px solid #fbd2a8;
@@ -776,12 +796,9 @@ details[open] summary::after { transform: rotate(180deg); }
   accent-color: var(--color-cta);
   cursor: pointer;
 }
-.terminos-label a {
-  color: var(--color-primary);
+.terminos-label .link-button {
   font-weight: 600;
-  text-decoration: underline;
 }
-.terminos-label a:hover { color: var(--color-cta); }
 
 /* ---------------- Modales ---------------- */
 dialog {
@@ -799,8 +816,15 @@ dialog.is-open .modal-content {
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 64px rgba(0,0,0,.2);
 }
+.modal-content--wide { max-width: 34rem; }
 .modal-content h2 { margin: 0 0 .5rem; font-size: 1.3rem; color: var(--color-primary); }
 .modal-content p { color: var(--color-muted); margin: 0 0 1rem; }
+
+dialog#modal-cotizar,
+dialog#modal-pago,
+dialog#modal-terms {
+  max-width: 34rem;
+}
 
 @keyframes modalPop {
   from { opacity: 0; transform: scale(.94) translateY(8px); }
@@ -823,10 +847,6 @@ dialog.is-open .modal-content {
 .modal-actions { display: flex; gap: .5rem; flex-direction: column; margin-top: 1rem; }
 .modal-actions[hidden] { display: none; } /* sobre-escribe display:flex cuando se oculta */
 .modal-actions .btn { width: 100%; }
-/* Variante con dos botones lado a lado en todos los breakpoints (Cancelar / Continuar).
-   Forzamos flex-direction:row (no row-reverse) para que Cancelar quede a la izquierda
-   y Continuar a la derecha — convención web/Material. La doble clase
-   `.modal-actions.modal-actions--split` gana al @media (min-width: 768px) más abajo. */
 .modal-actions.modal-actions--split { flex-direction: row; }
 .modal-actions--split .btn { flex: 1; width: auto; }
 .modal-hint { color: var(--color-info); font-size: .78rem; text-align: center; }
@@ -912,13 +932,157 @@ dialog.is-open .modal-content {
   display: flex; justify-content: space-between; gap: .75rem;
   padding: .15rem 0;
 }
-.firma-resumen-label {
-  color: var(--color-muted); font-weight: 500;
-}
+.firma-resumen-label { color: var(--color-muted); font-weight: 500; }
 .firma-resumen-value {
   color: var(--color-primary); font-weight: 600; text-align: right;
   font-family: ui-monospace, monospace; font-size: .82rem;
 }
+
+/* ---------------- Modal Cotizar ---------------- */
+.cotizar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+}
+@media (max-width: 480px) {
+  .cotizar-grid { grid-template-columns: 1fr; gap: 0; }
+}
+.cot-resumen {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-teal);
+  border-radius: var(--radius-md);
+  background: var(--color-teal-light);
+  animation: slideUp 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cot-resumen[hidden] { display: none; }
+.cot-resumen h3 {
+  margin: 0 0 .65rem;
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+.cot-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: .35rem 0;
+  border-bottom: 1px dashed rgba(0,35,111,.12);
+  font-size: .92rem;
+}
+.cot-row:last-of-type { border-bottom: 0; }
+.cot-row strong {
+  font-family: ui-monospace, monospace;
+  color: var(--color-primary);
+}
+.cot-row--total {
+  margin-top: .35rem;
+  padding-top: .65rem;
+  border-top: 2px solid var(--color-primary);
+  border-bottom: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.cot-row--total strong { color: var(--color-cta); font-size: 1.15rem; }
+.cot-vigencia {
+  margin: .65rem 0 .85rem;
+  font-size: .85rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+.cot-vigencia strong { color: var(--color-primary); }
+
+/* ---------------- Modal Pago ---------------- */
+.pago-importante {
+  margin-top: 1rem;
+  padding: .85rem 1rem;
+  background: var(--color-warn-container);
+  border: 1px solid #fbd2a8;
+  border-radius: var(--radius-md);
+}
+.pago-importante h4 {
+  margin: 0 0 .5rem;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--color-warn);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pago-importante ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-text);
+  font-size: .82rem;
+  line-height: 1.55;
+}
+.pago-importante li { margin-bottom: .25rem; }
+
+.btn--soporte {
+  background: #25D366;
+  color: white;
+  border: 0;
+}
+.btn--soporte:hover { background: #1ebd5a; color: white; }
+
+/* ---------------- Modal Información Bancaria ---------------- */
+.bank-titular { margin: 0 0 .15rem; font-size: .95rem; }
+.bank-ruc { margin: 0 0 .85rem; color: var(--color-muted); font-size: .85rem; }
+.bank-ruc .mono { font-family: ui-monospace, monospace; }
+.bank-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+.bank-list li {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: .75rem;
+  padding: .55rem 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: .9rem;
+}
+.bank-list li:last-child { border-bottom: 0; }
+.bank-label { color: var(--color-text); font-weight: 500; }
+.bank-num {
+  font-family: ui-monospace, monospace;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: .92rem;
+}
+.bank-email {
+  margin: 0 0 .25rem;
+  font-size: .85rem;
+  color: var(--color-muted);
+}
+.bank-email a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ---------------- Modal Términos (scroll-to-bottom) ---------------- */
+.modal-content--terms { max-width: 36rem; }
+.terms-body {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  font-size: .88rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  scrollbar-gutter: stable;
+}
+.terms-body h3 {
+  margin: 1.2rem 0 .35rem;
+  font-size: .95rem;
+  color: var(--color-primary);
+}
+.terms-body h3:first-child { margin-top: 0; }
+.terms-body p { margin: 0 0 .55rem; color: var(--color-text); }
+.terms-body ul, .terms-body ol { margin: 0 0 .65rem 1.2rem; padding: 0; }
+.terms-body li { margin-bottom: .25rem; }
+.terms-hint {
+  margin: .65rem 0 0;
+  font-size: .8rem;
+  color: var(--color-muted);
+  text-align: center;
+  font-style: italic;
+}
+.terms-hint.is-bottom { color: var(--color-teal-dark); font-style: normal; font-weight: 600; }
 
 /* Animación de "highlight" para el campo razón social al hacer scroll */
 @keyframes highlightField {
@@ -974,8 +1138,10 @@ dialog.is-open .modal-content {
   .hero, .ruc-card, .section, .registration-form {
     max-width: 720px; margin-left: auto; margin-right: auto;
   }
-  .hero h1 { font-size: 2.6rem; }
-  .como-funciona { grid-template-columns: repeat(3, 1fr); }
+  .hero h1 .h-tiempo { font-size: .85em; }
+  .hero h1 .h-gratis { font-size: 1.6em; }
+  .como-funciona { grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .como-funciona article { padding-left: 2.6rem; }
   .modal-actions { flex-direction: row-reverse; }
   .modal-actions .btn { width: auto; flex: 1; }
 }
