@@ -412,7 +412,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517g');
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517h');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -449,9 +449,9 @@ function mostrarExito() {
         <p>Te enviamos un correo a <strong>${escapeHtml(wizardData.email)}</strong> con tu usuario, tu clave y un resumen del registro.</p>
         <div class="wiz-success-creds">
           <p><span>Usuario:</span> <strong>${escapeHtml(usuario)}</strong></p>
-          <p><span>Portal:</span> <a href="https://tbc.tributasoft.com.ec" target="_blank" rel="noopener">tbc.tributasoft.com.ec</a></p>
+          <p><span>Portal:</span> <a href="https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true" target="_blank" rel="noopener">tbc.tributasoft.ec</a></p>
         </div>
-        <a href="https://tbc.tributasoft.com.ec?u=${encodeURIComponent(usuario)}" class="btn btn--primary" style="display:inline-flex;max-width:18rem;margin-top:1.5rem">
+        <a href="https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true" target="_blank" rel="noopener" class="btn btn--primary" style="display:inline-flex;max-width:18rem;margin-top:1.5rem">
           Ir al portal
         </a>
       </section>
@@ -581,13 +581,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517g'),
-      import('./screen-datos.js?v=20260517g'),
-      import('./screen-token.js?v=20260517g'),
-      import('./screen-tributaria.js?v=20260517g'),
-      import('./screen-facturacion.js?v=20260517g'),
-      import('./screen-clave.js?v=20260517g'),
-      import('./screen-logo.js?v=20260517g'),
+      import('./screen-firma.js?v=20260517h'),
+      import('./screen-datos.js?v=20260517h'),
+      import('./screen-token.js?v=20260517h'),
+      import('./screen-tributaria.js?v=20260517h'),
+      import('./screen-facturacion.js?v=20260517h'),
+      import('./screen-clave.js?v=20260517h'),
+      import('./screen-logo.js?v=20260517h'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

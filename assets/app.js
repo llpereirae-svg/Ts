@@ -25,7 +25,7 @@ import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manu
 // lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint
 // en la query (?u=...) — útil para que la página de login pre-rellene el
 // campo si soporta ese parámetro.
-const PORTAL_URL = 'https://tbc.tributasoft.com.ec';
+const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
 
 // Tipos de contribuyente que requieren No. Resolución
 const TIPOS_CON_RESOLUCION = new Set(['AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE']);
