@@ -105,23 +105,65 @@ export async function parseCertificadoRUC(file) {
 
   // --- Razón Social / Apellidos y nombres ---
   // El SRI usa "Razón Social" para jurídicas y "Apellidos y nombres" para naturales.
-  // En ambos casos: el label está en una línea (junto con "Número RUC") y el valor
-  // está en la línea SIGUIENTE (junto con el RUC). Quitamos el RUC para aislar el nombre.
+  // Layout esperado en el PDF (visual):
+  //   Razón Social        Número RUC
+  //   TRIBUTASOFT S.A.    0992703601001
+  //
+  // Pero pdf.js puede agrupar texto por coordenada Y de varias formas:
+  //   Caso A: dos líneas separadas (label arriba, valor abajo)
+  //   Caso B: una sola línea con label+valor mezclados (si Y casi-coincide)
+  //
+  // Para ser robusto: usamos el RUC como ANCLA. Encontramos la línea que contiene
+  // el RUC, le quitamos el RUC y los labels conocidos → lo que sobra es el nombre.
+  // Si la línea del RUC no tiene el label, miramos también la línea anterior.
   let razonSocial = '';
   let esJuridica = false;
   {
-    const idxRazon = lines.findIndex((l) => /raz[oó]n\s*social/i.test(l));
-    const idxApellidos = lines.findIndex((l) => /apellidos\s*y\s*nombres/i.test(l));
-    let valIdx = -1;
-    if (idxRazon >= 0) { valIdx = idxRazon + 1; esJuridica = true; }
-    else if (idxApellidos >= 0) { valIdx = idxApellidos + 1; esJuridica = false; }
-    if (valIdx >= 0 && valIdx < lines.length) {
-      razonSocial = clean(lines[valIdx]).replace(/\s*\d{10}001\b/g, '').trim();
+    const rucIdx = lines.findIndex((l) => /\b\d{10}001\b/.test(l));
+    if (rucIdx >= 0) {
+      const rucLine = lines[rucIdx];
+      const prevLine = rucIdx > 0 ? lines[rucIdx - 1] : '';
+
+      // Detectar tipo en cualquiera de las dos líneas posibles
+      if (/raz[oó]n\s*social/i.test(rucLine) || /raz[oó]n\s*social/i.test(prevLine)) {
+        esJuridica = true;
+      } else if (/apellidos\s*y\s*nombres/i.test(rucLine) || /apellidos\s*y\s*nombres/i.test(prevLine)) {
+        esJuridica = false;
+      }
+
+      // Extraer el valor: limpiar labels y RUC de la línea del RUC
+      let valor = rucLine
+        .replace(/raz[oó]n\s*social/gi, '')
+        .replace(/apellidos\s*y\s*nombres/gi, '')
+        .replace(/n[uú]mero\s*ruc/gi, '')
+        .replace(/\b\d{10}001\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      razonSocial = valor;
     }
   }
 
   // --- Representante legal (solo si es jurídica) ---
-  const repLegal = esJuridica ? lineAfter(lines, /^representante\s*legal\s*$/i) : '';
+  // Mismo problema potencial: label y valor pueden compartir línea.
+  let repLegal = '';
+  if (esJuridica) {
+    // Buscar la línea que contiene "Representante legal"
+    const idx = lines.findIndex((l) => /representante\s*legal/i.test(l));
+    if (idx >= 0) {
+      const line = lines[idx];
+      // Si la línea tiene solo el label, valor = línea siguiente
+      // Si tiene label + valor, sacar label
+      const sinLabel = line.replace(/representante\s*legal/gi, '').trim();
+      if (sinLabel.length > 2) {
+        // Caso B: label+valor en misma línea
+        repLegal = sinLabel;
+      } else if (idx + 1 < lines.length) {
+        // Caso A: valor en línea siguiente
+        repLegal = clean(lines[idx + 1]);
+      }
+    }
+  }
 
   // --- Nombre comercial ---
   // Algunos certs SRI lo traen, otros NO. Intentamos varias formas.

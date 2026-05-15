@@ -44,7 +44,6 @@ export function renderPantallaTributaria(body, wizardData) {
 
     <div class="field field-locked">
       <label for="t-regimen">
-        <span class="lock-ico" aria-hidden="true">🔒</span>
         Régimen
       </label>
       <input id="t-regimen" type="text" value="${escapeAttr(regimenLabel)}" readonly>
@@ -52,7 +51,6 @@ export function renderPantallaTributaria(body, wizardData) {
 
     <div class="field field-locked">
       <label for="t-tipo">
-        <span class="lock-ico" aria-hidden="true">🔒</span>
         Tipo de Contribuyente
       </label>
       <input id="t-tipo" type="text" value="${escapeAttr(tipoLabel)}" readonly>

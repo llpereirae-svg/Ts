@@ -63,7 +63,6 @@ export function renderPantallaDatos(body, wizardData) {
 
     <div class="field field-locked">
       <label for="d-razon">
-        <span class="lock-ico" aria-hidden="true">🔒</span>
         Razón social / Nombre
       </label>
       <input id="d-razon" type="text" value="${escapeAttr(wizardData.razonSocial)}" readonly>
@@ -71,7 +70,6 @@ export function renderPantallaDatos(body, wizardData) {
 
     <div class="field field-locked">
       <label for="d-comercial">
-        <span class="lock-ico" aria-hidden="true">🔒</span>
         Nombre comercial
       </label>
       <input id="d-comercial" type="text" value="${escapeAttr(wizardData.nombreComercial || 'No aplica')}" readonly>
@@ -80,15 +78,13 @@ export function renderPantallaDatos(body, wizardData) {
     <div class="field-row">
       <div class="field field-locked">
         <label for="d-provincia">
-          <span class="lock-ico" aria-hidden="true">🔒</span>
-          Provincia
+            Provincia
         </label>
         <input id="d-provincia" type="text" value="${escapeAttr(titleCase(wizardData.provincia))}" readonly>
       </div>
       <div class="field field-locked">
         <label for="d-ciudad">
-          <span class="lock-ico" aria-hidden="true">🔒</span>
-          Ciudad
+            Ciudad
         </label>
         <input id="d-ciudad" type="text" value="${escapeAttr(wizardData.ciudad)}" readonly>
       </div>
