@@ -162,26 +162,12 @@ export const MANUAL = {
           LOGO_FORMATO: 'Si ves un error al subir, asegúrate que sea PNG o JPG.',
           LOGO_PESO: 'Si ves "El archivo es muy grande", comprime la imagen.',
         },
-        tip: 'Este paso es OPCIONAL — si no quieres logo, dale Continuar sin subir ni generar nada y pasas al resumen. Lo puedes configurar después desde el portal.',
+        tip: 'Este paso es OPCIONAL — si no quieres logo, dale Continuar sin subir ni generar nada. Lo puedes configurar después desde el portal.',
         animKey: 'logo',
       },
-      // ────────────────────────────────────────────────────────────────
-      {
-        id: 'resumen',
-        title: 'Paso 8 · Revisa y confirma',
-        intro: 'Última pantalla antes de crear tu cuenta. Verifica todos los datos en las tarjetas. Si algo está mal, toca "Editar" en la sección correspondiente y vuelves a esa pantalla.',
-        rules: [
-          'Cada tarjeta tiene un botón "Editar" que regresa a esa pantalla específica del wizard.',
-          'En la tarjeta "Acceso al portal" verás tu Usuario (primeros 10 dígitos del RUC) y tu Clave (•••).',
-          'Al confirmar, generamos tu cuenta y enviamos un email de bienvenida con un resumen y tus credenciales.',
-          'El email incluye Usuario + Clave en monospace y un botón directo al portal.',
-        ],
-        errors: {
-          CONFIRM_BACKEND: 'Si ves "Hubo un problema al finalizar tu registro", suele ser un problema temporal de red. Intenta de nuevo.',
-        },
-        tip: 'Después de confirmar, ya estás dentro. Cualquier cambio posterior (logo, datos, etc.) se hace desde el portal de TributaSoft.',
-        animKey: 'resumen',
-      },
+      // NOTA: la pantalla 8 del wizard ('Revisa tus datos antes de finalizar')
+      // no figura como paso del manual porque es un repaso visual sin acción
+      // que enseñar — simplemente le das Confirmar y se crea tu cuenta.
     ],
   },
 
@@ -376,9 +362,6 @@ export const ERROR_TO_MANUAL = {
   // Paso 7 — Logo
   LOGO_FORMATO:          { proceso: 'registro', paso: 'logo' },
   LOGO_PESO:             { proceso: 'registro', paso: 'logo' },
-
-  // Paso 8 — Resumen
-  CONFIRM_BACKEND:       { proceso: 'registro', paso: 'resumen' },
 
   // Cotizador
   COT_VOLUMEN:           { proceso: 'cotizacion', paso: 'volumen' },
