@@ -263,6 +263,33 @@ body.is-pc .wiz-loading-text {
   animation: wizFade 2.4s ease-in-out infinite;
 }
 
+/* Cuando el usuario tiene activado "Reducir animaciones" en su SO (Windows /
+   macOS), los navegadores suelen colapsar la duración a casi-cero, lo que
+   produce parpadeo desagradable en lugar del fade pausado. Respetamos la
+   preferencia mostrando un estado estático (sin animación, sin transición).
+   La rotación del bombillo + el texto siguen comunicando "cargando…" sin
+   movimiento que pueda molestar. */
+@media (prefers-reduced-motion: reduce) {
+  .wiz-loading-logo,
+  .wiz-loading-text {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
+/* Y para el overlay completo, también suavizamos su entrada en reduce-motion */
+@media (prefers-reduced-motion: reduce) {
+  .wiz-loading {
+    animation: none !important;
+  }
+  .wiz-screen {
+    animation: none !important;
+  }
+  .wiz-screen.is-leaving {
+    animation: none !important;
+  }
+}
+
 /* ---------------- Pantalla de resumen (Confirmación) ---------------- */
 .wiz-summary {
   display: flex;
