@@ -726,6 +726,33 @@ body.is-pc .wiz-loading-text {
 }
 .token-debug small { display: block; width: 100%; opacity: .85; font-style: italic; }
 
+/* ---------------- Pantalla 6 (Clave) — input con toggle ojo ---------------- */
+.field-password {
+  position: relative;
+  display: flex;
+}
+.field-password input {
+  flex: 1;
+  padding-right: 2.5rem;
+}
+.pwd-toggle {
+  position: absolute;
+  right: .35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  padding: .35rem .5rem;
+  cursor: pointer;
+  color: var(--color-muted);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  transition: color var(--transition), background var(--transition);
+}
+.pwd-toggle:hover { color: var(--color-primary); background: var(--color-teal-light); }
+.pwd-toggle:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,
