@@ -117,27 +117,6 @@ export function renderPantallaDatos(body, wizardData) {
       <p class="hint">Formato Ecuador: 09XXXXXXXX (10 dígitos).</p>
       <div id="d-celular-error" class="error" role="alert" aria-live="polite"></div>
     </div>
-
-    <div class="field">
-      <span class="field-label" style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Por dónde quieres recibir tus códigos de verificación?</span>
-      <div class="canal-options canal-options--two" role="radiogroup" aria-label="Canal preferido">
-        <label data-canal="email">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
-          </svg>
-          <input type="radio" name="d-canal" value="email" ${wizardData.canal === 'email' ? 'checked' : ''}>
-          <span>Email</span>
-        </label>
-        <label data-canal="whatsapp">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20.5 12a8.5 8.5 0 1 1-3.6-6.93L20.5 3.5l-1.6 3.6A8.46 8.46 0 0 1 20.5 12z"/>
-            <path d="M9 10.5c.5 2 2.5 4 4.5 4.5l1.5-1.5 2 1c-.4 1.3-1.7 2-3 2-3 0-6-3-6-6 0-1.3.7-2.6 2-3l1 2L9 10.5z"/>
-          </svg>
-          <input type="radio" name="d-canal" value="whatsapp" ${wizardData.canal === 'whatsapp' ? 'checked' : ''}>
-          <span>WhatsApp</span>
-        </label>
-      </div>
-    </div>
   `;
 
   wireDatosScreen(body, wizardData);
@@ -183,7 +162,6 @@ function preFillFromSources(wd) {
   }
 
   if (!wd.celularPais) wd.celularPais = 'EC';
-  if (!wd.canal) wd.canal = 'email';
 }
 
 function wireDatosScreen(root, wd) {
@@ -206,12 +184,6 @@ function wireDatosScreen(root, wd) {
     e.target.value = e.target.value.replace(/[^\d ]/g, '');
     wd.celular = e.target.value.replace(/\s/g, '');
     wd._auto.celular = null;
-  });
-
-  root.querySelectorAll('input[name="d-canal"]').forEach((r) => {
-    r.addEventListener('change', () => {
-      if (r.checked) wd.canal = r.value;
-    });
   });
 }
 

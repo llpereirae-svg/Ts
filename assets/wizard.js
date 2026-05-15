@@ -50,7 +50,6 @@ export const wizardData = {
   email: '',
   celular: '',
   celularPais: 'EC',
-  canal: 'email',
   // token (no se persiste el código)
   tokenEmailOk: false,
   tokenSmsOk: false,
@@ -310,8 +309,7 @@ function renderSummary() {
         ['Provincia', wizardData.provincia],
         ['Ciudad', wizardData.ciudad],
         ['Correo electrónico', wizardData.email],
-        ['Celular', wizardData.celular ? `+${wizardData.celularPais} ${wizardData.celular}` : ''],
-        ['Canal preferido', labelCanal(wizardData.canal)]
+        ['Celular', wizardData.celular ? `+${wizardData.celularPais} ${wizardData.celular}` : '']
       ]
     },
     {
@@ -452,10 +450,6 @@ function formatFecha(d) {
   } catch { return '—'; }
 }
 
-function labelCanal(c) {
-  return c === 'whatsapp' ? 'WhatsApp' : c === 'email' ? 'Email' : '';
-}
-
 function labelTipoContribuyente(t) {
   const map = {
     NO_OBLIGADO: 'No obligado a llevar contabilidad',
@@ -480,10 +474,10 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod] = await Promise.all([
-      import('./screen-firma.js?v=20260516q'),
-      import('./screen-datos.js?v=20260516q'),
-      import('./screen-token.js?v=20260516q'),
-      import('./screen-tributaria.js?v=20260516q'),
+      import('./screen-firma.js?v=20260516r'),
+      import('./screen-datos.js?v=20260516r'),
+      import('./screen-token.js?v=20260516r'),
+      import('./screen-tributaria.js?v=20260516r'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);
