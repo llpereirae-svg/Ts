@@ -206,16 +206,18 @@ export async function goTo(idOrIdx) {
 }
 
 async function transitionTo(newIdx) {
-  // El ciclo del bombillo es 3.8s en PC y 2.4s en móvil/tablet (CSS).
-  // Sincronizamos el tiempo visible para que el usuario perciba un ciclo
-  // de fade completo (subir y bajar) antes de que aparezca la pantalla.
-  const dev = getDevice();
-  const visibleMs = dev.isPC ? 2200 : 1400;
-  showLoading('Cargando…');
-  await wait(visibleMs);
+  // Transición rápida entre pantallas (sin overlay de loading).
+  // El loading overlay queda reservado para operaciones async reales:
+  // validar firma .p12, parsear PDF, enviar al backend, etc.
+  // Cada pantalla puede llamar showLoading()/hideLoading() manualmente
+  // cuando realmente esté esperando algo.
+  const currentScreen = document.querySelector('.wiz-screen.is-active');
+  if (currentScreen) {
+    currentScreen.classList.add('is-leaving');
+    await wait(180);
+    currentScreen.classList.remove('is-leaving');
+  }
   showScreen(newIdx);
-  await wait(220);
-  hideLoading();
 }
 
 function showScreen(idx, { skipAnim = false } = {}) {
