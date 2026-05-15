@@ -304,12 +304,23 @@ function renderSummary() {
       title: 'Datos personales',
       rows: [
         ['Razón social', wizardData.razonSocial],
-        ['Nombre comercial', wizardData.nombreComercial],
+        // Nombre comercial: si el cert no lo trae, mostramos 'NO APLICA' (en vez de vacío)
+        ['Nombre comercial',
+          (wizardData.nombreComercial && wizardData.nombreComercial.trim())
+            ? wizardData.nombreComercial
+            : 'NO APLICA'],
         ['Dirección', wizardData.direccion],
         ['Provincia', wizardData.provincia],
         ['Ciudad', wizardData.ciudad],
         ['Correo electrónico', wizardData.email],
-        ['Celular', wizardData.celular ? `+${wizardData.celularPais} ${wizardData.celular}` : '']
+        // Celular: si es Ecuador, mostrar solo los 10 dígitos. Otros países sí
+        // mantienen el prefijo internacional para que se sepa cuál es.
+        ['Celular',
+          wizardData.celular
+            ? (wizardData.celularPais === 'EC'
+                ? wizardData.celular
+                : `+${wizardData.celularPais} ${wizardData.celular}`)
+            : '']
       ]
     },
     {
@@ -400,7 +411,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517c');
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517d');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -531,13 +542,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517c'),
-      import('./screen-datos.js?v=20260517c'),
-      import('./screen-token.js?v=20260517c'),
-      import('./screen-tributaria.js?v=20260517c'),
-      import('./screen-facturacion.js?v=20260517c'),
-      import('./screen-clave.js?v=20260517c'),
-      import('./screen-logo.js?v=20260517c'),
+      import('./screen-firma.js?v=20260517d'),
+      import('./screen-datos.js?v=20260517d'),
+      import('./screen-token.js?v=20260517d'),
+      import('./screen-tributaria.js?v=20260517d'),
+      import('./screen-facturacion.js?v=20260517d'),
+      import('./screen-clave.js?v=20260517d'),
+      import('./screen-logo.js?v=20260517d'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

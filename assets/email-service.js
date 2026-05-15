@@ -130,13 +130,15 @@ function buildHtml(d) {
         <!-- RESUMEN -->
         ${seccion('Datos personales', [
           ['Razón social / Nombre', d.razonSocial],
-          ['Nombre comercial', d.nombreComercial || 'No aplica'],
+          ['Nombre comercial', (d.nombreComercial && d.nombreComercial.trim()) ? d.nombreComercial : 'NO APLICA'],
           ['RUC', d.rucManual],
           ['Dirección', d.direccion],
           ['Provincia', d.provincia],
           ['Ciudad', d.ciudad],
           ['Correo electrónico', d.email],
-          ['Celular', d.celular ? `+${d.celularPais || 'EC'} ${d.celular}` : ''],
+          ['Celular', d.celular
+            ? (d.celularPais === 'EC' ? d.celular : `+${d.celularPais} ${d.celular}`)
+            : ''],
         ])}
 
         ${seccion('Información tributaria', [
