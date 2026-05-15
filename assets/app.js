@@ -17,7 +17,7 @@ import { citiesFor } from './cities.js?v=20260514v';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
   establecerClave, finalizarRegistro, validarEmpresa,
-} from './api-mocks.js?v=20260514v';
+} from './api-mocks.js?v=20260514w';
 import { validarFirmaP12 } from './firma-validator.js?v=20260514v';
 
 // URL del portal de inicio de sesión final. Cuando el usuario confirma,

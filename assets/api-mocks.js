@@ -114,10 +114,15 @@ export async function verificarToken({ registroId, codigo }) {
  * POST /api/registro/establecer-clave
  * TODO BACKEND: replace with real endpoint
  * Importante: nunca loguear la clave. Aquí solo simulamos un ack.
+ *
+ * El mínimo de longitud (4 caracteres) coincide con el validator del
+ * frontend (validarClave en validators.js). El backend real puede
+ * endurecer esta política, pero el cliente no debería ver "no pudimos
+ * guardar la clave" si la clave pasó la validación de la UI.
  */
 export async function establecerClave({ registroId, clave }) {
   await delay(400);
-  if (!registroId || !clave || clave.length < 8) return { ok: false };
+  if (!registroId || !clave || clave.length < 4) return { ok: false };
   return { ok: true };
 }
 
