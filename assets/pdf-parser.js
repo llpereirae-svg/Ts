@@ -220,15 +220,46 @@ export async function parseCertificadoRUC(file) {
   else if (/\bR[Ií]MPE\s*[-–]?\s*NEGOCIO\s*POPULAR\b/i.test(text)) regimen = 'RIMPE - NEGOCIO POPULAR';
   else if (/R[eé]gimen/i.test(text) && /\bGENERAL\b/.test(text)) regimen = 'GENERAL';
 
-  // --- Tipo contribuyente: "Obligado a llevar contabilidad: SI/NO" ---
+  // --- Tipo contribuyente: leemos los SI/NO POSICIONALMENTE ---
+  // Layout del cert:
+  //   Tipo                Agente de retención   Contribuyente especial
+  //   SOCIEDADES          SI                    NO
+  // Las celdas de la línea de valores corresponden a: (Tipo, AgenteRet, Especial).
+  // Tomamos los dos últimos SI/NO de la línea de valores (agente, especial).
+  // Obligado vive en otra sección.
+  // Prioridad: Especial > Agente > Obligado > No Obligado.
   let tipoContribuyente = '';
+  let flagsCert = { obligado: false, agente: false, especial: false };
   {
-    const obl = text.match(/obligado\s*a\s*llevar\s*contabilidad[\s\S]{0,40}?\b(SI|NO)\b/i);
-    if (obl) tipoContribuyente = obl[1].toUpperCase() === 'SI' ? 'OBLIGADO' : 'NO_OBLIGADO';
-    // Estos sobreescriben si aplican
-    if (/agente\s*de\s*retenci[oó]n[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'AGENTE_RETENCION';
-    if (/contribuyente\s*especial[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'CONTRIBUYENTE_ESPECIAL';
-    if (/gran\s*contribuyente[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'GRAN_CONTRIBUYENTE';
+    const labelIdx = lines.findIndex((l) =>
+      /agente\s*de\s*retenci[oó]n[\s\S]+contribuyente\s*especial/i.test(l)
+    );
+    if (labelIdx >= 0 && labelIdx + 1 < lines.length) {
+      const valLine = lines[labelIdx + 1];
+      const sino = valLine.match(/\b(SI|NO)\b/g) || [];
+      if (sino.length >= 2) {
+        flagsCert.agente = sino[sino.length - 2] === 'SI';
+        flagsCert.especial = sino[sino.length - 1] === 'SI';
+      }
+    }
+    // Obligado: puede estar inline en su línea o en la siguiente
+    const oblIdx = lines.findIndex((l) =>
+      /obligado\s*a\s*llevar\s*contabilidad/i.test(l)
+    );
+    if (oblIdx >= 0) {
+      const labelLine = lines[oblIdx];
+      const sinLabel = labelLine.replace(/obligado\s*a\s*llevar\s*contabilidad/gi, '').trim();
+      if (/\bSI\b/i.test(sinLabel)) flagsCert.obligado = true;
+      else if (oblIdx + 1 < lines.length && /^\s*SI\s*$/i.test(lines[oblIdx + 1])) {
+        flagsCert.obligado = true;
+      }
+    }
+
+    // Aplicar prioridad
+    if (flagsCert.especial) tipoContribuyente = 'CONTRIBUYENTE_ESPECIAL';
+    else if (flagsCert.agente) tipoContribuyente = 'AGENTE_RETENCION';
+    else if (flagsCert.obligado) tipoContribuyente = 'OBLIGADO';
+    else tipoContribuyente = 'NO_OBLIGADO';
   }
 
   // --- Estado del contribuyente ---
@@ -294,6 +325,7 @@ export async function parseCertificadoRUC(file) {
     actividad,
     regimen,
     tipoContribuyente,
+    flagsCert, // { obligado, agente, especial } — útil para decidir si se permite upgrade a GRAN_CONTRIBUYENTE
     estado,
     email,
     celular,

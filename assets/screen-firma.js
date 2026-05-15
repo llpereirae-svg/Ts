@@ -3,9 +3,9 @@
    El RUC ya NO se ingresa manualmente: viene de la firma y se valida
    contra el RUC del certificado. */
 
-import { validarFirmaP12 } from './firma-validator.js?v=20260516p';
-import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516p';
-import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516p';
+import { validarFirmaP12 } from './firma-validator.js?v=20260516q';
+import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516q';
+import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516q';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -83,7 +83,7 @@ export function renderPantallaFirma(body, wizardData) {
       <div id="f-firma-error" class="firma-error" role="alert" aria-live="polite"></div>
 
       <div id="f-firma-resumen" class="firma-resumen" hidden>
-        <p class="firma-resumen-titulo">✓ Firma validada</p>
+        <p class="firma-resumen-titulo">Firma validada</p>
         <div class="firma-resumen-row"><span class="firma-resumen-label">Titular</span><span class="firma-resumen-value" id="f-r-titular">—</span></div>
         <div class="firma-resumen-row"><span class="firma-resumen-label">RUC de la firma</span><span class="firma-resumen-value" id="f-r-ruc">—</span></div>
         <div class="firma-resumen-row" id="f-r-replegal-row" hidden><span class="firma-resumen-label">Firmado por</span><span class="firma-resumen-value" id="f-r-replegal">—</span></div>
@@ -124,7 +124,7 @@ export function renderPantallaFirma(body, wizardData) {
       <div id="f-cert-error" class="firma-error" role="alert" aria-live="polite"></div>
 
       <div id="f-cert-resumen" class="firma-resumen" hidden>
-        <p class="firma-resumen-titulo">✓ Certificado validado</p>
+        <p class="firma-resumen-titulo">Certificado validado</p>
         <div class="firma-resumen-row"><span class="firma-resumen-label">RUC</span><span class="firma-resumen-value" id="f-c-ruc">—</span></div>
         <div class="firma-resumen-row"><span class="firma-resumen-label">Razón social</span><span class="firma-resumen-value" id="f-c-razon">—</span></div>
         <div class="firma-resumen-row"><span class="firma-resumen-label">Provincia / Cantón</span><span class="firma-resumen-value" id="f-c-prov">—</span></div>
