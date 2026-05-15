@@ -237,15 +237,26 @@
 }
 .wiz-loading.is-active { display: flex; }
 .wiz-loading-logo {
-  width: 56px;
-  height: 56px;
-  animation: wizBounce 3s ease-in-out infinite;
-  filter: drop-shadow(0 4px 10px rgba(0, 35, 111, .14));
-  will-change: transform;
+  width: 64px;
+  height: 64px;
+  /* Mobile/tablet: ciclo de 1.6s (pantallas más lentas, la duración corta se ve bien) */
+  animation: wizGlow 1.6s ease-in-out infinite;
+  will-change: filter, opacity;
 }
-@keyframes wizBounce {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 1; }
-  50%      { transform: translateY(-14px) scale(1.04); opacity: .85; }
+/* En laptop/desktop la pantalla responde más rápido y el ciclo corto se siente
+   acelerado; lo extendemos para que el "encendido" se aprecie pausado. */
+body.is-pc .wiz-loading-logo {
+  animation-duration: 2.6s;
+}
+@keyframes wizGlow {
+  0%, 100% {
+    filter: brightness(0.72) saturate(0.55) drop-shadow(0 0 0 transparent);
+    opacity: .62;
+  }
+  50% {
+    filter: brightness(1.18) saturate(1.35) drop-shadow(0 0 14px rgba(239, 115, 6, .55));
+    opacity: 1;
+  }
 }
 .wiz-loading-text {
   font-family: var(--font-display);

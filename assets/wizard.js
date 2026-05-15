@@ -75,6 +75,14 @@ let currentIdx = 0;
 let onNavigateCb = null;   // permite a otros módulos reaccionar al cambio de pantalla
 const screenRenderers = new Map(); // id → función que renderiza el cuerpo
 
+// Detectamos una sola vez al cargar el módulo. La duración del loading se
+// adapta al tipo de dispositivo: laptop se siente acelerado, móvil/tablet no.
+let DEVICE = null;
+function getDevice() {
+  if (!DEVICE) DEVICE = detectDevice();
+  return DEVICE;
+}
+
 // ---------------- Detección de dispositivo ----------------
 export function detectDevice() {
   const ua = navigator.userAgent.toLowerCase();
@@ -115,6 +123,12 @@ export function mountWizard(rootEl) {
   document.getElementById('wiz-next').addEventListener('click', goNext);
 
   document.body.classList.add('wiz-mode');
+
+  // Marca de dispositivo para que el CSS adapte la animación de loading.
+  const dev = getDevice();
+  if (dev.isPC) document.body.classList.add('is-pc');
+  else if (dev.isTablet) document.body.classList.add('is-tablet');
+  else if (dev.isMobile) document.body.classList.add('is-mobile');
 
   // Mostrar primera pantalla
   showScreen(0, { skipAnim: true });
@@ -192,10 +206,14 @@ export async function goTo(idOrIdx) {
 }
 
 async function transitionTo(newIdx) {
+  // Laptop: pantalla rápida, necesita más ms para que el ciclo del bombillo
+  // se aprecie. Móvil/tablet: ciclo más corto se siente natural.
+  const dev = getDevice();
+  const visibleMs = dev.isPC ? 2000 : 1200;
   showLoading('Cargando…');
-  await wait(2000);         // 2 segundos de loading visible
+  await wait(visibleMs);
   showScreen(newIdx);
-  await wait(240);
+  await wait(220);
   hideLoading();
 }
 
