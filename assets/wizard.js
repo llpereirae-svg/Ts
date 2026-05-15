@@ -341,8 +341,9 @@ function renderSummary() {
     },
     {
       id: 'clave',
-      title: 'Clave del sistema',
+      title: 'Acceso al portal',
       rows: [
+        ['Usuario', wizardData.rucManual ? wizardData.rucManual.slice(0, 10) : '—'],
         ['Clave', wizardData.clave ? '•'.repeat(wizardData.clave.length) : '—']
       ]
     },
@@ -388,11 +389,67 @@ function renderSummary() {
 // ---------------- Finalización ----------------
 async function finishWizard() {
   showLoading('Creando tu cuenta…');
-  await wait(900);
-  // Próximamente: envío real al backend con sanitize()
-  console.log('[wizard] datos a enviar:', sanitizeForBackend(wizardData));
-  hideLoading();
-  alert('Bloque 1: aquí iría la confirmación final (en bloque siguiente).');
+  try {
+    // 1) Sanitizar todos los datos para el backend (UPPERCASE, ñ→NI, sin tildes).
+    //    NOTA: la clave NO se sanitiza, mantenemos lo que el usuario escribió.
+    const clavePlana = wizardData.clave;
+    const sanitizado = sanitizeForBackend(wizardData);
+    sanitizado.clave = clavePlana;
+    console.log('[wizard] datos a enviar al backend:', sanitizado);
+
+    // 2) Enviar email de bienvenida con el resumen + credenciales.
+    //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
+    //    cuando el backend esté listo (ver comentarios del módulo).
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517b');
+    const emailRes = await enviarEmailRegistro({
+      destino: wizardData.email,
+      datosRegistro: sanitizado,
+    });
+    if (!emailRes.ok) {
+      console.warn('[wizard] email no se pudo enviar', emailRes);
+    }
+
+    hideLoading();
+    mostrarExito();
+  } catch (err) {
+    console.error('[wizard] error en finishWizard', err);
+    hideLoading();
+    alert('Hubo un problema al finalizar tu registro. Intenta de nuevo o contacta soporte.');
+  }
+}
+
+/**
+ * Sustituye el contenido del wizard por una pantalla de éxito.
+ */
+function mostrarExito() {
+  const root = document.getElementById('wizard-root');
+  if (!root) return;
+  const usuario = (wizardData.rucManual || '').slice(0, 10);
+  root.innerHTML = `
+    <div class="wizard" id="wizard">
+      <section class="wiz-success">
+        <div class="wiz-success-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2>¡Listo, tu cuenta está creada!</h2>
+        <p>Te enviamos un correo a <strong>${escapeHtml(wizardData.email)}</strong> con tu usuario, tu clave y un resumen del registro.</p>
+        <div class="wiz-success-creds">
+          <p><span>Usuario:</span> <strong>${escapeHtml(usuario)}</strong></p>
+          <p><span>Portal:</span> <a href="https://tbc.tributasoft.com.ec" target="_blank" rel="noopener">tbc.tributasoft.com.ec</a></p>
+        </div>
+        <a href="https://tbc.tributasoft.com.ec?u=${encodeURIComponent(usuario)}" class="btn btn--primary" style="display:inline-flex;max-width:18rem;margin-top:1.5rem">
+          Ir al portal
+        </a>
+      </section>
+    </div>
+  `;
+  // Ocultar la barra de progreso + nav (ya no hay vuelta atrás)
+  const progress = document.querySelector('.wiz-progress');
+  const nav = document.getElementById('wiz-nav');
+  if (progress) progress.style.display = 'none';
+  if (nav) nav.style.display = 'none';
 }
 
 // ---------------- Sanitización para backend ----------------
@@ -474,13 +531,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517a'),
-      import('./screen-datos.js?v=20260517a'),
-      import('./screen-token.js?v=20260517a'),
-      import('./screen-tributaria.js?v=20260517a'),
-      import('./screen-facturacion.js?v=20260517a'),
-      import('./screen-clave.js?v=20260517a'),
-      import('./screen-logo.js?v=20260517a'),
+      import('./screen-firma.js?v=20260517b'),
+      import('./screen-datos.js?v=20260517b'),
+      import('./screen-token.js?v=20260517b'),
+      import('./screen-tributaria.js?v=20260517b'),
+      import('./screen-facturacion.js?v=20260517b'),
+      import('./screen-clave.js?v=20260517b'),
+      import('./screen-logo.js?v=20260517b'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

@@ -4,7 +4,7 @@
    La verificación es local mientras esté el mock; cuando el backend esté
    listo, token-service.js se encarga de hacer fetch al endpoint real. */
 
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from './token-service.js?v=20260517a';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from './token-service.js?v=20260517b';
 
 const REENVIAR_COOLDOWN_S = 30;
 
