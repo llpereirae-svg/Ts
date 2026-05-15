@@ -17,6 +17,8 @@
      - Link al portal
      - Aviso de seguridad sobre la clave */
 
+import { formatCelular } from './wizard.js?v=20260517e';
+
 const PORTAL_URL = 'https://tbc.tributasoft.com.ec';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
 
@@ -136,9 +138,7 @@ function buildHtml(d) {
           ['Provincia', d.provincia],
           ['Ciudad', d.ciudad],
           ['Correo electrónico', d.email],
-          ['Celular', d.celular
-            ? (d.celularPais === 'EC' ? d.celular : `+${d.celularPais} ${d.celular}`)
-            : ''],
+          ['Celular', formatCelular(d.celular, d.celularPais)],
         ])}
 
         ${seccion('Información tributaria', [

@@ -313,14 +313,11 @@ function renderSummary() {
         ['Provincia', wizardData.provincia],
         ['Ciudad', wizardData.ciudad],
         ['Correo electrónico', wizardData.email],
-        // Celular: si es Ecuador, mostrar solo los 10 dígitos. Otros países sí
-        // mantienen el prefijo internacional para que se sepa cuál es.
-        ['Celular',
-          wizardData.celular
-            ? (wizardData.celularPais === 'EC'
-                ? wizardData.celular
-                : `+${wizardData.celularPais} ${wizardData.celular}`)
-            : '']
+        // Celular formateado por país:
+        //   EC: 099-842-9901
+        //   US/CA: +1 (585) 282-6037
+        //   Otros: +dial número
+        ['Celular', formatCelular(wizardData.celular, wizardData.celularPais)]
       ]
     },
     {
@@ -411,7 +408,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517d');
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517e');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -510,6 +507,44 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+// Map de prefijos internacionales (dial codes) por país.
+// Fuente: COUNTRIES en countries.js. Lo inlineamos aquí para evitar
+// importar el módulo entero solo por esto.
+const DIAL_BY_CODE = {
+  EC: '593', AR: '54', BO: '591', BR: '55', CL: '56', CO: '57', PE: '51',
+  MX: '52', PA: '507', PY: '595', UY: '598', VE: '58', GT: '502', SV: '503',
+  HN: '504', NI: '505', CR: '506', DO: '1', PR: '1', CU: '53',
+  US: '1', CA: '1',
+  ES: '34', UK: '44', DE: '49', FR: '33', IT: '39', NL: '31', CH: '41',
+  AU: '61', NZ: '64', JP: '81', CN: '86', KR: '82', IN: '91',
+};
+
+/**
+ * Formatea un celular para mostrar al usuario y enviar en el resumen.
+ *
+ *   Ecuador (EC):  '0998429901' → '099-842-9901'
+ *   US / CA:       '5852826037' → '+1 (585) 282-6037'
+ *   Otros países:  '12345678'   → '+XX 12345678'
+ *
+ * @param {string} numero - solo dígitos
+ * @param {string} paisCode - código del país (EC, US, etc.)
+ */
+export function formatCelular(numero, paisCode) {
+  if (!numero) return '';
+  const limpio = String(numero).replace(/\D/g, '');
+  if (paisCode === 'EC' && limpio.length === 10) {
+    // Ecuador: sin prefijo internacional, formato 099-842-9901
+    return `${limpio.slice(0, 3)}-${limpio.slice(3, 6)}-${limpio.slice(6)}`;
+  }
+  if ((paisCode === 'US' || paisCode === 'CA') && limpio.length === 10) {
+    // US/CA: +1 (585) 282-6037
+    return `+1 (${limpio.slice(0, 3)}) ${limpio.slice(3, 6)}-${limpio.slice(6)}`;
+  }
+  // Genérico: +<dial> <numero>
+  const dial = DIAL_BY_CODE[paisCode];
+  return dial ? `+${dial} ${limpio}` : limpio;
+}
+
 function formatFecha(d) {
   if (!d) return '—';
   try {
@@ -542,13 +577,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517d'),
-      import('./screen-datos.js?v=20260517d'),
-      import('./screen-token.js?v=20260517d'),
-      import('./screen-tributaria.js?v=20260517d'),
-      import('./screen-facturacion.js?v=20260517d'),
-      import('./screen-clave.js?v=20260517d'),
-      import('./screen-logo.js?v=20260517d'),
+      import('./screen-firma.js?v=20260517e'),
+      import('./screen-datos.js?v=20260517e'),
+      import('./screen-token.js?v=20260517e'),
+      import('./screen-tributaria.js?v=20260517e'),
+      import('./screen-facturacion.js?v=20260517e'),
+      import('./screen-clave.js?v=20260517e'),
+      import('./screen-logo.js?v=20260517e'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);
