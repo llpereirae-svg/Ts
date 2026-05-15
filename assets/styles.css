@@ -1203,6 +1203,20 @@ dialog#modal-terms {
 }
 .btn--soporte:hover { background: #1ebd5a; color: white; }
 
+/* Variante de soporte para el botón "No tengo firma" — verde WhatsApp tenue
+   en el borde, distinto al primary/ghost normales para que sugiera que es
+   una acción de "ayuda externa". */
+.btn--soporte-firma {
+  border: 1px solid #25D366;
+  color: #128C3F;
+  background: white;
+}
+.btn--soporte-firma:hover {
+  background: rgba(37, 211, 102, .08);
+  border-color: #1ebd5a;
+  color: #128C3F;
+}
+
 /* ---------------- Modal Información Bancaria ---------------- */
 .bank-titular { margin: 0 0 .15rem; font-size: .95rem; }
 .bank-ruc { margin: 0 0 .85rem; color: var(--color-muted); font-size: .85rem; display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }

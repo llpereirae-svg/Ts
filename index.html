@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514w">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260514x">
 </head>
 <body data-state="IDLE">
 
@@ -428,6 +428,13 @@
         <div class="firma-options">
           <button type="button" id="subir-firma" class="btn btn--primary">Sí, subirla ahora</button>
           <button type="button" id="saltar-firma" class="btn btn--ghost">Lo haré después en el portal</button>
+          <button type="button" id="no-tengo-firma" class="btn btn--ghost btn--soporte-firma">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:.4rem">
+              <path d="M20.5 12a8.5 8.5 0 1 1-3.6-6.93L20.5 3.5l-1.6 3.6A8.46 8.46 0 0 1 20.5 12z"/>
+              <path d="M9 10.5c.5 2 2.5 4 4.5 4.5l1.5-1.5 2 1c-.4 1.3-1.7 2-3 2-3 0-6-3-6-6 0-1.3.7-2.6 2-3l1 2L9 10.5z"/>
+            </svg>
+            No tengo firma electrónica
+          </button>
         </div>
 
         <input id="firma-uploader" class="firma-uploader" type="file" accept=".p12,.pfx" aria-label="Archivo de firma">
@@ -741,7 +748,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514w';
+    const APP_VER = '20260514x';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

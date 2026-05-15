@@ -357,6 +357,20 @@ function init() {
     closeModal($('#modal-firma'));
     openLogoStep();
   });
+  // "No tengo firma electrónica" → abre WhatsApp con mensaje pre-llenado
+  // y continúa el flujo igual que si hubiera tocado "Lo haré después".
+  $('#no-tengo-firma').addEventListener('click', () => {
+    track('firma_no_tengo_whatsapp');
+    const msg = 'Hola, estoy registrandome en el sistema, pero no tengo mi firma electrónica con RUC, me pueden ayudar a tramitarla.';
+    const url = `https://wa.me/593969173466?text=${encodeURIComponent(msg)}`;
+    // Abrir WhatsApp en pestaña nueva — el flujo del registro continúa
+    // sin perderse aquí.
+    window.open(url, '_blank', 'noopener,noreferrer');
+    flow.firmaPendienteDespues = true;
+    machine.send(EVENTS.FIRMA_SKIP);
+    closeModal($('#modal-firma'));
+    openLogoStep();
+  });
 
   // Modal logo / banner — se abre tras firma OK o firma saltada.
   $('#logo-upload-btn').addEventListener('click', () => $('#logo-uploader').click());
