@@ -259,9 +259,9 @@ export function validarPantallaDatos(wd) {
   if (!wd.celular?.trim() || !celValid.valid) errors.push('Celular válido');
 
   // Y que los bloqueados sí estén llenos (si por algún caso raro no se llenaron)
-  if (!wd.razonSocial?.trim()) errors.push('Razón social (no detectada en firma ni cert)');
-  if (!wd.provincia) errors.push('Provincia (no detectada en cert)');
-  if (!wd.ciudad) errors.push('Ciudad (no detectada en cert)');
+  if (!wd.razonSocial?.trim()) errors.push('Razón social (no detectada en la firma ni en el certificado de RUC)');
+  if (!wd.provincia) errors.push('Provincia (no detectada en el certificado de RUC)');
+  if (!wd.ciudad) errors.push('Ciudad (no detectada en el certificado de RUC)');
 
   if (errors.length > 0) {
     alert('Antes de continuar, revisa:\n• ' + errors.join('\n• '));

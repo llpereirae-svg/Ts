@@ -40,7 +40,7 @@ export const MANUAL = {
           FIRMA_FORMATO: 'Si ves "El archivo debe ser .p12 o .pfx", revisa la extensión.',
           FIRMA_CLAVE: 'Si ves "La clave de la firma es incorrecta", es la clave del archivo .p12, no la clave de tu cuenta TributaSoft.',
           CERT_FECHA_VIEJA: 'Si ves "Estimado cliente, cargue su RUC actualizado", el PDF tiene más de 1 mes de antigüedad.',
-          RUC_NO_COINCIDE: 'Si ves "El RUC del certificado no coincide con el de tu firma", subiste un cert que pertenece a otra persona/empresa.',
+          RUC_NO_COINCIDE: 'Si ves "El RUC del certificado no coincide con el de tu firma", subiste un certificado que pertenece a otra persona o empresa.',
         },
         tip: 'Si no tienes firma, toca el botón "No tengo firma electrónica" y te enviamos por WhatsApp el contacto del proveedor más rápido.',
         animKey: 'firma',
@@ -52,10 +52,10 @@ export const MANUAL = {
         intro: 'Mostramos los datos extraídos de tu firma y de tu Certificado de RUC. Los campos con candado vienen pre-llenados y bloqueados. Email, celular y dirección los puedes editar.',
         rules: [
           'Razón social / Nombre, Nombre comercial, Provincia y Ciudad vienen del Certificado de RUC y quedan bloqueados.',
-          'Si el cert no trae Nombre Comercial, aparece "No Aplica".',
-          'Email viene del cert pero puedes corregirlo si está desactualizado.',
+          'Si el certificado no trae Nombre Comercial, aparece "No Aplica".',
+          'Email viene del certificado pero puedes corregirlo si está desactualizado.',
           'Celular para Ecuador: 10 dígitos empezando en 09. Para otros países, formato local.',
-          'Dirección la ingresas manualmente (no la extraemos del cert).',
+          'Dirección la ingresas manualmente (no la extraemos del certificado).',
         ],
         errors: {
           EMAIL_INVALIDO: 'Si ves "Correo inválido", revisa que tenga arroba (@) y dominio.',
@@ -89,11 +89,11 @@ export const MANUAL = {
       {
         id: 'tributaria',
         title: 'Paso 4 · Información tributaria',
-        intro: 'Pre-llenamos tu Régimen y Tipo de Contribuyente desde el cert. Solo si tu tipo requiere un No. de Resolución del SRI te lo pedimos abajo.',
+        intro: 'Pre-llenamos tu Régimen y Tipo de Contribuyente desde el certificado de RUC. Solo si tu tipo requiere un No. de Resolución del SRI te lo pedimos abajo.',
         rules: [
           'Régimen: detectamos automáticamente GENERAL / RIMPE Emprendedor / RIMPE Negocio Popular.',
           'Tipo de Contribuyente: usamos prioridad Especial > Agente de Retención > Obligado > No Obligado.',
-          'Si el cert detecta Contribuyente Especial, puedes elegir entre Contri Especial o Gran Contribuyente (estos últimos no figuran como flag en el cert).',
+          'Si el certificado detecta Contribuyente Especial, puedes elegir entre Contribuyente Especial o Gran Contribuyente (estos últimos no figuran como bandera en el certificado).',
           'Tipos que requieren No. de Resolución: Agente de Retención, Contribuyente Especial y Gran Contribuyente.',
           'No. Resolución: acepta letras, números, guiones (-), puntos (.), barras (/) y guion bajo (_). Mínimo 8 alfanuméricos.',
         ],
