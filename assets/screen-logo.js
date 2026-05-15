@@ -12,6 +12,37 @@ const BANNER_W = 2970;
 const BANNER_H = 300;
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
 
+// Conectores que se dejan en minúscula dentro de una razón social
+// (estilo corporativo: "Boticas Unidas del Ecuador" en vez de "Del").
+// Solo aplica cuando NO son la primera palabra.
+const CONECTORES = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e', 'el', 'en', 'da', 'do', 'das', 'dos']);
+
+/**
+ * Convierte un nombre en MAYÚSCULAS al case ideal para un logo:
+ *   - Primera letra de cada palabra en mayúscula, resto en minúscula
+ *   - Conectores ('de', 'del', 'la', etc.) van en minúscula (excepto si son la primera palabra)
+ *   - Palabras que contienen punto (siglas tipo "S.A.", "C.A.", "Cía.") quedan EN MAYÚSCULAS
+ *
+ * Ejemplos:
+ *   "TRIBUTASOFT S.A."                  → "Tributasoft S.A."
+ *   "BOTICAS UNIDAS DEL ECUADOR C.A."   → "Boticas Unidas del Ecuador C.A."
+ *   "PEREIRA ESPINOZA LENIN LEONARDO"   → "Pereira Espinoza Lenin Leonardo"
+ *   "CÍA. EJEMPLO LTDA."                → "CÍA. Ejemplo LTDA."
+ */
+function toBrandCase(s) {
+  if (!s) return '';
+  return String(s).split(/\s+/).map((word, idx) => {
+    if (!word) return '';
+    // Siglas con punto → mayúscula
+    if (word.includes('.')) return word.toUpperCase();
+    const lower = word.toLocaleLowerCase('es-EC');
+    // Conectores en minúscula (no la primera palabra)
+    if (idx > 0 && CONECTORES.has(lower)) return lower;
+    // Title case
+    return word.charAt(0).toLocaleUpperCase('es-EC') + lower.slice(1);
+  }).join(' ');
+}
+
 export function renderPantallaLogo(body, wizardData) {
   body.innerHTML = `
     <p class="datos-intro">
@@ -28,9 +59,6 @@ export function renderPantallaLogo(body, wizardData) {
         Subir mi logo
       </button>
       <button type="button" id="l-generar-btn" class="btn btn--primary">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:.4rem">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-        </svg>
         Generar uno
       </button>
     </div>
@@ -196,8 +224,10 @@ function drawTextoSolo(canvas, wd) {
 }
 
 function drawTextoLateral(ctx, x, xMax, wd) {
-  const nombreComercial = (wd.nombreComercial && !wd.nombreComercialNA) ? wd.nombreComercial : '';
-  const razonSocial = wd.razonSocial || '';
+  // Para el logo siempre usamos Title Case (con siglas en mayúsculas).
+  // El dato crudo en wizardData se queda como está; solo cambia la imagen.
+  const nombreComercial = (wd.nombreComercial && !wd.nombreComercialNA) ? toBrandCase(wd.nombreComercial) : '';
+  const razonSocial = toBrandCase(wd.razonSocial || '');
   const widthDisponible = xMax - x;
 
   // Si no hay nombre comercial, ponemos solo razón social grande
@@ -223,8 +253,8 @@ function drawTextoLateral(ctx, x, xMax, wd) {
 }
 
 function drawTextoCentrado(ctx, wd) {
-  const nombreComercial = (wd.nombreComercial && !wd.nombreComercialNA) ? wd.nombreComercial : '';
-  const razonSocial = wd.razonSocial || '';
+  const nombreComercial = (wd.nombreComercial && !wd.nombreComercialNA) ? toBrandCase(wd.nombreComercial) : '';
+  const razonSocial = toBrandCase(wd.razonSocial || '');
   const padding = 60;
   const w = BANNER_W - padding * 2;
 
