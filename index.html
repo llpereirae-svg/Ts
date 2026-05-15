@@ -35,8 +35,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260516s">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260516s">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260516t">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260516t">
 </head>
 <body data-state="IDLE">
 
@@ -764,7 +764,7 @@
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
        Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260516s';
+    const APP_VER = '20260516t';
 
     // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
     import(`./assets/wizard.js?v=${APP_VER}`)
