@@ -35,7 +35,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260515a">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260516a">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260516a">
 </head>
 <body data-state="IDLE">
 
@@ -69,6 +70,15 @@
   <div id="network-banner" class="network-banner" hidden role="status" aria-live="polite"></div>
 
   <main>
+    <!-- WIZARD TurboTax-style — punto de montaje del nuevo flujo de registro.
+         El JS de wizard.js inyecta aquí el progreso + 8 pantallas + nav + loading.
+         Cuando se monta, agrega body.wiz-mode que oculta el flujo legacy de abajo. -->
+    <div id="wizard-root"></div>
+
+    <!-- ====== LEGACY (oculto cuando body.wiz-mode está activo) ======
+         Lo dejamos en el DOM para que app.js no se rompa al buscar referencias.
+         Los modales de Cotizar, Pago, Bank, Términos y Tooltip siguen activos. -->
+
     <!-- HERO: 3 líneas con colores específicos -->
     <section id="hero" class="hero">
       <h1>
@@ -751,9 +761,24 @@
     </div>
   </noscript>
 
-  <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
+  <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
+       Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260515a';
+    const APP_VER = '20260516a';
+
+    // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
+    import(`./assets/wizard.js?v=${APP_VER}`)
+      .then((mod) => {
+        const start = () => mod.startWizard();
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', start, { once: true });
+        } else {
+          start();
+        }
+      })
+      .catch((err) => console.error('Error cargando wizard.js', err));
+
+    // app.js legacy: sigue manejando Cotizar, Pago, Bank, Términos, Tooltip y Manual.
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

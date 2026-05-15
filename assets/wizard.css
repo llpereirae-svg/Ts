@@ -1,0 +1,371 @@
+/* wizard.css — Estilos del wizard TurboTax-style.
+   Reutiliza la paleta y tipografías declaradas en styles.css. */
+
+/* ---------------- Contenedor principal ---------------- */
+.wizard {
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem 1rem 7rem;
+  min-height: calc(100vh - 64px);
+}
+
+/* ---------------- Barra de progreso ---------------- */
+.wiz-progress {
+  position: sticky;
+  top: 64px;
+  z-index: 30;
+  background: var(--color-bg);
+  padding: .85rem 0 .65rem;
+  margin-bottom: 1rem;
+}
+.wiz-progress-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .25rem;
+  position: relative;
+}
+.wiz-progress-track::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: var(--color-border);
+  z-index: 0;
+}
+.wiz-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+}
+.wiz-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .82rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  transition: all var(--transition);
+}
+.wiz-step-label {
+  font-size: .7rem;
+  color: var(--color-muted);
+  margin-top: .35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+.wiz-step[data-state="done"] .wiz-step-dot {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+.wiz-step[data-state="active"] .wiz-step-dot {
+  background: var(--color-cta);
+  border-color: var(--color-cta);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(239, 115, 6, .14);
+}
+.wiz-step[data-state="active"] .wiz-step-label {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.wiz-step[data-state="done"] .wiz-step-label {
+  color: var(--color-primary);
+}
+
+/* En pantallas pequeñas, mostramos solo dots + label de la actual */
+@media (max-width: 640px) {
+  .wiz-step-label { display: none; }
+  .wiz-step[data-state="active"] .wiz-step-label {
+    display: block;
+    position: absolute;
+    top: 34px;
+    background: var(--color-primary);
+    color: white;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 600;
+  }
+  .wiz-progress { padding-bottom: 1.6rem; }
+}
+
+/* ---------------- Pantallas ---------------- */
+.wiz-screen {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  animation: wizFadeIn 380ms ease-out;
+}
+.wiz-screen.is-active {
+  display: flex;
+}
+@keyframes wizFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wiz-screen.is-leaving {
+  animation: wizFadeOut 220ms ease-in forwards;
+}
+@keyframes wizFadeOut {
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+.wiz-screen-header { margin-bottom: .25rem; }
+.wiz-screen-eyebrow {
+  font-size: .78rem;
+  color: var(--color-cta);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 0 0 .35rem;
+}
+.wiz-screen h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3vw, 1.7rem);
+  font-weight: 700;
+  margin: 0 0 .35rem;
+  color: var(--color-primary);
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+.wiz-screen-lead {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: .95rem;
+}
+
+.wiz-screen-body {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Placeholder genérico para bloques aún no implementados */
+.wiz-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--color-muted);
+  background: var(--color-surface-low);
+  border: 1px dashed var(--color-outline);
+  border-radius: var(--radius-md);
+}
+.wiz-placeholder strong {
+  color: var(--color-primary);
+  font-family: var(--font-display);
+}
+
+/* ---------------- Footer de navegación ---------------- */
+.wiz-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  border-top: 1px solid var(--color-border);
+  padding: .75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+}
+.wiz-nav-inner {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+}
+.wiz-nav .btn {
+  margin: 0;
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  max-width: none;
+  width: auto;
+  flex: 1;
+}
+.wiz-nav .btn--ghost { flex: 0 0 auto; min-width: 6rem; }
+.wiz-nav .btn--primary { max-width: 18rem; }
+
+@media (max-width: 480px) {
+  .wiz-nav .btn--primary { max-width: none; }
+}
+
+/* ---------------- Overlay de carga (lightbulb) ---------------- */
+.wiz-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(249, 249, 249, 0.96);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  animation: wizFadeIn 200ms ease-out;
+}
+.wiz-loading.is-active { display: flex; }
+.wiz-loading-logo {
+  width: 86px;
+  height: 86px;
+  animation: wizBounce 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 8px 16px rgba(0, 35, 111, .18));
+}
+@keyframes wizBounce {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+  50%      { transform: translateY(-14px) scale(1.04); opacity: .85; }
+}
+.wiz-loading-text {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  letter-spacing: -.01em;
+  animation: wizPulse 1.6s ease-in-out infinite;
+}
+@keyframes wizPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+/* ---------------- Pantalla de resumen (Confirmación) ---------------- */
+.wiz-summary {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+.wiz-summary-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.wiz-summary-card:hover {
+  border-color: var(--color-teal-dark);
+  box-shadow: var(--shadow-sm);
+}
+.wiz-summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+}
+.wiz-summary-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-primary);
+  margin: 0;
+  letter-spacing: -.01em;
+}
+.wiz-summary-edit {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: .25rem .7rem;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-family: var(--font-body);
+}
+.wiz-summary-edit:hover {
+  background: var(--color-teal-light);
+  border-color: var(--color-teal-dark);
+}
+.wiz-summary-rows {
+  display: grid;
+  grid-template-columns: minmax(120px, 35%) 1fr;
+  gap: .35rem .85rem;
+  font-size: .9rem;
+}
+.wiz-summary-rows dt {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+.wiz-summary-rows dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+  word-break: break-word;
+}
+.wiz-summary-empty {
+  font-style: italic;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+@media (max-width: 480px) {
+  .wiz-summary-rows {
+    grid-template-columns: 1fr;
+    gap: 0 .85rem;
+  }
+  .wiz-summary-rows dt { margin-top: .35rem; font-size: .78rem; }
+}
+
+/* ---------------- Aviso de dispositivo (móvil/tablet) ---------------- */
+.wiz-device-warning {
+  background: var(--color-warn-container);
+  border: 1px solid var(--color-warn);
+  color: var(--color-warn);
+  border-radius: var(--radius-md);
+  padding: .85rem 1rem;
+  display: flex;
+  gap: .65rem;
+  align-items: flex-start;
+  font-size: .9rem;
+  margin-bottom: 1rem;
+}
+.wiz-device-warning svg {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: .1rem;
+}
+.wiz-device-warning strong { display: block; margin-bottom: .15rem; }
+
+/* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
+body.wiz-mode #hero,
+body.wiz-mode #ruc-card,
+body.wiz-mode .section,
+body.wiz-mode #registration-form,
+body.wiz-mode #success { display: none !important; }
