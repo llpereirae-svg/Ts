@@ -1,19 +1,24 @@
 // app.js — Orquestador principal: conecta la máquina de estados, los validators,
 // el cliente SRI y los mocks del backend con el DOM.
 
+// Cache-busting de imports: el navegador cachea cada módulo por su URL
+// completa. Sin estos `?v=...` el bundle (`app.js?v=X`) se actualiza pero
+// los módulos que importa quedan viejos en caché. Cuando bumpeamos
+// APP_VER, también hay que bumpear este string para forzar fetch fresco
+// de TODO el grafo de módulos.
 import {
   validarRUC, validarCelular, validarEmail, validarClave,
   validarFirmaArchivo, validarCodigoToken, validarNoResolucion,
-} from './validators.js';
-import { createMachine, STATES, EVENTS } from './state-machine.js';
-import { consultarRUC } from './sri-client.js';
-import { COUNTRIES, findCountry } from './countries.js';
-import { citiesFor } from './cities.js';
+} from './validators.js?v=20260514v';
+import { createMachine, STATES, EVENTS } from './state-machine.js?v=20260514v';
+import { consultarRUC } from './sri-client.js?v=20260514v';
+import { COUNTRIES, findCountry } from './countries.js?v=20260514v';
+import { citiesFor } from './cities.js?v=20260514v';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
   establecerClave, finalizarRegistro, validarEmpresa,
-} from './api-mocks.js';
-import { validarFirmaP12 } from './firma-validator.js';
+} from './api-mocks.js?v=20260514v';
+import { validarFirmaP12 } from './firma-validator.js?v=20260514v';
 
 // URL del portal de inicio de sesión final. Cuando el usuario confirma,
 // lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint
