@@ -1,31 +1,30 @@
 /* pdf-parser.js — Extractor del Certificado de RUC (PDF emitido por el SRI).
-   Usa pdf.js de Mozilla (lazy-load desde CDN). Toda la operación es client-side:
-   el PDF nunca sale del navegador del usuario.
+   Usa pdf.js de Mozilla (lazy-load desde CDN). Toda la operación es client-side.
 
-   El layout típico del certificado de RUC del SRI Ecuador tiene secciones:
-   - Razón Social / Nombres y Apellidos
-   - Nombre Comercial
-   - RUC (13 dígitos)
-   - Domicilio Tributario (dirección)
-   - Provincia / Cantón / Parroquia
-   - Actividad Económica Principal
-   - Régimen / Tipo Contribuyente
-   - Estado del contribuyente
+   El layout del certificado del SRI tiene labels en una línea y valores en la
+   SIGUIENTE (no en formato "Label: valor"). Ejemplo real:
 
-   Como cada versión del PDF cambia espacios/saltos de línea, usamos regex
-   tolerantes a whitespace y normalizamos el texto antes de extraer. */
+     Razón Social      Número RUC
+     TRIBUTASOFT S.A.  0992703601001
+
+     Representante legal
+     PEREIRA ROBLES DANIEL FRANCISCO
+
+     Provincia: GUAYAS  Cantón: DAULE  Parroquia: LA AURORA (SATÉLITE)
+
+   Por eso parseamos por LÍNEAS y usamos la línea siguiente al label cuando
+   hace falta. Las líneas tipo "Label: valor   Label: valor" sí se parsean
+   inline con regex. */
 
 const PDFJS_VERSION = '4.0.379';
 const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.mjs`;
 const PDFJS_WORKER = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
 
 let pdfjsPromise = null;
-
 async function loadPdfJs() {
   if (pdfjsPromise) return pdfjsPromise;
   pdfjsPromise = (async () => {
     const mod = await import(PDFJS_CDN);
-    // mod.GlobalWorkerOptions vive en el namespace exportado
     mod.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
     return mod;
   })();
@@ -33,9 +32,7 @@ async function loadPdfJs() {
 }
 
 /**
- * Extrae texto plano de todas las páginas del PDF.
- * @param {File|Blob} file
- * @returns {Promise<string>}
+ * Extrae texto del PDF reconstruyendo líneas por coordenada Y.
  */
 async function extractText(file) {
   const pdfjs = await loadPdfJs();
@@ -45,8 +42,6 @@ async function extractText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // pdf.js devuelve items individuales con su posición; reconstruimos por línea
-    // usando salto de línea cuando cambia significativamente la coordenada y.
     let lastY = null;
     let linea = '';
     for (const item of content.items) {
@@ -63,54 +58,26 @@ async function extractText(file) {
   return partes.filter(Boolean).join('\n');
 }
 
-/**
- * Normaliza un valor extraído: trim, colapsa whitespace, quita prefijos comunes.
- */
 function clean(s) {
   if (!s) return '';
-  return String(s)
-    .replace(/\s+/g, ' ')
-    .replace(/[“”"]/g, '')
-    .trim();
+  return String(s).replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Busca el primer match de un patrón en el texto y devuelve el primer grupo.
- * Devuelve '' si no match.
+ * Devuelve la línea inmediatamente siguiente a la primera línea que matchea.
+ * Útil cuando un label vive solo en su línea y el valor está en la línea siguiente.
  */
-function match(text, regex) {
-  const m = text.match(regex);
-  return m ? clean(m[1]) : '';
+function lineAfter(lines, labelRegex) {
+  const idx = lines.findIndex((l) => labelRegex.test(l));
+  if (idx < 0 || idx + 1 >= lines.length) return '';
+  return clean(lines[idx + 1]);
 }
 
-/**
- * Parsea el certificado de RUC del SRI y devuelve los campos disponibles.
- * @param {File} file - PDF del Certificado de RUC
- * @returns {Promise<{
- *   valid: boolean,
- *   error?: string,
- *   reason?: string,
- *   ruc?: string,
- *   razonSocial?: string,
- *   nombreComercial?: string,
- *   direccion?: string,
- *   provincia?: string,
- *   canton?: string,
- *   parroquia?: string,
- *   actividad?: string,
- *   regimen?: string,
- *   tipoContribuyente?: string,
- *   estado?: string,
- *   rawText?: string
- * }>}
- */
 export async function parseCertificadoRUC(file) {
   if (!file) {
     return { valid: false, error: 'NO_FILE', reason: 'Selecciona el archivo del certificado.' };
   }
-  // Validar tipo y tamaño
-  const tipoOk = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
-  if (!tipoOk) {
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
     return { valid: false, error: 'NO_PDF', reason: 'El archivo debe ser un PDF.' };
   }
   if (file.size > 5 * 1024 * 1024) {
@@ -126,69 +93,130 @@ export async function parseCertificadoRUC(file) {
   }
 
   if (!raw || raw.length < 100) {
-    return { valid: false, error: 'PDF_VACIO', reason: 'El PDF no contiene texto legible. Sube el certificado original (no una foto escaneada).' };
+    return { valid: false, error: 'PDF_VACIO', reason: 'El PDF no contiene texto legible. Sube el certificado original (no foto ni escaneo).' };
   }
 
-  // Normalizamos: pasamos a una sola línea separada por \n y quitamos exceso de spaces.
   const text = raw.replace(/[ \t]+/g, ' ');
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
-  // RUC (13 dígitos terminados en 001 dentro del PDF)
+  // --- RUC: 13 dígitos terminados en 001 ---
   const rucMatch = text.match(/\b(\d{10}001)\b/);
   const ruc = rucMatch ? rucMatch[1] : '';
 
-  // Razón Social / Nombres y Apellidos
-  const razonSocial = match(text, /(?:raz[oó]n\s*social|nombres?\s*y\s*apellidos)[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ0-9 \.\,\-&]+?)(?=\n|nombre\s*comercial|estado|clase|fecha|$)/i);
+  // --- Razón Social ---
+  // La línea siguiente a "Razón Social..." tiene "RAZON SOCIAL ... 0992703601001"
+  // (razón social y RUC juntos en una línea). Quitamos el RUC para aislar el nombre.
+  let razonSocial = '';
+  {
+    const valLine = lineAfter(lines, /raz[oó]n\s*social/i);
+    if (valLine) {
+      razonSocial = valLine.replace(/\s*\d{10}001\b/g, '').trim();
+    }
+  }
 
-  // Nombre Comercial
-  const nombreComercial = match(text, /nombre\s*comercial[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ0-9 \.\,\-&]+?)(?=\n|raz[oó]n|estado|clase|domicilio|$)/i);
+  // --- Representante legal (solo si es jurídica) ---
+  // Línea con SOLO el label "Representante legal", valor en línea siguiente.
+  const repLegal = lineAfter(lines, /^representante\s*legal\s*$/i);
 
-  // Dirección / Domicilio
-  const direccion = match(text, /(?:domicilio\s*tributario|direcci[oó]n)[\s\/]*:?\s*([^\n]+?)(?=\n|provincia|cant[oó]n|parroquia|tel[eé]fono|$)/i);
+  // --- Nombre comercial ---
+  // Algunos certs SRI lo traen, otros NO. Intentamos varias formas.
+  let nombreComercial = '';
+  {
+    const inline = text.match(/nombre\s*comercial[\s\/]*:?\s*([^\n]+)/i);
+    if (inline) nombreComercial = clean(inline[1]);
+    if (!nombreComercial) nombreComercial = lineAfter(lines, /^nombre\s*comercial\s*$/i);
+    // Si el "nombre comercial" salió igual a la razón social, lo descartamos
+    if (nombreComercial && nombreComercial === razonSocial) nombreComercial = '';
+  }
 
-  // Provincia
-  const provincia = match(text, /provincia[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ ]+?)(?=\n|cant[oó]n|parroquia|$)/i);
+  // --- Ubicación geográfica: una sola línea con tres campos ---
+  let provincia = '', canton = '', parroquia = '';
+  {
+    const m = text.match(/Provincia:\s*([A-ZÁÉÍÓÚÜÑ \-]+?)\s+Cant[oó]n:\s*([A-ZÁÉÍÓÚÜÑ \-]+?)\s+Parroquia:\s*([A-ZÁÉÍÓÚÜÑ \-\(\)\.,]+)/i);
+    if (m) {
+      provincia = clean(m[1]).toUpperCase();
+      canton = clean(m[2]);
+      parroquia = clean(m[3]);
+    }
+  }
 
-  // Cantón
-  const canton = match(text, /cant[oó]n[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ \-]+?)(?=\n|parroquia|provincia|$)/i);
+  // --- Dirección: combinamos Calle + Número + Intersección ---
+  let direccion = '';
+  {
+    const calle = (text.match(/Calle:\s*([^\n]+?)(?=\s+N[uú]mero:|\s+Intersecci[oó]n:|\s+Manzana:|\s+Referencia:|\n)/i) || [])[1];
+    const numero = (text.match(/N[uú]mero:\s*([^\n]+?)(?=\s+Intersecci[oó]n:|\s+Manzana:|\s+Referencia:|\n)/i) || [])[1];
+    const inter = (text.match(/Intersecci[oó]n:\s*([^\n]+?)(?=\s+Manzana:|\s+Referencia:|\n)/i) || [])[1];
+    const ref = (text.match(/Referencia:\s*([^\n]+)/i) || [])[1];
+    const parts = [];
+    if (calle) parts.push(clean(calle));
+    if (numero) parts.push(clean(numero));
+    if (inter) parts.push(`y ${clean(inter)}`);
+    direccion = parts.join(' ').trim();
+    if (!direccion && ref) direccion = clean(ref);
+  }
 
-  // Parroquia
-  const parroquia = match(text, /parroquia[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ \-]+?)(?=\n|cant[oó]n|$)/i);
-
-  // Actividad económica
-  const actividad = match(text, /actividad\s*econ[oó]mica\s*principal[\s\/]*:?\s*([^\n]+?)(?=\n|obligaciones|$)/i);
-
-  // Régimen
+  // --- Régimen: aparece como valor solo en la grilla "Estado / Régimen / Artesano" ---
   let regimen = '';
-  if (/r[ií]mpe\s*-?\s*emprendedor/i.test(text)) regimen = 'RIMPE - EMPRENDEDOR';
-  else if (/r[ií]mpe\s*-?\s*negocio\s*popular/i.test(text)) regimen = 'RIMPE - NEGOCIO POPULAR';
-  else if (/r[eé]gimen\s*general|r[eé]gimen[\s\/]*:?\s*general/i.test(text)) regimen = 'GENERAL';
+  if (/\bR[Ií]MPE\s*[-–]?\s*EMPRENDEDOR\b/i.test(text)) regimen = 'RIMPE - EMPRENDEDOR';
+  else if (/\bR[Ií]MPE\s*[-–]?\s*NEGOCIO\s*POPULAR\b/i.test(text)) regimen = 'RIMPE - NEGOCIO POPULAR';
+  else if (/R[eé]gimen/i.test(text) && /\bGENERAL\b/.test(text)) regimen = 'GENERAL';
 
-  // Tipo contribuyente — heurística
+  // --- Tipo contribuyente: "Obligado a llevar contabilidad: SI/NO" ---
   let tipoContribuyente = '';
-  if (/obligad[oa]\s*a\s*llevar\s*contabilidad/i.test(text)) tipoContribuyente = 'OBLIGADO';
-  else if (/no\s*obligad[oa]\s*a\s*llevar\s*contabilidad/i.test(text)) tipoContribuyente = 'NO_OBLIGADO';
-  else if (/agente\s*de\s*retenci[oó]n/i.test(text)) tipoContribuyente = 'AGENTE_RETENCION';
-  else if (/contribuyente\s*especial/i.test(text)) tipoContribuyente = 'CONTRIBUYENTE_ESPECIAL';
-  else if (/gran\s*contribuyente/i.test(text)) tipoContribuyente = 'GRAN_CONTRIBUYENTE';
+  {
+    const obl = text.match(/obligado\s*a\s*llevar\s*contabilidad[\s\S]{0,40}?\b(SI|NO)\b/i);
+    if (obl) tipoContribuyente = obl[1].toUpperCase() === 'SI' ? 'OBLIGADO' : 'NO_OBLIGADO';
+    // Estos sobreescriben si aplican
+    if (/agente\s*de\s*retenci[oó]n[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'AGENTE_RETENCION';
+    if (/contribuyente\s*especial[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'CONTRIBUYENTE_ESPECIAL';
+    if (/gran\s*contribuyente[\s\S]{0,40}?\bSI\b/i.test(text)) tipoContribuyente = 'GRAN_CONTRIBUYENTE';
+  }
 
-  // Estado
-  const estado = match(text, /estado[\s\/]*:?\s*([A-ZÁÉÍÓÚÜÑ ]+?)(?=\n|clase|fecha|$)/i);
+  // --- Estado del contribuyente ---
+  let estado = '';
+  {
+    const m = text.match(/\bEstado\b[\s\S]{0,40}?\b(ACTIVO|INACTIVO|SUSPENDIDO|PASIVO)\b/i);
+    if (m) estado = m[1].toUpperCase();
+  }
+
+  // --- Actividad económica principal: primera línea bajo "Actividades económicas" ---
+  let actividad = '';
+  {
+    const idx = lines.findIndex((l) => /actividades\s*econ[oó]micas/i.test(l));
+    if (idx >= 0 && idx + 1 < lines.length) {
+      const linea = clean(lines[idx + 1]);
+      // Las actividades suelen empezar con un guion-listado o código tipo G46... J62...
+      actividad = linea.replace(/^[•·\-\s]+/, '').trim();
+    }
+  }
+
+  // --- Email y celular (medios de contacto) ---
+  let email = '', celular = '';
+  {
+    const e = text.match(/Email:\s*([^\s\n]+@[^\s\n]+)/i);
+    if (e) email = clean(e[1]);
+    const c = text.match(/Celular:\s*(\d[\d ]+\d)/i);
+    if (c) celular = c[1].replace(/\s/g, '');
+  }
 
   return {
-    valid: !!ruc, // si no encontramos el RUC, es muy probable que no sea el PDF correcto
+    valid: !!ruc,
     error: ruc ? undefined : 'SIN_RUC',
-    reason: ruc ? undefined : 'No encontramos un RUC en el PDF. ¿Es el Certificado de RUC del SRI?',
+    reason: ruc ? undefined : 'No encontramos el RUC en el PDF. ¿Es el Certificado de RUC del SRI?',
     ruc,
     razonSocial,
     nombreComercial,
+    representanteLegal: repLegal,
     direccion,
-    provincia: provincia ? provincia.toUpperCase().trim() : '',
+    provincia,
     canton,
     parroquia,
     actividad,
     regimen,
     tipoContribuyente,
     estado,
-    rawText: raw, // para debug
+    email,
+    celular,
+    rawText: raw,
   };
 }

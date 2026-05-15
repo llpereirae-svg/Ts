@@ -55,6 +55,7 @@ export function renderPantallaDatos(body, wizardData) {
   const isAutoProvincia = !!wizardData._auto?.provincia;
   const isAutoCiudad = !!wizardData._auto?.ciudad;
   const isAutoCelular = !!wizardData._auto?.celular;
+  const isAutoEmail = !!wizardData._auto?.email;
 
   const provinciaOptions = ['', ...PROVINCIAS].map((p) =>
     `<option value="${p}" ${wizardData.provincia === p ? 'selected' : ''}>${p ? titleCase(p) : 'Selecciona…'}</option>`
@@ -125,7 +126,10 @@ export function renderPantallaDatos(body, wizardData) {
     </div>
 
     <div class="field">
-      <label for="d-email">Correo electrónico</label>
+      <label for="d-email">
+        Correo electrónico
+        ${isAutoEmail ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
+      </label>
       <input id="d-email" type="email" autocomplete="email" inputmode="email" placeholder="tu@empresa.com" value="${escapeAttr(wizardData.email)}">
       <div id="d-email-error" class="error" role="alert" aria-live="polite"></div>
     </div>
@@ -195,10 +199,18 @@ function preFillFromSources(wd) {
     const ciudad = normalizeCiudad(wd.provincia, cert.canton || extra.ciudad || '');
     if (ciudad) { wd.ciudad = ciudad; wd._auto.ciudad = cert.canton ? 'cert' : 'firma'; }
   }
-  if (!wd.celular && extra.celular) {
-    // Solo dígitos
-    const limpio = String(extra.celular).replace(/\D/g, '');
-    if (limpio) { wd.celular = limpio; wd._auto.celular = 'firma'; }
+  if (!wd.celular) {
+    if (extra.celular) {
+      const limpio = String(extra.celular).replace(/\D/g, '');
+      if (limpio) { wd.celular = limpio; wd._auto.celular = 'firma'; }
+    } else if (cert.celular) {
+      const limpio = String(cert.celular).replace(/\D/g, '');
+      if (limpio) { wd.celular = limpio; wd._auto.celular = 'cert'; }
+    }
+  }
+  if (!wd.email && cert.email) {
+    wd.email = cert.email;
+    wd._auto.email = 'cert';
   }
   if (!wd.celularPais) wd.celularPais = 'EC';
   if (!wd.canal) wd.canal = 'email';
@@ -253,6 +265,7 @@ function wireDatosScreen(root, wd) {
 
   root.querySelector('#d-email').addEventListener('input', (e) => {
     wd.email = e.target.value.trim();
+    wd._auto.email = null;
   });
 
   const celSel = root.querySelector('#d-celular-pais');

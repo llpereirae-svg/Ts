@@ -2,10 +2,10 @@
    Términos + firma electrónica (.p12) + RUC manual + Certificado RUC (PDF).
    Solo deja avanzar cuando los 4 gates pasan. */
 
-import { validarFirmaP12 } from './firma-validator.js?v=20260516i';
+import { validarFirmaP12 } from './firma-validator.js?v=20260516j';
 import { validarRUC } from './validators.js?v=20260515a';
-import { parseCertificadoRUC } from './pdf-parser.js?v=20260516i';
-import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516i';
+import { parseCertificadoRUC } from './pdf-parser.js?v=20260516j';
+import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516j';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -310,16 +310,41 @@ function validarMatchRuc(root, wizardData) {
 
 function renderFirmaResumen(root, firma) {
   root.querySelector('#f-firma-resumen').hidden = false;
-  root.querySelector('#f-r-titular').textContent = firma.titular || '—';
-  root.querySelector('#f-r-ruc').textContent = firma.ruc || '—';
-  root.querySelector('#f-r-caducidad').textContent = formatFecha(firma.caducidad);
+  // Máscaras: mostramos parcialmente datos sensibles. Solo la caducidad va completa.
+  root.querySelector('#f-r-titular').textContent = maskName(firma.titular) || '—';
+  root.querySelector('#f-r-ruc').textContent = maskRuc(firma.ruc) || '—';
+  root.querySelector('#f-r-caducidad').textContent = formatFechaLarga(firma.caducidad);
   const replegalRow = root.querySelector('#f-r-replegal-row');
   if (firma.esJuridica && firma.repLegal?.nombreCompleto) {
     replegalRow.hidden = false;
-    root.querySelector('#f-r-replegal').textContent = firma.repLegal.nombreCompleto;
+    root.querySelector('#f-r-replegal').textContent = maskName(firma.repLegal.nombreCompleto);
   } else {
     replegalRow.hidden = true;
   }
+}
+
+/**
+ * Enmascara un RUC mostrando primeros 4 y últimos 3 dígitos.
+ * Ej: 0992703601001 → 0992******001
+ */
+function maskRuc(ruc) {
+  if (!ruc) return '';
+  const s = String(ruc);
+  if (s.length < 8) return s;
+  return s.slice(0, 4) + '*'.repeat(s.length - 7) + s.slice(-3);
+}
+
+/**
+ * Enmascara un nombre mostrando primeros 3 y últimos 3 caracteres.
+ * Ej: "TRIBUTASOFT S A" → "TRI*********S A"
+ *     "KEPTI LENIN PEREIRA TINOCO" → "KEP*******************OCO"
+ * Si el nombre es corto, lo muestra entero.
+ */
+function maskName(name) {
+  if (!name) return '';
+  const s = String(name).trim();
+  if (s.length < 7) return s;
+  return s.slice(0, 3) + '*'.repeat(s.length - 6) + s.slice(-3);
 }
 
 function reRenderFirmaState(wizardData) {
@@ -370,11 +395,11 @@ function updateSubsequentLocks(root, wizardData) {
   toggleLock(root.querySelector('#f-cert-block'), !rucOk);
 }
 
-function formatFecha(d) {
+function formatFechaLarga(d) {
   if (!d) return '—';
   try {
     const dt = (d instanceof Date) ? d : new Date(d);
-    return dt.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+    return dt.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
   } catch { return '—'; }
 }
 
