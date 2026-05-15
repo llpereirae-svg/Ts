@@ -541,6 +541,28 @@ body.is-pc .wiz-loading-text {
   vertical-align: middle;
 }
 
+/* Campos bloqueados (pre-llenados desde firma/cert, no editables) */
+.field-locked input,
+.field-locked select {
+  background: var(--color-surface-low);
+  color: var(--color-text);
+  cursor: not-allowed;
+  border-color: var(--color-border);
+  font-weight: 600;
+}
+.field-locked input:focus,
+.field-locked select:focus {
+  outline: none;
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+.lock-ico {
+  font-size: .82rem;
+  margin-right: .25rem;
+  opacity: .6;
+  vertical-align: middle;
+}
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,

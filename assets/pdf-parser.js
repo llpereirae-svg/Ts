@@ -103,20 +103,25 @@ export async function parseCertificadoRUC(file) {
   const rucMatch = text.match(/\b(\d{10}001)\b/);
   const ruc = rucMatch ? rucMatch[1] : '';
 
-  // --- Razón Social ---
-  // La línea siguiente a "Razón Social..." tiene "RAZON SOCIAL ... 0992703601001"
-  // (razón social y RUC juntos en una línea). Quitamos el RUC para aislar el nombre.
+  // --- Razón Social / Apellidos y nombres ---
+  // El SRI usa "Razón Social" para jurídicas y "Apellidos y nombres" para naturales.
+  // En ambos casos: el label está en una línea (junto con "Número RUC") y el valor
+  // está en la línea SIGUIENTE (junto con el RUC). Quitamos el RUC para aislar el nombre.
   let razonSocial = '';
+  let esJuridica = false;
   {
-    const valLine = lineAfter(lines, /raz[oó]n\s*social/i);
-    if (valLine) {
-      razonSocial = valLine.replace(/\s*\d{10}001\b/g, '').trim();
+    const idxRazon = lines.findIndex((l) => /raz[oó]n\s*social/i.test(l));
+    const idxApellidos = lines.findIndex((l) => /apellidos\s*y\s*nombres/i.test(l));
+    let valIdx = -1;
+    if (idxRazon >= 0) { valIdx = idxRazon + 1; esJuridica = true; }
+    else if (idxApellidos >= 0) { valIdx = idxApellidos + 1; esJuridica = false; }
+    if (valIdx >= 0 && valIdx < lines.length) {
+      razonSocial = clean(lines[valIdx]).replace(/\s*\d{10}001\b/g, '').trim();
     }
   }
 
   // --- Representante legal (solo si es jurídica) ---
-  // Línea con SOLO el label "Representante legal", valor en línea siguiente.
-  const repLegal = lineAfter(lines, /^representante\s*legal\s*$/i);
+  const repLegal = esJuridica ? lineAfter(lines, /^representante\s*legal\s*$/i) : '';
 
   // --- Nombre comercial ---
   // Algunos certs SRI lo traen, otros NO. Intentamos varias formas.
@@ -199,6 +204,26 @@ export async function parseCertificadoRUC(file) {
     if (c) celular = c[1].replace(/\s/g, '');
   }
 
+  // --- Fecha y hora de emisión ---
+  // Formato típico: "Fecha y hora de emisión: 15 de mayo de 2026 12:37"
+  let fechaEmision = null;
+  {
+    const m = text.match(/Fecha\s*y\s*hora\s*de\s*emisi[oó]n:\s*(\d{1,2})\s*de\s*([a-záéíóú]+)\s*de\s*(\d{4})\s+(\d{1,2}):(\d{2})/i);
+    if (m) {
+      const dia = parseInt(m[1], 10);
+      const mesNombre = m[2].toLowerCase();
+      const anio = parseInt(m[3], 10);
+      const hora = parseInt(m[4], 10);
+      const min = parseInt(m[5], 10);
+      const MESES = { enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+                      julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
+      const mesIdx = MESES[mesNombre];
+      if (mesIdx != null) {
+        fechaEmision = new Date(anio, mesIdx, dia, hora, min);
+      }
+    }
+  }
+
   return {
     valid: !!ruc,
     error: ruc ? undefined : 'SIN_RUC',
@@ -207,6 +232,7 @@ export async function parseCertificadoRUC(file) {
     razonSocial,
     nombreComercial,
     representanteLegal: repLegal,
+    esJuridica,
     direccion,
     provincia,
     canton,
@@ -217,6 +243,30 @@ export async function parseCertificadoRUC(file) {
     estado,
     email,
     celular,
+    fechaEmision,
     rawText: raw,
   };
+}
+
+/**
+ * Verifica que la fecha de emisión del certificado sea reciente:
+ * no más de 1 mes de antigüedad y no en el futuro.
+ * @param {Date} fecha
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+export function validarFechaEmisionCert(fecha) {
+  if (!fecha || !(fecha instanceof Date) || isNaN(fecha.getTime())) {
+    return { valid: false, reason: 'Estimado cliente, cargue su RUC actualizado.' };
+  }
+  const ahora = new Date();
+  // No puede ser futura (con tolerancia de 1 día por timezone)
+  if (fecha.getTime() > ahora.getTime() + 24 * 60 * 60 * 1000) {
+    return { valid: false, reason: 'Estimado cliente, cargue su RUC actualizado.' };
+  }
+  // No mayor a 1 mes (30 días) de antigüedad
+  const limiteAntiguedad = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
+  if (fecha < limiteAntiguedad) {
+    return { valid: false, reason: 'Estimado cliente, cargue su RUC actualizado.' };
+  }
+  return { valid: true };
 }

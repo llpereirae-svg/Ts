@@ -1,9 +1,14 @@
 /* screen-datos.js — Pantalla 2 del wizard.
-   Datos personales auto-llenados desde firma + Certificado RUC.
-   Cada campo auto-llenado muestra un badge "✓ Auto-llenado". */
+   Datos personales pre-llenados desde firma + Certificado RUC.
 
-import { COUNTRIES, findCountry } from './countries.js?v=20260515a';
-import { citiesFor, CITIES_BY_PROVINCE } from './cities.js?v=20260515a';
+   Campos BLOQUEADOS (auto-fill, readonly): razón social, nombre comercial,
+   provincia, ciudad. Vienen de la firma y/o del cert PDF.
+
+   Campos EDITABLES (con auto-fill cuando hay dato): email, celular, dirección.
+   Canal preferido siempre manual. */
+
+import { COUNTRIES } from './countries.js?v=20260515a';
+import { citiesFor } from './cities.js?v=20260515a';
 import { validarEmail, validarCelular } from './validators.js?v=20260515a';
 
 const PROVINCIAS = [
@@ -12,14 +17,12 @@ const PROVINCIAS = [
   'PICHINCHA','SANTA ELENA','SANTO DOMINGO','SUCUMBIOS','TUNGURAHUA','ZAMORA CHINCHIPE'
 ];
 
-// Mapa de variantes con/sin tildes a forma normalizada (sin tildes, mayúsculas)
 const PROVINCIAS_LOOKUP = (() => {
   const m = {};
   PROVINCIAS.forEach((p) => {
     m[p] = p;
     m[stripAccents(p)] = p;
   });
-  // Algunas variantes comunes con tildes que vienen del PDF
   m['CAÑAR'] = 'CANAR';
   m['LOS RÍOS'] = 'LOS RIOS';
   m['MANABÍ'] = 'MANABI';
@@ -46,25 +49,7 @@ function normalizeCiudad(provincia, ciudadRaw) {
 }
 
 export function renderPantallaDatos(body, wizardData) {
-  // Pre-poblamos wizardData con lo extraído de firma + cert (solo si está vacío)
   preFillFromSources(wizardData);
-
-  const isAutoRazon = !!wizardData._auto?.razonSocial;
-  const isAutoComercial = !!wizardData._auto?.nombreComercial;
-  const isAutoDireccion = !!wizardData._auto?.direccion;
-  const isAutoProvincia = !!wizardData._auto?.provincia;
-  const isAutoCiudad = !!wizardData._auto?.ciudad;
-  const isAutoCelular = !!wizardData._auto?.celular;
-  const isAutoEmail = !!wizardData._auto?.email;
-
-  const provinciaOptions = ['', ...PROVINCIAS].map((p) =>
-    `<option value="${p}" ${wizardData.provincia === p ? 'selected' : ''}>${p ? titleCase(p) : 'Selecciona…'}</option>`
-  ).join('');
-
-  const ciudadesActuales = wizardData.provincia ? citiesFor(wizardData.provincia) : [];
-  const ciudadOptions = ['', ...ciudadesActuales].map((c) =>
-    `<option value="${c}" ${wizardData.ciudad === c ? 'selected' : ''}>${c || 'Selecciona…'}</option>`
-  ).join('');
 
   const paisOptions = COUNTRIES.map((c) =>
     `<option value="${c.code}" data-dial="${c.dial}" ${wizardData.celularPais === c.code ? 'selected' : ''}>${c.code} +${c.dial}</option>`
@@ -72,63 +57,53 @@ export function renderPantallaDatos(body, wizardData) {
 
   body.innerHTML = `
     <p class="datos-intro">
-      Lo que pudimos leer de tu firma y tu Certificado de RUC ya está pre-llenado.
-      Revisa y corrige lo que necesites.
+      Lo que extrajimos de tu firma y tu Certificado de RUC ya está pre-llenado.
+      Los campos marcados con candado vienen de tus documentos. Revisa tu correo y celular y corrige si hace falta.
     </p>
 
-    <div class="field">
+    <div class="field field-locked">
       <label for="d-razon">
-        Razón social
-        ${isAutoRazon ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
+        <span class="lock-ico" aria-hidden="true">🔒</span>
+        Razón social / Nombre
       </label>
-      <input id="d-razon" type="text" autocomplete="organization" value="${escapeAttr(wizardData.razonSocial)}">
-      <div id="d-razon-error" class="error" role="alert" aria-live="polite"></div>
+      <input id="d-razon" type="text" value="${escapeAttr(wizardData.razonSocial)}" readonly>
     </div>
 
-    <div class="field field-with-na">
+    <div class="field field-locked">
       <label for="d-comercial">
+        <span class="lock-ico" aria-hidden="true">🔒</span>
         Nombre comercial
-        ${isAutoComercial ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
       </label>
-      <input id="d-comercial" type="text" autocomplete="organization" value="${escapeAttr(wizardData.nombreComercial)}" ${wizardData.nombreComercialNA ? 'disabled' : ''}>
-      <label class="na-toggle">
-        <input type="checkbox" id="d-comercial-na" ${wizardData.nombreComercialNA ? 'checked' : ''}>
-        No aplica
-      </label>
-    </div>
-
-    <div class="field">
-      <label for="d-direccion">
-        Dirección
-        ${isAutoDireccion ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
-      </label>
-      <input id="d-direccion" type="text" autocomplete="street-address" placeholder="Av., calles, número, referencia" value="${escapeAttr(wizardData.direccion)}">
-      <div id="d-direccion-error" class="error" role="alert" aria-live="polite"></div>
+      <input id="d-comercial" type="text" value="${escapeAttr(wizardData.nombreComercial || 'No aplica')}" readonly>
     </div>
 
     <div class="field-row">
-      <div class="field">
+      <div class="field field-locked">
         <label for="d-provincia">
+          <span class="lock-ico" aria-hidden="true">🔒</span>
           Provincia
-          ${isAutoProvincia ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
         </label>
-        <select id="d-provincia">${provinciaOptions}</select>
-        <div id="d-provincia-error" class="error" role="alert" aria-live="polite"></div>
+        <input id="d-provincia" type="text" value="${escapeAttr(titleCase(wizardData.provincia))}" readonly>
       </div>
-      <div class="field">
+      <div class="field field-locked">
         <label for="d-ciudad">
+          <span class="lock-ico" aria-hidden="true">🔒</span>
           Ciudad
-          ${isAutoCiudad ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
         </label>
-        <select id="d-ciudad" ${wizardData.provincia ? '' : 'disabled'}>${ciudadOptions}</select>
-        <div id="d-ciudad-error" class="error" role="alert" aria-live="polite"></div>
+        <input id="d-ciudad" type="text" value="${escapeAttr(wizardData.ciudad)}" readonly>
       </div>
+    </div>
+
+    <div class="field">
+      <label for="d-direccion">Dirección</label>
+      <input id="d-direccion" type="text" autocomplete="street-address" placeholder="Av., calles, número, referencia" value="${escapeAttr(wizardData.direccion)}">
+      <div id="d-direccion-error" class="error" role="alert" aria-live="polite"></div>
     </div>
 
     <div class="field">
       <label for="d-email">
         Correo electrónico
-        ${isAutoEmail ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
+        ${wizardData._auto?.email ? '<span class="auto-badge">✓ Pre-llenado</span>' : ''}
       </label>
       <input id="d-email" type="email" autocomplete="email" inputmode="email" placeholder="tu@empresa.com" value="${escapeAttr(wizardData.email)}">
       <div id="d-email-error" class="error" role="alert" aria-live="polite"></div>
@@ -137,7 +112,7 @@ export function renderPantallaDatos(body, wizardData) {
     <div class="field">
       <label for="d-celular">
         Celular
-        ${isAutoCelular ? '<span class="auto-badge">✓ Auto-llenado</span>' : ''}
+        ${wizardData._auto?.celular ? '<span class="auto-badge">✓ Pre-llenado</span>' : ''}
       </label>
       <div class="field-phone">
         <select id="d-celular-pais" class="celular-pais" aria-label="País del celular">${paisOptions}</select>
@@ -173,32 +148,34 @@ export function renderPantallaDatos(body, wizardData) {
 }
 
 function preFillFromSources(wd) {
-  // Inicializar el tracker de "qué se auto-llenó" para los badges
   if (!wd._auto) wd._auto = {};
 
   const firma = wd.firma || {};
   const cert = wd.certificadoRuc || {};
   const extra = firma.datosExtra || {};
 
-  if (!wd.razonSocial) {
-    if (firma.razonSocial) { wd.razonSocial = firma.razonSocial; wd._auto.razonSocial = 'firma'; }
-    else if (cert.razonSocial) { wd.razonSocial = cert.razonSocial; wd._auto.razonSocial = 'cert'; }
+  // Razón social / nombre: del cert (jurídica o natural) o de la firma
+  if (cert.razonSocial) wd.razonSocial = cert.razonSocial;
+  else if (firma.razonSocial) wd.razonSocial = firma.razonSocial;
+  else if (firma.titular) wd.razonSocial = firma.titular;
+
+  // Nombre comercial: solo del cert (si no viene, dejamos vacío → UI muestra "No aplica")
+  wd.nombreComercial = cert.nombreComercial || '';
+  wd.nombreComercialNA = !wd.nombreComercial;
+
+  // Provincia y ciudad: normalizadas
+  const prov = normalizeProvincia(cert.provincia || extra.ciudad || '');
+  if (prov) wd.provincia = prov;
+  const ciudad = normalizeCiudad(wd.provincia, cert.canton || extra.ciudad || '');
+  if (ciudad) wd.ciudad = ciudad;
+
+  // Email: del cert (editable)
+  if (!wd.email && cert.email) {
+    wd.email = cert.email;
+    wd._auto.email = 'cert';
   }
-  if (!wd.nombreComercial) {
-    if (cert.nombreComercial) { wd.nombreComercial = cert.nombreComercial; wd._auto.nombreComercial = 'cert'; }
-  }
-  if (!wd.direccion) {
-    if (extra.direccion) { wd.direccion = extra.direccion; wd._auto.direccion = 'firma'; }
-    else if (cert.direccion) { wd.direccion = cert.direccion; wd._auto.direccion = 'cert'; }
-  }
-  if (!wd.provincia) {
-    const prov = normalizeProvincia(cert.provincia || extra.ciudad || '');
-    if (prov) { wd.provincia = prov; wd._auto.provincia = cert.provincia ? 'cert' : 'firma'; }
-  }
-  if (!wd.ciudad && wd.provincia) {
-    const ciudad = normalizeCiudad(wd.provincia, cert.canton || extra.ciudad || '');
-    if (ciudad) { wd.ciudad = ciudad; wd._auto.ciudad = cert.canton ? 'cert' : 'firma'; }
-  }
+
+  // Celular: de firma o cert (editable)
   if (!wd.celular) {
     if (extra.celular) {
       const limpio = String(extra.celular).replace(/\D/g, '');
@@ -208,59 +185,17 @@ function preFillFromSources(wd) {
       if (limpio) { wd.celular = limpio; wd._auto.celular = 'cert'; }
     }
   }
-  if (!wd.email && cert.email) {
-    wd.email = cert.email;
-    wd._auto.email = 'cert';
-  }
+
   if (!wd.celularPais) wd.celularPais = 'EC';
   if (!wd.canal) wd.canal = 'email';
 }
 
 function wireDatosScreen(root, wd) {
-  root.querySelector('#d-razon').addEventListener('input', (e) => {
-    wd.razonSocial = e.target.value;
-    wd._auto.razonSocial = null; // si lo edita manualmente, ya no es auto
-  });
-
-  const comInput = root.querySelector('#d-comercial');
-  const comNa = root.querySelector('#d-comercial-na');
-  comInput.addEventListener('input', (e) => {
-    wd.nombreComercial = e.target.value;
-    wd._auto.nombreComercial = null;
-  });
-  comNa.addEventListener('change', () => {
-    wd.nombreComercialNA = comNa.checked;
-    if (comNa.checked) {
-      wd.nombreComercial = '';
-      comInput.value = '';
-      comInput.disabled = true;
-    } else {
-      comInput.disabled = false;
-    }
-  });
+  // Razón social, nombre comercial, provincia, ciudad → readonly, no se wire-an
+  // Solo wire-amos los campos editables:
 
   root.querySelector('#d-direccion').addEventListener('input', (e) => {
     wd.direccion = e.target.value;
-    wd._auto.direccion = null;
-  });
-
-  const provSel = root.querySelector('#d-provincia');
-  const ciudadSel = root.querySelector('#d-ciudad');
-  provSel.addEventListener('change', () => {
-    wd.provincia = provSel.value;
-    wd._auto.provincia = null;
-    // Re-poblar ciudades
-    const ciudades = citiesFor(wd.provincia);
-    ciudadSel.innerHTML = ['', ...ciudades].map((c) =>
-      `<option value="${c}">${c || 'Selecciona…'}</option>`
-    ).join('');
-    ciudadSel.disabled = !wd.provincia;
-    wd.ciudad = '';
-  });
-
-  ciudadSel.addEventListener('change', () => {
-    wd.ciudad = ciudadSel.value;
-    wd._auto.ciudad = null;
   });
 
   root.querySelector('#d-email').addEventListener('input', (e) => {
@@ -270,9 +205,7 @@ function wireDatosScreen(root, wd) {
 
   const celSel = root.querySelector('#d-celular-pais');
   const celInput = root.querySelector('#d-celular');
-  celSel.addEventListener('change', () => {
-    wd.celularPais = celSel.value;
-  });
+  celSel.addEventListener('change', () => { wd.celularPais = celSel.value; });
   celInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/[^\d ]/g, '');
     wd.celular = e.target.value.replace(/\s/g, '');
@@ -286,7 +219,6 @@ function wireDatosScreen(root, wd) {
   });
 }
 
-// Helpers
 function escapeAttr(s) {
   if (s == null) return '';
   return String(s).replace(/"/g, '&quot;');
@@ -297,21 +229,21 @@ function titleCase(s) {
   return s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 }
 
-// Validador del wizard: campos requeridos para avanzar
 export function validarPantallaDatos(wd) {
   const errors = [];
-  if (!wd.razonSocial?.trim()) errors.push('Razón social');
-  if (!wd.nombreComercialNA && !wd.nombreComercial?.trim()) errors.push('Nombre comercial (o marca "No aplica")');
+  // Los campos bloqueados ya vienen validados (de firma/cert), solo verificamos los editables
   if (!wd.direccion?.trim()) errors.push('Dirección');
-  if (!wd.provincia) errors.push('Provincia');
-  if (!wd.ciudad) errors.push('Ciudad');
   if (!wd.email?.trim() || !validarEmail(wd.email).valid) errors.push('Correo electrónico válido');
-
   const celValid = validarCelular(wd.celular, wd.celularPais);
   if (!wd.celular?.trim() || !celValid.valid) errors.push('Celular válido');
 
+  // Y que los bloqueados sí estén llenos (si por algún caso raro no se llenaron)
+  if (!wd.razonSocial?.trim()) errors.push('Razón social (no detectada en firma ni cert)');
+  if (!wd.provincia) errors.push('Provincia (no detectada en cert)');
+  if (!wd.ciudad) errors.push('Ciudad (no detectada en cert)');
+
   if (errors.length > 0) {
-    alert('Completa estos campos antes de continuar:\n• ' + errors.join('\n• '));
+    alert('Antes de continuar, revisa:\n• ' + errors.join('\n• '));
     return false;
   }
   return true;

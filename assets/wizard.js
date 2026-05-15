@@ -480,8 +480,8 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod] = await Promise.all([
-      import('./screen-firma.js?v=20260516j'),
-      import('./screen-datos.js?v=20260516j'),
+      import('./screen-firma.js?v=20260516k'),
+      import('./screen-datos.js?v=20260516k'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

@@ -1,11 +1,11 @@
 /* screen-firma.js — Pantalla 1 del wizard.
-   Términos + firma electrónica (.p12) + RUC manual + Certificado RUC (PDF).
-   Solo deja avanzar cuando los 4 gates pasan. */
+   Términos + firma electrónica (.p12) + Certificado RUC (PDF).
+   El RUC ya NO se ingresa manualmente: viene de la firma y se valida
+   contra el RUC del certificado. */
 
-import { validarFirmaP12 } from './firma-validator.js?v=20260516j';
-import { validarRUC } from './validators.js?v=20260515a';
-import { parseCertificadoRUC } from './pdf-parser.js?v=20260516j';
-import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516j';
+import { validarFirmaP12 } from './firma-validator.js?v=20260516k';
+import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516k';
+import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516k';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -27,7 +27,7 @@ export function renderPantallaFirma(body, wizardData) {
   body.innerHTML = `
     ${deviceWarning}
 
-    <!-- GATE 1: Términos y condiciones -->
+    <!-- BLOQUE 1: Términos y condiciones -->
     <div class="firma-block firma-block--terms">
       <label class="firma-terms">
         <input type="checkbox" id="f-terminos" ${wizardData.terminos ? 'checked' : ''}>
@@ -35,7 +35,7 @@ export function renderPantallaFirma(body, wizardData) {
       </label>
     </div>
 
-    <!-- GATE 2: Firma electrónica -->
+    <!-- BLOQUE 2: Firma electrónica -->
     <div class="firma-block" id="f-firma-block" ${wizardData.terminos ? '' : 'data-locked="true"'}>
       <div class="firma-block-header">
         <span class="firma-block-step">1</span>
@@ -81,29 +81,17 @@ export function renderPantallaFirma(body, wizardData) {
       </button>
     </div>
 
-    <!-- GATE 3: RUC manual -->
-    <div class="firma-block" id="f-ruc-block" data-locked="true">
-      <div class="firma-block-header">
-        <span class="firma-block-step">2</span>
-        <h3>Confirma tu RUC</h3>
-      </div>
-      <p class="firma-block-help">Ingresa tu RUC manualmente. Vamos a verificar que coincida con el de tu firma.</p>
-
-      <div class="field">
-        <label for="f-ruc">RUC (13 dígitos)</label>
-        <input id="f-ruc" type="tel" inputmode="numeric" maxlength="13" placeholder="0000000000001" autocomplete="off" value="${wizardData.rucManual || ''}">
-      </div>
-      <div id="f-ruc-error" class="error" role="alert" aria-live="polite"></div>
-      <p id="f-ruc-ok" class="firma-resumen-titulo" hidden>✓ RUC coincide con tu firma</p>
-    </div>
-
-    <!-- GATE 4: Certificado de RUC PDF -->
+    <!-- BLOQUE 3: Certificado de RUC PDF -->
     <div class="firma-block" id="f-cert-block" data-locked="true">
       <div class="firma-block-header">
-        <span class="firma-block-step">3</span>
+        <span class="firma-block-step">2</span>
         <h3>Sube tu Certificado de RUC</h3>
       </div>
-      <p class="firma-block-help">PDF original del SRI (no foto ni escaneo). Lo leemos en tu navegador para autocompletar tus datos.</p>
+      <p class="firma-block-help">
+        PDF original del SRI (no foto ni escaneo). Lo leemos en tu navegador para
+        validar que el RUC del certificado coincida con el de tu firma y para
+        autocompletar tus datos.
+      </p>
 
       <div class="firma-uploader-row">
         <button type="button" class="btn btn--ghost" id="f-cert-pick">
@@ -119,10 +107,11 @@ export function renderPantallaFirma(body, wizardData) {
       <div id="f-cert-error" class="firma-error" role="alert" aria-live="polite"></div>
 
       <div id="f-cert-resumen" class="firma-resumen" hidden>
-        <p class="firma-resumen-titulo">✓ Certificado leído</p>
+        <p class="firma-resumen-titulo">✓ Certificado validado</p>
+        <div class="firma-resumen-row"><span class="firma-resumen-label">RUC</span><span class="firma-resumen-value" id="f-c-ruc">—</span></div>
         <div class="firma-resumen-row"><span class="firma-resumen-label">Razón social</span><span class="firma-resumen-value" id="f-c-razon">—</span></div>
-        <div class="firma-resumen-row"><span class="firma-resumen-label">Nombre comercial</span><span class="firma-resumen-value" id="f-c-comercial">—</span></div>
         <div class="firma-resumen-row"><span class="firma-resumen-label">Provincia / Cantón</span><span class="firma-resumen-value" id="f-c-prov">—</span></div>
+        <div class="firma-resumen-row"><span class="firma-resumen-label">Emitido</span><span class="firma-resumen-value" id="f-c-fecha">—</span></div>
       </div>
     </div>
   `;
@@ -140,7 +129,7 @@ function wireFirmaScreen(root, wizardData) {
   tc.addEventListener('change', () => {
     wizardData.terminos = tc.checked;
     toggleLock(root.querySelector('#f-firma-block'), !tc.checked);
-    updateSubsequentLocks(root, wizardData);
+    updateCertLock(root, wizardData);
   });
 
   root.querySelector('#f-link-terms').addEventListener('click', () => {
@@ -150,12 +139,11 @@ function wireFirmaScreen(root, wizardData) {
     }
   });
 
-  // Si modal de Términos dispara aceptación, marcamos el checkbox
   document.addEventListener('terms-accepted', () => {
     tc.checked = true;
     wizardData.terminos = true;
     toggleLock(root.querySelector('#f-firma-block'), false);
-    updateSubsequentLocks(root, wizardData);
+    updateCertLock(root, wizardData);
   });
 
   // -------- Firma --------
@@ -184,7 +172,7 @@ function wireFirmaScreen(root, wizardData) {
     actionsWrap.hidden = false;
     resumen.hidden = true;
     wizardData.firma = null;
-    updateSubsequentLocks(root, wizardData);
+    updateCertLock(root, wizardData);
   });
 
   validarBtn.addEventListener('click', async () => {
@@ -197,7 +185,7 @@ function wireFirmaScreen(root, wizardData) {
     firmaError.textContent = '';
     showLoading('Validando firma…');
     try {
-      const res = await validarFirmaP12(file, clave, null); // sin rucEsperado: validamos solo formato/clave
+      const res = await validarFirmaP12(file, clave, null);
       hideLoading();
       if (!res.valid) {
         firmaError.textContent = res.reason || 'No pudimos validar la firma.';
@@ -216,10 +204,12 @@ function wireFirmaScreen(root, wizardData) {
           caducidad: res.fechaCaducidad
         };
         renderFirmaResumen(root, wizardData.firma);
-        // Si el RUC manual ya está escrito, re-validar la coincidencia
-        validarMatchRuc(root, wizardData);
+        // Si el cert ya estaba subido, re-validar que coincida
+        if (wizardData.certificadoRuc?.ruc) {
+          revalidarCertContraFirma(root, wizardData);
+        }
       }
-      updateSubsequentLocks(root, wizardData);
+      updateCertLock(root, wizardData);
     } catch (err) {
       hideLoading();
       console.error('[firma] excepción al validar', err);
@@ -231,19 +221,12 @@ function wireFirmaScreen(root, wizardData) {
     window.open(WHATSAPP_FIRMA, '_blank', 'noopener');
   });
 
-  // -------- RUC manual --------
-  const rucInput = root.querySelector('#f-ruc');
-  rucInput.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 13);
-    wizardData.rucManual = e.target.value;
-    validarMatchRuc(root, wizardData);
-  });
-
   // -------- Cert RUC PDF --------
   const certFile = root.querySelector('#f-cert-file');
   const certPick = root.querySelector('#f-cert-pick');
   const certNombre = root.querySelector('#f-cert-nombre');
   const certError = root.querySelector('#f-cert-error');
+  const certResumen = root.querySelector('#f-cert-resumen');
 
   certPick.addEventListener('click', () => certFile.click());
 
@@ -252,21 +235,36 @@ function wireFirmaScreen(root, wizardData) {
     if (!file) return;
     certError.textContent = '';
     certNombre.textContent = file.name;
+    certResumen.hidden = true;
+    wizardData.certificadoRuc = null;
+
     showLoading('Leyendo certificado…');
     try {
       const res = await parseCertificadoRUC(file);
       hideLoading();
+
+      // 1) Parser pudo extraer
       if (!res.valid) {
         certError.textContent = res.reason || 'No pudimos leer el certificado.';
-        wizardData.certificadoRuc = null;
-      } else {
-        wizardData.certificadoRuc = { ...res, archivo: file.name };
-        renderCertResumen(root, wizardData.certificadoRuc);
-        // Si el RUC del PDF no coincide con el manual ingresado, avisar
-        if (wizardData.rucManual && res.ruc && wizardData.rucManual !== res.ruc) {
-          certError.textContent = `El RUC del PDF (${res.ruc}) no coincide con el que ingresaste (${wizardData.rucManual}).`;
-        }
+        return;
       }
+
+      // 2) Fecha de emisión: máx. 1 mes, no futura
+      const fechaCheck = validarFechaEmisionCert(res.fechaEmision);
+      if (!fechaCheck.valid) {
+        certError.textContent = fechaCheck.reason;
+        return;
+      }
+
+      // 3) RUC del cert debe coincidir con RUC de la firma
+      if (wizardData.firma?.ruc && res.ruc !== wizardData.firma.ruc) {
+        certError.textContent = `El RUC del certificado (${res.ruc}) no coincide con el de tu firma (${wizardData.firma.ruc}). Sube el certificado correspondiente a tu firma.`;
+        return;
+      }
+
+      // Todo OK: guardar
+      wizardData.certificadoRuc = { ...res, archivo: file.name };
+      renderCertResumen(root, wizardData.certificadoRuc);
     } catch (err) {
       hideLoading();
       console.error('[pdf] excepción al parsear', err);
@@ -275,42 +273,23 @@ function wireFirmaScreen(root, wizardData) {
   });
 }
 
-function validarMatchRuc(root, wizardData) {
-  const rucInput = root.querySelector('#f-ruc');
-  const errBox = root.querySelector('#f-ruc-error');
-  const okBox = root.querySelector('#f-ruc-ok');
-  const ruc = rucInput.value;
-
-  okBox.hidden = true;
-  errBox.textContent = '';
-
-  if (ruc.length !== 13) {
-    if (ruc.length > 0) errBox.textContent = 'El RUC debe tener 13 dígitos.';
-    updateSubsequentLocks(root, wizardData);
-    return;
+function revalidarCertContraFirma(root, wizardData) {
+  // Llamado cuando la firma se validó después que el cert ya estaba subido.
+  // Verifica que los RUCs coincidan y muestra error si no.
+  const cert = wizardData.certificadoRuc;
+  if (!cert?.ruc) return;
+  const certError = root.querySelector('#f-cert-error');
+  if (cert.ruc !== wizardData.firma.ruc) {
+    certError.textContent = `El RUC del certificado (${cert.ruc}) no coincide con el de tu firma (${wizardData.firma.ruc}). Sube el certificado correspondiente a tu firma.`;
+    wizardData.certificadoRuc = null;
+    root.querySelector('#f-cert-resumen').hidden = true;
+  } else {
+    certError.textContent = '';
   }
-
-  const v = validarRUC(ruc);
-  if (!v.valid) {
-    errBox.textContent = v.reason || 'RUC inválido.';
-    updateSubsequentLocks(root, wizardData);
-    return;
-  }
-
-  // Comparar con la firma
-  if (wizardData.firma?.ruc && wizardData.firma.ruc !== ruc) {
-    errBox.textContent = `El RUC de tu firma es ${wizardData.firma.ruc}. Ingresa ese mismo RUC.`;
-    updateSubsequentLocks(root, wizardData);
-    return;
-  }
-
-  if (wizardData.firma?.valid) okBox.hidden = false;
-  updateSubsequentLocks(root, wizardData);
 }
 
 function renderFirmaResumen(root, firma) {
   root.querySelector('#f-firma-resumen').hidden = false;
-  // Máscaras: mostramos parcialmente datos sensibles. Solo la caducidad va completa.
   root.querySelector('#f-r-titular').textContent = maskName(firma.titular) || '—';
   root.querySelector('#f-r-ruc').textContent = maskRuc(firma.ruc) || '—';
   root.querySelector('#f-r-caducidad').textContent = formatFechaLarga(firma.caducidad);
@@ -323,54 +302,33 @@ function renderFirmaResumen(root, firma) {
   }
 }
 
-/**
- * Enmascara un RUC mostrando primeros 4 y últimos 3 dígitos.
- * Ej: 0992703601001 → 0992******001
- */
-function maskRuc(ruc) {
-  if (!ruc) return '';
-  const s = String(ruc);
-  if (s.length < 8) return s;
-  return s.slice(0, 4) + '*'.repeat(s.length - 7) + s.slice(-3);
-}
-
-/**
- * Enmascara un nombre mostrando primeros 3 y últimos 3 caracteres.
- * Ej: "TRIBUTASOFT S A" → "TRI*********S A"
- *     "KEPTI LENIN PEREIRA TINOCO" → "KEP*******************OCO"
- * Si el nombre es corto, lo muestra entero.
- */
-function maskName(name) {
-  if (!name) return '';
-  const s = String(name).trim();
-  if (s.length < 7) return s;
-  return s.slice(0, 3) + '*'.repeat(s.length - 6) + s.slice(-3);
-}
-
 function reRenderFirmaState(wizardData) {
-  // Cuando volvemos a la pantalla, re-pintar los nombres si ya hay archivos
   const root = document.querySelector('[data-body="firma"]');
+  if (!root) return;
   if (wizardData.firma?.archivo) {
     root.querySelector('#f-firma-nombre').textContent = wizardData.firma.archivo;
     root.querySelector('#f-firma-clave-wrap').hidden = false;
   }
   if (wizardData.firma?.valid) {
     renderFirmaResumen(root, wizardData.firma);
-    validarMatchRuc(root, wizardData);
   }
-  updateSubsequentLocks(root, wizardData);
+  updateCertLock(root, wizardData);
 }
 
 function renderCertResumen(root, cert) {
   root.querySelector('#f-cert-resumen').hidden = false;
+  root.querySelector('#f-c-ruc').textContent = maskRuc(cert.ruc) || '—';
   root.querySelector('#f-c-razon').textContent = cert.razonSocial || '—';
-  root.querySelector('#f-c-comercial').textContent = cert.nombreComercial || '—';
   const prov = [cert.provincia, cert.canton].filter(Boolean).join(' / ') || '—';
   root.querySelector('#f-c-prov').textContent = prov;
+  root.querySelector('#f-c-fecha').textContent = cert.fechaEmision
+    ? formatFechaCorta(cert.fechaEmision)
+    : '—';
 }
 
 function reRenderCertState(wizardData) {
   const root = document.querySelector('[data-body="firma"]');
+  if (!root) return;
   if (wizardData.certificadoRuc?.archivo) {
     root.querySelector('#f-cert-nombre').textContent = wizardData.certificadoRuc.archivo;
   }
@@ -385,14 +343,29 @@ function toggleLock(el, locked) {
   else el.removeAttribute('data-locked');
 }
 
-function updateSubsequentLocks(root, wizardData) {
-  // RUC block desbloquea cuando firma válida
-  toggleLock(root.querySelector('#f-ruc-block'), !wizardData.firma?.valid);
-  // Cert block desbloquea cuando RUC manual coincide
-  const rucOk = wizardData.firma?.valid &&
-                wizardData.rucManual?.length === 13 &&
-                wizardData.rucManual === wizardData.firma.ruc;
-  toggleLock(root.querySelector('#f-cert-block'), !rucOk);
+function updateCertLock(root, wizardData) {
+  // Cert se desbloquea solo cuando la firma está validada
+  toggleLock(root.querySelector('#f-cert-block'), !wizardData.firma?.valid);
+}
+
+/**
+ * Enmascara un RUC: 0992703601001 → 0992******001
+ */
+function maskRuc(ruc) {
+  if (!ruc) return '';
+  const s = String(ruc);
+  if (s.length < 8) return s;
+  return s.slice(0, 4) + '*'.repeat(s.length - 7) + s.slice(-3);
+}
+
+/**
+ * Enmascara un nombre: primeros 3 + últimos 3 visibles.
+ */
+function maskName(name) {
+  if (!name) return '';
+  const s = String(name).trim();
+  if (s.length < 7) return s;
+  return s.slice(0, 3) + '*'.repeat(s.length - 6) + s.slice(-3);
 }
 
 function formatFechaLarga(d) {
@@ -403,7 +376,15 @@ function formatFechaLarga(d) {
   } catch { return '—'; }
 }
 
-// Validador del wizard: solo deja avanzar cuando todos los gates pasan.
+function formatFechaCorta(d) {
+  if (!d) return '—';
+  try {
+    const dt = (d instanceof Date) ? d : new Date(d);
+    return dt.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return '—'; }
+}
+
+// Validador del wizard: solo deja avanzar cuando los 3 gates pasan.
 export function validarPantallaFirma(wizardData) {
   if (!wizardData.terminos) {
     alert('Debes aceptar los términos y condiciones para continuar.');
@@ -413,17 +394,11 @@ export function validarPantallaFirma(wizardData) {
     alert('Sube y valida tu firma electrónica antes de continuar.');
     return false;
   }
-  if (!wizardData.rucManual || wizardData.rucManual.length !== 13) {
-    alert('Ingresa tu RUC de 13 dígitos.');
-    return false;
-  }
-  if (wizardData.rucManual !== wizardData.firma.ruc) {
-    alert(`El RUC que ingresaste no coincide con el de tu firma (${wizardData.firma.ruc}).`);
-    return false;
-  }
   if (!wizardData.certificadoRuc?.valid) {
     alert('Sube tu Certificado de RUC (PDF) para continuar.');
     return false;
   }
+  // Sincronizar rucManual con el RUC validado (lo usa el resumen final)
+  wizardData.rucManual = wizardData.firma.ruc;
   return true;
 }
