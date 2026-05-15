@@ -239,15 +239,13 @@
 .wiz-loading-logo {
   width: 56px;
   height: 56px;
-  animation: wizSpin 2.4s linear infinite;
+  animation: wizBounce 3s ease-in-out infinite;
   filter: drop-shadow(0 4px 10px rgba(0, 35, 111, .14));
-  transform-origin: 50% 50%;
   will-change: transform;
-  backface-visibility: hidden;
 }
-@keyframes wizSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+@keyframes wizBounce {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+  50%      { transform: translateY(-14px) scale(1.04); opacity: .85; }
 }
 .wiz-loading-text {
   font-family: var(--font-display);
