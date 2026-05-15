@@ -80,11 +80,20 @@ const MOCK = {
   `,
   datosCard: () => `
     <div class="mock mock-form">
-      <div class="mock-form-header">Completa tus datos</div>
-      <div class="mock-row"><span class="mock-flabel">Razón social</span><input class="mock-input mock-tiny" data-anim="razon" readonly></div>
-      <div class="mock-row"><span class="mock-flabel">Email</span><input class="mock-input mock-tiny" data-anim="email" readonly></div>
-      <div class="mock-row"><span class="mock-flabel">Celular</span><input class="mock-input mock-tiny" data-anim="celular" readonly></div>
-      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="datosBtn">Registrarse</button>
+      <div class="mock-form-header">Tus datos</div>
+      <!-- Campos bloqueados (vienen del cert) -->
+      <div class="mock-row"><span class="mock-flabel">Razón social</span><input class="mock-input mock-tiny mock-locked" value="TRIBUTASOFT S.A." readonly></div>
+      <div class="mock-row"><span class="mock-flabel">Provincia</span><input class="mock-input mock-tiny mock-locked" value="GUAYAS" readonly></div>
+      <div class="mock-row"><span class="mock-flabel">Ciudad</span><input class="mock-input mock-tiny mock-locked" value="Daule" readonly></div>
+      <!-- Campos editables (los anima el renderer) -->
+      <div class="mock-row"><span class="mock-flabel">Dirección</span><input class="mock-input mock-tiny" data-anim="direccion" readonly placeholder="Av., calles, número"></div>
+      <div class="mock-row"><span class="mock-flabel">Email</span><input class="mock-input mock-tiny" data-anim="email" readonly placeholder="tu@empresa.com"></div>
+      <div class="mock-row mock-row--phone">
+        <span class="mock-flabel">Celular</span>
+        <span class="mock-pais-pill" data-anim="celularPais">EC +593</span>
+        <input class="mock-input mock-tiny mock-input--phone" data-anim="celular" readonly placeholder="09XXXXXXXX">
+      </div>
+      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="datosBtn">Continuar</button>
     </div>
   `,
   tokenCard: () => `
@@ -259,16 +268,18 @@ const RENDERERS = {
   datos: async (stage, signal) => {
     stage.innerHTML = MOCK.datosCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
     const cursor = stage.querySelector('[data-anim="cursor"]');
-    const fields = ['razon', 'email', 'celular'];
-    const values = ['TRIBUTASOFT S.A.', 'ventas@empresa.ec', '0998765432'];
+    // Solo animamos los campos EDITABLES. Razón social, provincia y ciudad
+    // vienen del cert RUC y aparecen ya bloqueados (gris) — no se tocan.
+    const fields = ['direccion', 'email', 'celular'];
+    const values = ['AV. SAMBORONDÓN KM 14', 'ventas@empresa.ec', '0998765432'];
     for (let i = 0; i < fields.length; i++) {
       if (signal?.aborted) return;
       const f = stage.querySelector(`[data-anim="${fields[i]}"]`);
       await moveCursor(cursor, f, 500);
       f.classList.add('mock-focused');
-      await typeText(f, values[i], 35, signal);
+      await typeText(f, values[i], 30, signal);
       f.classList.remove('mock-focused');
-      await wait(150);
+      await wait(120);
     }
     const btn = stage.querySelector('[data-anim="datosBtn"]');
     await moveCursor(cursor, btn);
@@ -395,24 +406,50 @@ const RENDERERS = {
     await clickPulse(btn);
   },
 
-  // Pantalla 8 — Resumen con cards Editar (reemplaza el viejo 'confirm')
+  // Pantalla 8 — Resumen: overview ESTÁTICO (sin cursor/typing), porque
+  // este paso es un repaso visual de lo registrado, no una acción a animar.
   resumen: async (stage, signal) => {
-    stage.innerHTML = MOCK.resumenCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
-    const cursor = stage.querySelector('[data-anim="cursor"]');
-    stage.querySelector('[data-anim="resUser"]').textContent = '1792060346';
-    await wait(400);
-    // Simular hover sobre un botón Editar
-    const editBtn = stage.querySelector('[data-anim="editDatos"]');
-    await moveCursor(cursor, editBtn);
-    if (signal?.aborted) return;
-    await clickPulse(editBtn);
-    await wait(400);
-    // Y luego al botón Confirmar
-    const btn = stage.querySelector('[data-anim="resBtn"]');
-    await moveCursor(cursor, btn);
-    if (signal?.aborted) return;
-    await clickPulse(btn);
-    await successPulse(btn);
+    stage.innerHTML = `
+      <div class="mock mock-resumen-static">
+        <div class="mock-form-header">Tu cuenta está casi lista</div>
+        <p class="mock-help mock-help--center">
+          Antes de confirmar, revisa cada sección. Si algo está mal,
+          el botón <strong>Editar</strong> de cada tarjeta te devuelve
+          a esa pantalla.
+        </p>
+        <div class="mock-resumen">
+          <div class="mock-resumen-card">
+            <div class="mock-resumen-head">
+              <strong>Datos personales</strong>
+              <button class="mock-btn mock-btn--ghost mock-btn--small">Editar</button>
+            </div>
+            <div class="mock-resumen-row"><span>Razón social</span><span>TRIBUTASOFT S.A.</span></div>
+            <div class="mock-resumen-row"><span>Email</span><span>tributasoft@gmail.com</span></div>
+            <div class="mock-resumen-row"><span>Celular</span><span>099-842-9901</span></div>
+          </div>
+          <div class="mock-resumen-card">
+            <div class="mock-resumen-head">
+              <strong>Información tributaria</strong>
+              <button class="mock-btn mock-btn--ghost mock-btn--small">Editar</button>
+            </div>
+            <div class="mock-resumen-row"><span>Régimen</span><span>GENERAL</span></div>
+            <div class="mock-resumen-row"><span>Tipo</span><span>Agente de Retención</span></div>
+          </div>
+          <div class="mock-resumen-card mock-resumen-card--creds">
+            <div class="mock-resumen-head">
+              <strong>Acceso al portal</strong>
+              <button class="mock-btn mock-btn--ghost mock-btn--small">Editar</button>
+            </div>
+            <div class="mock-resumen-row"><span>Usuario</span><span class="mock-mono">0992703601</span></div>
+            <div class="mock-resumen-row"><span>Clave</span><span>•••••••••</span></div>
+          </div>
+        </div>
+        <button class="mock-btn mock-btn--cta mock-btn--small mock-btn--full">Confirmar y finalizar</button>
+        <p class="mock-help mock-help--center mock-help--tiny">
+          Al confirmar, te llega un correo de bienvenida con tu resumen y credenciales.
+        </p>
+      </div>
+    `;
   },
 
   // ---------------- COTIZACIÓN ---------------
@@ -620,7 +657,29 @@ function buildManualModal() {
         </aside>
         <main class="manual-main">
           <div class="manual-stage-wrap">
-            <div class="manual-stage" id="manual-stage"></div>
+            <!-- Toggle de dispositivo: cambia el ancho del mock para mostrar
+                 cómo se ve el formulario en PC / Tablet / Móvil. -->
+            <div class="manual-device-toggle" role="tablist" aria-label="Dispositivo">
+              <button type="button" class="manual-device-btn is-active" data-device="pc" aria-pressed="true" title="Vista PC">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                <span>PC</span>
+              </button>
+              <button type="button" class="manual-device-btn" data-device="tablet" aria-pressed="false" title="Vista Tablet">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+                <span>Tablet</span>
+              </button>
+              <button type="button" class="manual-device-btn" data-device="mobile" aria-pressed="false" title="Vista Móvil">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+                <span>Móvil</span>
+              </button>
+            </div>
+            <div class="manual-stage" id="manual-stage" data-device="pc"></div>
             <button class="manual-replay" id="manual-replay" title="Volver a reproducir">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
               Reproducir de nuevo
@@ -675,6 +734,21 @@ function buildManualModal() {
   $('#manual-next').addEventListener('click', () => goNext());
   $('#manual-replay').addEventListener('click', () => playCurrent());
   $('#manual-download-pdf').addEventListener('click', () => descargarManualPDF());
+
+  // Toggle PC / Tablet / Móvil — cambia el ancho del stage y re-reproduce
+  $$('.manual-device-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const device = btn.dataset.device;
+      $$('.manual-device-btn').forEach((b) => {
+        b.classList.toggle('is-active', b === btn);
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      });
+      const stage = $('#manual-stage');
+      stage.dataset.device = device;
+      // Re-reproducir la animación al cambiar dispositivo para que se vea adaptada
+      playCurrent();
+    });
+  });
   $$('#modal-manual .manual-tab').forEach((t) => {
     t.addEventListener('click', () => switchProceso(t.dataset.proceso));
   });
