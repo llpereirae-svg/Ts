@@ -19,6 +19,7 @@ import {
   establecerClave, finalizarRegistro, validarEmpresa,
 } from './api-mocks.js?v=20260514w';
 import { validarFirmaP12 } from './firma-validator.js?v=20260514v';
+import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manual.js?v=20260514y';
 
 // URL del portal de inicio de sesión final. Cuando el usuario confirma,
 // lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint
@@ -397,10 +398,12 @@ function init() {
   // Header: Cotizar (abre modal-cotizar) + Ayuda (mock)
   $('#btn-cotizar').addEventListener('click', openCotizar);
   $('#btn-help').addEventListener('click', () => {
-    // De momento, mostramos un banner. Más adelante puede abrir un modal de FAQ
-    // o redirigir a un chat de soporte.
-    showBanner('Soporte: escríbenos por WhatsApp al +593 96 917 3466.', 'info');
+    track('manual_open', { trigger: 'header' });
+    openManual();
   });
+
+  // Inicializar el manual interactivo (construye el modal lazy en localStorage).
+  initManual();
 
   // Cotizador
   $('#cot-calcular').addEventListener('click', onCotCalcular);
@@ -2475,14 +2478,17 @@ function render({ state, context }) {
     case STATES.IDLE:
       feedback.textContent = '';
       feedback.className = 'feedback';
+      try { detachErrorHelp('ruc'); } catch {}
       break;
     case STATES.VALIDATING_FORMAT:
       feedback.textContent = 'Validando RUC…';
       feedback.className = 'feedback feedback--info';
+      try { detachErrorHelp('ruc'); } catch {}
       break;
     case STATES.ERROR_FORMAT:
       feedback.textContent = context.rucError || 'RUC inválido.';
       feedback.className = 'feedback feedback--error';
+      try { attachErrorHelp('ruc', _inferErrorCode('ruc', context.rucError || '')); } catch {}
       break;
     case STATES.CHECKING_DB:
       feedback.textContent = 'Revisando si ya tienes cuenta…';
@@ -2511,9 +2517,37 @@ function render({ state, context }) {
   }
 }
 
+// Mapa fieldId → errorCode inferido del mensaje. Lo usa attachErrorHelp para
+// saltar al paso correcto del manual interactivo.
+function _inferErrorCode(fieldId, msg) {
+  if (!msg) return null;
+  const m = msg.toLowerCase();
+  // RUC
+  if (fieldId === 'ruc') {
+    if (m.includes('001')) return 'RUC_NO_001';
+    if (m.includes('verificador')) return 'RUC_DIGITO_BAD';
+    if (m.includes('provincia')) return 'RUC_PROVINCIA';
+    return 'RUC_FORMAT';
+  }
+  // Resolución
+  if (fieldId === 'no-resolucion') return 'RESOLUCION';
+  // Email
+  if (fieldId === 'email') return 'EMAIL_INVALIDO';
+  // Celular
+  if (fieldId === 'celular') return 'CELULAR_INVALIDO';
+  // Mapeo directo por id si no hay match específico
+  return fieldId.toUpperCase();
+}
+
 function setFieldError(fieldId, msg) {
   const el = $(`#${fieldId}-error`);
   if (el) el.textContent = msg || '';
   const input = $(`#${fieldId}`);
   if (input) input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+  // Adjuntar/quitar badge de ayuda contextual del manual interactivo.
+  if (msg) {
+    try { attachErrorHelp(fieldId, _inferErrorCode(fieldId, msg)); } catch { /* opcional */ }
+  } else {
+    try { detachErrorHelp(fieldId); } catch { /* opcional */ }
+  }
 }
