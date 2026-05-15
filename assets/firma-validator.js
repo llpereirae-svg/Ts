@@ -58,42 +58,147 @@ function fileToBinaryString(file) {
   });
 }
 
-/**
- * Extrae el RUC del subject del certificado.
- * En certificados ecuatorianos (Security Data, BCE, Anf, Uanataca) el RUC suele estar en:
- *   - subject.serialNumber (lo más común, con formato "0992703601001" o "C=EC...0992703601001")
- *   - subject.CN (si es nombre + RUC entre paréntesis)
- *   - extensión OID 2.5.4.5 (que mapea a serialNumber)
- *
- * También probamos con la cédula (10 dígitos): para persona natural, RUC = cédula + "001".
- */
-function extraerRucDelCert(cert) {
-  const attrs = {};
-  cert.subject.attributes.forEach((a) => {
-    if (a.shortName) attrs[a.shortName] = a.value;
-    if (a.name) attrs[a.name] = a.value;
-  });
+// Prefijo de los OIDs propietarios de Security Data (ecuatoriano).
+// Cada certificado guarda los datos personales en extensiones bajo:
+//   1.3.6.1.4.1.37746.3.<N>
+// donde N indica qué campo:
+//   .1  = cédula del firmante               .8  = celular
+//   .2  = nombres del firmante              .9  = ciudad (cantón)
+//   .3  = primer apellido                   .10 = razón social (SOLO jurídicas)
+//   .4  = segundo apellido                  .11 = RUC del titular
+//   .5  = cargo (SOLO jurídicas)            .12 = país
+//   .7  = dirección                         .30 = profesión (natural)
+const SD_OID_PREFIX = '1.3.6.1.4.1.37746.3.';
 
-  // Recolectar candidatos en orden de prioridad
-  const candidatos = [
-    attrs.serialNumber, attrs.SN, attrs.serialnumber,
-    attrs.CN, attrs.commonName,
-    attrs.OU, attrs.organizationalUnitName,
-  ].filter(Boolean);
-
-  for (const c of candidatos) {
-    // Busca un RUC (13 dígitos terminando en 001) primero
-    const ruc = String(c).match(/(\d{13})/);
-    if (ruc) return { ruc: ruc[1], titular: attrs.CN || attrs.commonName || '' };
+// Convierte un "binary string" de node-forge (cada char = un byte 0-255)
+// a una cadena UTF-8 correctamente decodificada. Necesario para tildes/ñ.
+function bytesToUtf8(binStr) {
+  if (typeof binStr !== 'string') return '';
+  const arr = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) arr[i] = binStr.charCodeAt(i) & 0xff;
+  try {
+    return new TextDecoder('utf-8', { fatal: false }).decode(arr);
+  } catch {
+    return binStr;
   }
-  // Si no encontró RUC pero sí cédula (10 dígitos), construye RUC natural
-  for (const c of candidatos) {
-    const ced = String(c).match(/(?<!\d)(\d{10})(?!\d)/);
-    if (ced) {
-      return { ruc: ced[1] + '001', titular: attrs.CN || attrs.commonName || '' };
+}
+
+/**
+ * Lee las extensiones propietarias de Security Data del certificado.
+ * Retorna un objeto { '1': cedula, '2': nombres, ..., '11': ruc, '10': razonSocial?, ... }
+ */
+function readSecurityDataExtensions(forge, cert) {
+  const data = {};
+  if (!cert.extensions) return data;
+  for (const e of cert.extensions) {
+    if (!e || !e.id || !e.id.startsWith(SD_OID_PREFIX)) continue;
+    const suffix = e.id.substring(SD_OID_PREFIX.length);
+    // El valor de la extensión es DER (UTF8String / PrintableString).
+    // Intentar parsearlo con node-forge.
+    try {
+      const asn1 = forge.asn1.fromDer(e.value);
+      if (asn1 && typeof asn1.value === 'string') {
+        data[suffix] = bytesToUtf8(asn1.value);
+        continue;
+      }
+    } catch { /* fallthrough al fallback */ }
+    // Fallback: saltar manualmente tag (1 byte) + length (1 byte si < 128).
+    if (typeof e.value === 'string' && e.value.length > 2) {
+      data[suffix] = bytesToUtf8(e.value.substring(2));
     }
   }
-  return { ruc: null, titular: attrs.CN || attrs.commonName || '' };
+  return data;
+}
+
+/**
+ * Extrae el RUC y datos del certificado.
+ *
+ * Estrategia (probada con certs reales de Security Data — natural y jurídica):
+ *   1) Leer extensión OID 1.3.6.1.4.1.37746.3.11 → ese es el RUC del titular,
+ *      sea persona natural o empresa. Fuente única de verdad para Security Data.
+ *   2) Si existe OID .10 (razón social) → es persona jurídica.
+ *      Reportar titular = razón social, y los datos del rep legal por separado.
+ *   3) Si no hay OID .11 (otros emisores: BCE, Anf, Uanataca): barrer todas las
+ *      extensiones buscando un valor de 13 dígitos.
+ *   4) Último recurso: subject del certificado (comportamiento legacy con CI+001).
+ *      Marcado como heurística para que la UI muestre advertencia.
+ */
+function extraerDatosDelCert(forge, cert) {
+  const subject = {};
+  cert.subject.attributes.forEach((a) => {
+    if (a.shortName) subject[a.shortName] = a.value;
+    if (a.name) subject[a.name] = a.value;
+  });
+
+  const sd = readSecurityDataExtensions(forge, cert);
+
+  let ruc = sd['11'] || null;
+  const razonSocial = sd['10'] || null;
+  const esJuridica = !!razonSocial;
+  let esHeuristica = false;
+
+  // Paso 3: si no es Security Data, barrer todas las extensiones buscando 13 dígitos
+  if (!ruc) {
+    for (const k in sd) {
+      const v = sd[k];
+      if (typeof v === 'string' && /^\d{13}$/.test(v)) { ruc = v; break; }
+    }
+  }
+
+  // Paso 4: fallback al subject (legacy)
+  if (!ruc) {
+    const candidatos = [
+      subject.serialNumber, subject.SN, subject.serialnumber,
+      subject.CN, subject.commonName,
+      subject.OU, subject.organizationalUnitName,
+    ].filter(Boolean);
+    for (const c of candidatos) {
+      const m = String(c).match(/(\d{13})/);
+      if (m) { ruc = m[1]; break; }
+    }
+    if (!ruc) {
+      for (const c of candidatos) {
+        const m = String(c).match(/(?<!\d)(\d{10})(?!\d)/);
+        if (m) {
+          ruc = m[1] + '001';
+          esHeuristica = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // Titular a mostrar: razón social si es jurídica, CN si es natural
+  const titularNombre = esJuridica
+    ? razonSocial
+    : (subject.CN || subject.commonName || '');
+
+  // Datos del representante legal (sólo aplica a jurídicas)
+  const repLegal = (esJuridica && (sd['1'] || sd['2'])) ? {
+    cedula: sd['1'] || null,
+    nombres: sd['2'] || null,
+    apellido1: sd['3'] || null,
+    apellido2: sd['4'] || null,
+    nombreCompleto: [sd['2'], sd['3'], sd['4']].filter(Boolean).join(' '),
+    cargo: sd['5'] || null,
+  } : null;
+
+  return {
+    ruc,
+    titular: titularNombre,
+    esJuridica,
+    razonSocial,
+    repLegal,
+    esHeuristica,
+    // Datos extra que pueden servir para autollenar el formulario más adelante.
+    datosExtra: {
+      ciudad: sd['9'] || null,
+      direccion: sd['7'] || null,
+      celular: sd['8'] || null,
+      pais: sd['12'] || null,
+      profesion: sd['30'] || null,
+    },
+  };
 }
 
 /**
@@ -171,15 +276,16 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
     return { valid: false, error: 'SIN_CERTIFICADO', reason: 'El archivo no contiene un certificado de titular. No podemos continuar.' };
   }
 
-  const { ruc: rucCert, titular } = extraerRucDelCert(cert);
+  const datos = extraerDatosDelCert(forge, cert);
+  const { ruc: rucCert, titular, esJuridica, razonSocial, repLegal, esHeuristica, datosExtra } = datos;
   const fechaCaducidad = cert.validity.notAfter;
 
   if (fechaCaducidad < new Date()) {
     return {
       valid: false,
       error: 'CADUCADA',
-      reason: `La firma caducó el ${fechaCaducidad.toLocaleDateString('es-EC')}. No podemos continuar; debes renovarla con tu proveedor.`,
-      fechaCaducidad, titular, ruc: rucCert,
+      reason: `La firma caducó el ${fechaCaducidad.toLocaleDateString('es-EC')}. No podemos continuar; debe renovarla con su proveedor.`,
+      fechaCaducidad, titular, ruc: rucCert, esJuridica, razonSocial, repLegal,
     };
   }
 
@@ -188,7 +294,7 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
       valid: false,
       error: 'SIN_RUC',
       reason: 'No pudimos identificar el RUC en el certificado. No podemos continuar.',
-      titular, fechaCaducidad,
+      titular, fechaCaducidad, esJuridica, razonSocial, repLegal,
     };
   }
 
@@ -197,7 +303,7 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
       valid: false,
       error: 'RUC_NO_COINCIDE',
       reason: `El RUC del certificado (${rucCert}) no coincide con el RUC del registro (${rucEsperado}). No podemos continuar.`,
-      ruc: rucCert, titular, fechaCaducidad,
+      ruc: rucCert, titular, fechaCaducidad, esJuridica, razonSocial, repLegal,
     };
   }
 
@@ -206,5 +312,10 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
     ruc: rucCert,
     titular,
     fechaCaducidad,
+    esJuridica,
+    razonSocial,
+    repLegal,
+    esHeuristica,
+    datosExtra,
   };
 }

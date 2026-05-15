@@ -35,7 +35,7 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260514z">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260515a">
 </head>
 <body data-state="IDLE">
 
@@ -461,6 +461,11 @@
               <span class="firma-resumen-label">RUC</span>
               <span class="firma-resumen-value" id="firma-ruc">—</span>
             </div>
+            <!-- Solo visible si la firma es de persona jurídica. -->
+            <div class="firma-resumen-row" id="firma-rep-legal-row" hidden>
+              <span class="firma-resumen-label">Firmado por</span>
+              <span class="firma-resumen-value" id="firma-rep-legal">—</span>
+            </div>
             <div class="firma-resumen-row">
               <span class="firma-resumen-label">Caducidad</span>
               <span class="firma-resumen-value" id="firma-caducidad">—</span>
@@ -748,7 +753,7 @@
 
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER. -->
   <script type="module">
-    const APP_VER = '20260514z';
+    const APP_VER = '20260515a';
     import(`./assets/app.js?v=${APP_VER}`).catch((err) => {
       console.error('Error cargando app.js', err);
     });

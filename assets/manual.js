@@ -5,7 +5,7 @@
 // - Popup contextual de ayuda al cursor sobre errores.
 // - Generación del manual estático en PDF (Roboto Condensed embebida).
 
-import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260514z';
+import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260515a';
 
 // =========================================================================
 // Helpers DOM y animación
