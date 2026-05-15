@@ -210,16 +210,34 @@
 .wiz-nav .btn {
   margin: 0;
   min-height: 3rem;
-  padding: 0 1.25rem;
+  padding: 0 1.5rem;
   max-width: none;
   width: auto;
-  flex: 1;
 }
-.wiz-nav .btn--ghost { flex: 0 0 auto; min-width: 6rem; }
-.wiz-nav .btn--primary { max-width: 18rem; }
+/* En laptop/tablet: tamaños balanceados, Continuar levemente más ancho como acción primaria. */
+.wiz-nav .btn--ghost {
+  flex: 0 0 auto;
+  min-width: 10rem;
+  max-width: 14rem;
+}
+.wiz-nav .btn--primary {
+  flex: 0 0 auto;
+  min-width: 12rem;
+  max-width: 16rem;
+}
 
+/* En móvil: comparten la fila proporcionalmente (Atrás 1/3, Continuar 2/3). */
 @media (max-width: 480px) {
-  .wiz-nav .btn--primary { max-width: none; }
+  .wiz-nav .btn--ghost {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .wiz-nav .btn--primary {
+    flex: 2;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 /* ---------------- Overlay de carga (lightbulb) ---------------- */
