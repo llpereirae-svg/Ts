@@ -820,6 +820,45 @@ body.is-pc .wiz-loading-text {
 .wiz-success-creds a { color: var(--color-cta); text-decoration: none; font-weight: 600; }
 .wiz-success-creds a:hover { text-decoration: underline; }
 
+/* ---------------- Auto-advance (pantalla tributaria sin acción) ---------------- */
+.wiz-auto-advance {
+  text-align: center;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .65rem;
+}
+.wiz-auto-advance-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-teal-light);
+  color: var(--color-teal-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: wizPop 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wiz-auto-advance h4 {
+  margin: .35rem 0 0;
+  font-family: var(--font-display);
+  color: var(--color-primary);
+  font-size: 1.1rem;
+}
+.wiz-auto-advance p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: .92rem;
+  max-width: 480px;
+}
+.wiz-auto-advance-hint {
+  font-size: .82rem !important;
+  font-style: italic;
+  opacity: .8;
+  animation: wizFade 1.4s ease-in-out infinite;
+}
+
 /* ---------------- Copyright al pie del wizard ---------------- */
 .wiz-copyright {
   margin-top: 1.5rem;

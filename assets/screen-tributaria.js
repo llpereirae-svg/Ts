@@ -10,6 +10,7 @@
      (Agente de Retención, Contribuyente Especial o Gran Contribuyente). */
 
 import { validarNoResolucion } from './validators.js?v=20260515a';
+import { goNext } from './wizard.js?v=20260517i';
 
 const TIPOS_CON_RESOLUCION = new Set([
   'AGENTE_RETENCION',
@@ -41,6 +42,31 @@ export function renderPantallaTributaria(body, wizardData) {
   const puedeElegirGran = tipoDetectado === 'CONTRIBUYENTE_ESPECIAL';
 
   const regimenLabel = LABEL_REGIMEN[regimen] || regimen || '—';
+
+  // Si el usuario no tiene NADA que completar acá (no resolución, no upgrade),
+  // mostramos un mensaje breve y saltamos automáticamente al siguiente paso.
+  if (!requiereResolucion && !puedeElegirGran) {
+    body.innerHTML = `
+      <div class="wiz-auto-advance">
+        <div class="wiz-auto-advance-spinner" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h4>Información tributaria completa</h4>
+        <p>Tu régimen es <strong>${escapeAttr(regimenLabel)}</strong> y tu tipo de contribuyente es <strong>${escapeAttr(LABEL_TIPO[tipo] || tipo)}</strong>.</p>
+        <p class="wiz-auto-advance-hint">No hay nada que ajustar aquí. Avanzando al siguiente paso…</p>
+      </div>
+    `;
+    // Auto-advance con pequeño delay para que se vea el mensaje.
+    // Verificamos que seguimos en esta pantalla antes de avanzar (por si
+    // el usuario hace clic en Atrás dentro de la ventana).
+    setTimeout(() => {
+      const activeScreen = document.querySelector('.wiz-screen.is-active')?.id;
+      if (activeScreen === 'wiz-screen-tributaria') goNext();
+    }, 1400);
+    return;
+  }
 
   body.innerHTML = `
     <p class="datos-intro">
