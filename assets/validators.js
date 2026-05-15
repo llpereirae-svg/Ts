@@ -260,13 +260,19 @@ export function validarNoResolucion(input) {
   if (typeof input !== 'string') return { valid: false, reason: 'Número de resolución inválido.' };
   const trimmed = input.trim();
   if (!trimmed) return { valid: false, reason: 'Ingresa el número de resolución.' };
-  if (!/^[A-Za-z0-9-]+$/.test(trimmed)) {
-    return { valid: false, reason: 'Número de resolución inválido.' };
+  // Aceptamos: letras, números, guión, punto, slash, espacios y guion bajo.
+  // Esto cubre formatos del SRI como "NAC-DGERCGC23-00000000001" y
+  // "No.SRI12345610-191".
+  if (!/^[A-Za-z0-9\-\.\/_ ]+$/.test(trimmed)) {
+    return { valid: false, reason: 'Solo letras, números y - . / _' };
   }
-  // Contamos sólo alfanuméricos (los guiones son separadores estéticos).
-  const alnum = trimmed.replace(/-/g, '');
-  if (alnum.length < 10 || alnum.length > 30) {
-    return { valid: false, reason: 'Número de resolución inválido.' };
+  // Contamos sólo alfanuméricos (separadores no cuentan).
+  const alnum = trimmed.replace(/[^A-Za-z0-9]/g, '');
+  if (alnum.length < 8) {
+    return { valid: false, reason: 'Debe tener al menos 8 caracteres.' };
+  }
+  if (alnum.length > 30) {
+    return { valid: false, reason: 'Máximo 30 caracteres.' };
   }
   return { valid: true, normalizado: trimmed.toUpperCase() };
 }

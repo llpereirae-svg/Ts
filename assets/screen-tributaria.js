@@ -105,13 +105,29 @@ function wireTributaria(root, wd) {
     });
   }
 
-  // Campo de resolución
+  // Campo de resolución con validación inline (rojo + mensaje breve)
   const resInput = root.querySelector('#t-resolucion');
-  if (resInput) {
-    resInput.addEventListener('input', (e) => {
-      wd.noResolucion = e.target.value.trim();
-      root.querySelector('#t-resolucion-error').textContent = '';
-    });
+  const resError = root.querySelector('#t-resolucion-error');
+  if (resInput && resError) {
+    const validar = () => {
+      const valor = resInput.value.trim();
+      wd.noResolucion = valor;
+      if (!valor) {
+        resInput.removeAttribute('aria-invalid');
+        resError.textContent = '';
+        return;
+      }
+      const r = validarNoResolucion(valor);
+      if (r.valid) {
+        resInput.removeAttribute('aria-invalid');
+        resError.textContent = '';
+      } else {
+        resInput.setAttribute('aria-invalid', 'true');
+        resError.textContent = r.reason;
+      }
+    };
+    resInput.addEventListener('input', validar);
+    resInput.addEventListener('blur', validar);
   }
 }
 

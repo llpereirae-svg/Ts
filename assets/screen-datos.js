@@ -166,25 +166,78 @@ function preFillFromSources(wd) {
 
 function wireDatosScreen(root, wd) {
   // Razón social, nombre comercial, provincia, ciudad → readonly, no se wire-an
-  // Solo wire-amos los campos editables:
+  // Solo wire-amos los campos editables con validación inline:
 
-  root.querySelector('#d-direccion').addEventListener('input', (e) => {
-    wd.direccion = e.target.value;
-  });
+  // --- Dirección ---
+  const dirInput = root.querySelector('#d-direccion');
+  const dirError = root.querySelector('#d-direccion-error');
+  const validarDir = () => {
+    wd.direccion = dirInput.value.trim();
+    if (!wd.direccion) {
+      dirInput.setAttribute('aria-invalid', 'true');
+      dirError.textContent = 'Ingresa tu dirección.';
+    } else {
+      dirInput.removeAttribute('aria-invalid');
+      dirError.textContent = '';
+    }
+  };
+  dirInput.addEventListener('input', () => { wd.direccion = dirInput.value; if (dirInput.hasAttribute('aria-invalid')) validarDir(); });
+  dirInput.addEventListener('blur', validarDir);
 
-  root.querySelector('#d-email').addEventListener('input', (e) => {
-    wd.email = e.target.value.trim();
+  // --- Email ---
+  const emailInput = root.querySelector('#d-email');
+  const emailError = root.querySelector('#d-email-error');
+  const validarEmailField = () => {
+    const v = emailInput.value.trim();
+    wd.email = v;
     wd._auto.email = null;
-  });
+    if (!v) {
+      emailInput.setAttribute('aria-invalid', 'true');
+      emailError.textContent = 'Ingresa tu correo.';
+      return;
+    }
+    const r = validarEmail(v);
+    if (!r.valid) {
+      emailInput.setAttribute('aria-invalid', 'true');
+      emailError.textContent = r.reason || 'Correo inválido.';
+    } else {
+      emailInput.removeAttribute('aria-invalid');
+      emailError.textContent = '';
+    }
+  };
+  emailInput.addEventListener('input', () => { wd.email = emailInput.value.trim(); if (emailInput.hasAttribute('aria-invalid')) validarEmailField(); });
+  emailInput.addEventListener('blur', validarEmailField);
 
+  // --- Celular ---
   const celSel = root.querySelector('#d-celular-pais');
   const celInput = root.querySelector('#d-celular');
-  celSel.addEventListener('change', () => { wd.celularPais = celSel.value; });
+  const celError = root.querySelector('#d-celular-error');
+  const validarCelField = () => {
+    if (!wd.celular) {
+      celInput.setAttribute('aria-invalid', 'true');
+      celError.textContent = 'Ingresa tu celular.';
+      return;
+    }
+    const r = validarCelular(wd.celular, wd.celularPais);
+    if (!r.valid) {
+      celInput.setAttribute('aria-invalid', 'true');
+      celError.textContent = r.reason || 'Celular inválido.';
+    } else {
+      celInput.removeAttribute('aria-invalid');
+      celError.textContent = '';
+    }
+  };
+  celSel.addEventListener('change', () => {
+    wd.celularPais = celSel.value;
+    if (celInput.hasAttribute('aria-invalid')) validarCelField();
+  });
   celInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/[^\d ]/g, '');
     wd.celular = e.target.value.replace(/\s/g, '');
     wd._auto.celular = null;
+    if (celInput.hasAttribute('aria-invalid')) validarCelField();
   });
+  celInput.addEventListener('blur', validarCelField);
 }
 
 function escapeAttr(s) {
