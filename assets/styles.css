@@ -1418,17 +1418,55 @@ dialog.manual-modal {
 }
 .manual-header {
   display: flex; align-items: center; gap: .75rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: .85rem 1.25rem;
+  border-bottom: 2px solid var(--color-primary);
   background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
 }
-.manual-title {
+/* Header con la marca corporativa (logo PNG + Avenida + Lobster) — replica
+   exactamente la papelería de TributaSoft. */
+.manual-brand-block {
   flex: 1;
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  font-family: var(--font-display);
+  display: flex; align-items: center; gap: .75rem;
+  text-decoration: none;
+  min-width: 0;
+}
+.manual-brand-mark {
+  height: 38px;
+  width: auto;
+  flex-shrink: 0;
+}
+.manual-brand-wordmark {
+  font-size: 1.55rem;
+  font-weight: 400;
+  letter-spacing: .005em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.manual-brand-tributa {
+  font-family: 'Avenida', 'DM Sans', sans-serif;
+  color: #c9dee9;
+}
+.manual-brand-soft {
+  font-family: 'Lobster', cursive;
+  color: var(--color-cta);
+}
+.manual-brand-tagline {
+  font-family: 'Lobster', cursive;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1;
+  margin-left: .5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .manual-brand-tagline { display: none; }
+  .manual-brand-wordmark { font-size: 1.2rem; }
+  .manual-brand-mark { height: 30px; }
+}
+.manual-header-actions {
+  display: flex; gap: .5rem; align-items: center; flex-shrink: 0;
 }
 .manual-pdf-btn {
   display: inline-flex; align-items: center; gap: .35rem;
@@ -1672,11 +1710,44 @@ dialog.manual-modal {
 .manual-tip[hidden] { display: none; }
 
 .manual-footer {
-  display: flex; align-items: center; gap: 1rem;
-  padding: .85rem 1.25rem;
+  display: flex; flex-direction: column; gap: .5rem;
+  padding: .65rem 1.25rem .85rem;
   border-top: 1px solid var(--color-border);
   background: #fbfbfd;
 }
+.manual-footer-row {
+  display: flex; align-items: center; gap: 1rem;
+}
+/* Traza "Manual de Usuario · Registro | Cotización | Pago" — proceso
+   activo resaltado en navy/bold; los demás clickables para cambiar de tab. */
+.manual-trace {
+  text-align: center;
+  font-size: .78rem;
+  color: var(--color-muted);
+  padding: .35rem 0 .15rem;
+  border-bottom: 1px dashed var(--color-border);
+}
+.manual-trace-prefix {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.manual-trace-procs {
+  display: inline-flex; align-items: center; gap: .35rem; flex-wrap: wrap;
+  justify-content: center;
+}
+.manual-trace-proc {
+  cursor: pointer;
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  transition: all .15s ease;
+}
+.manual-trace-proc:hover { background: var(--color-surface-low); color: var(--color-primary); }
+.manual-trace-proc.is-active {
+  color: var(--color-primary);
+  font-weight: 700;
+  background: rgba(239, 115, 6, .08);
+}
+.manual-trace-sep { color: var(--color-outline); }
 .manual-prev, .manual-next {
   padding: .55rem 1rem;
   border: 1px solid var(--color-outline);

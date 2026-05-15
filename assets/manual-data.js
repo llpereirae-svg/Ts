@@ -2,25 +2,27 @@
 // Consumido tanto por el manual interactivo (manual.js) como por el
 // generador de PDF estático.
 //
+// Idioma: español ecuatoriano neutro (forma "tú", sin voseo).
+//
 // Cada paso declara:
 //   - id              identificador único dentro del proceso
 //   - title           encabezado corto (≤ 40 chars)
 //   - intro           1-2 frases que describen QUÉ hace este paso
 //   - rules           array de strings con las reglas/validaciones que aplican
 //   - errors          mapa errorCode → mensaje cuando algo falla
-//   - tip             consejo / aclaración opcional ("Si SRI no responde...")
+//   - tip             consejo / aclaración opcional
 //   - animKey         clave de la animación a reproducir (ver manual.js)
 
 export const MANUAL = {
   registro: {
-    label: 'Registro',
+    label: 'Registro de usuario',
     title: 'Cómo registrar tu cuenta',
-    description: 'El proceso completo desde tu RUC hasta el portal de TributaSoft. Te toma entre 3 y 5 minutos.',
+    description: 'El proceso completo desde tu RUC hasta el portal de TributaSoft. Toma entre 3 y 5 minutos.',
     icon: 'register',
     steps: [
       {
         id: 'ruc',
-        title: 'Ingresá tu RUC',
+        title: 'Ingresa tu RUC',
         intro: 'Validamos en segundos que tu RUC esté bien formado y que pertenezca a una persona natural o jurídica habilitada por el SRI.',
         rules: [
           'Debe tener exactamente 13 dígitos numéricos.',
@@ -29,121 +31,121 @@ export const MANUAL = {
           'El último dígito es verificador y debe coincidir con el algoritmo del SRI.',
         ],
         errors: {
-          RUC_FORMAT: '"El RUC debe tener exactamente 13 dígitos numéricos." → revisá que no falten ni sobren.',
-          RUC_PROVINCIA: '"Provincia inválida (01-24)." → cambiá los dos primeros dígitos.',
-          RUC_NO_001: '"El RUC debe terminar en 001." → 001 identifica al contribuyente; los códigos del establecimiento van más adelante.',
-          RUC_DIGITO_BAD: '"Dígito verificador no válido." → es muy probable que tipeaste mal un número.',
+          RUC_FORMAT: 'Si ves "El RUC debe tener exactamente 13 dígitos", revisa que no falten ni sobren números.',
+          RUC_PROVINCIA: 'Si ves "Provincia inválida (01-24)", cambia los dos primeros dígitos.',
+          RUC_NO_001: 'Si ves "El RUC debe terminar en 001", recuerda: 001 identifica al contribuyente principal; los códigos del establecimiento van más adelante en el formulario.',
+          RUC_DIGITO_BAD: 'Si ves "Dígito verificador no válido", muy probablemente escribiste mal un número del RUC.',
         },
-        tip: 'Si el SRI te ya tiene fichado, autocompletamos razón social, dirección y régimen tributario en el siguiente paso.',
+        tip: 'Si el SRI ya te tiene registrado, autocompletamos razón social, dirección y régimen tributario en el siguiente paso. Solo confirmas.',
         animKey: 'ruc',
       },
       {
         id: 'datos',
-        title: 'Completá tus datos',
-        intro: 'Razón social, dirección, provincia/ciudad y contacto. Si el SRI tiene tu información, varios campos se autocompletan; vos sólo confirmás.',
+        title: 'Completa tus datos',
+        intro: 'Razón social, dirección, provincia / ciudad y contacto. Si el SRI tiene tu información, varios campos se autocompletan y solo confirmas.',
         rules: [
           'Razón social: tal cual aparece en tu RUC.',
-          'Nombre comercial: opcional. Marcá "No aplica" si no usás uno.',
-          'Email: formato válido (ej. ventas@tuempresa.com). Es donde recibís la factura.',
+          'Nombre comercial: opcional. Marca "No aplica" si no usas uno.',
+          'Email: con formato válido (ej. ventas@tuempresa.com). Es donde recibes la factura.',
           'Celular: 09XXXXXXXX para Ecuador (10 dígitos). Para otros países, mismo formato local.',
-          'Provincia → ciudad: las ciudades dependen de la provincia que elegís.',
+          'Provincia → ciudad: las ciudades dependen de la provincia que eliges.',
         ],
         errors: {
-          RAZON_SOCIAL: '"Ingresá la razón social." → campo obligatorio.',
-          EMAIL_INVALIDO: '"Formato de email inválido." → revisá que tenga @ y dominio.',
-          CELULAR_INVALIDO: '"Para Ecuador, el número debe tener 10 dígitos empezando en 09." → asegurate del prefijo.',
-          PROVINCIA_FALTA: '"Selecciona una provincia." → no se puede saltar.',
-          CIUDAD_FALTA: '"Selecciona la ciudad." → activá primero la provincia.',
+          RAZON_SOCIAL: 'Si ves "Ingresa la razón social", el campo es obligatorio.',
+          EMAIL_INVALIDO: 'Si ves "Formato de email inválido", revisa que tenga arroba (@) y dominio.',
+          CELULAR_INVALIDO: 'Si ves "Para Ecuador, el número debe tener 10 dígitos empezando en 09", asegúrate del prefijo.',
+          PROVINCIA_FALTA: 'Si ves "Selecciona una provincia", elige una del menú desplegable.',
+          CIUDAD_FALTA: 'Si ves "Selecciona la ciudad", primero debes elegir la provincia.',
         },
-        tip: 'El régimen tributario condiciona qué tipos de contribuyente podés elegir después. Si elegís RIMPE — Negocio Popular, queda fijado en "No Obligado a Llevar Contabilidad".',
+        tip: 'El régimen tributario condiciona qué tipos de contribuyente aparecen como opción. Si eliges RIMPE — Negocio Popular, queda fijado en "No Obligado a Llevar Contabilidad".',
         animKey: 'datos',
       },
       {
         id: 'token',
-        title: 'Verificá tu código',
-        intro: 'Te mandamos un código de 6 dígitos por email o WhatsApp (vos elegís dónde). Lo escribís y validamos.',
+        title: 'Verifica tu código',
+        intro: 'Te enviamos un código de 6 dígitos por email o WhatsApp (tú eliges dónde). Lo escribes y lo validamos.',
         rules: [
           'El código tiene 6 dígitos y dura 5 minutos.',
-          'Tenés 5 intentos antes de que se bloquee — si te quedás sin intentos, hay que empezar de nuevo.',
-          'Podés copiar/pegar el código completo y se distribuye automático en los 6 cuadros.',
-          'Si no te llegó, esperá 30 segundos y tocá "Reenviar código".',
+          'Tienes 5 intentos antes de que se bloquee. Si te quedas sin intentos, hay que empezar de nuevo.',
+          'Puedes copiar y pegar el código completo y se distribuye automáticamente en los 6 cuadros.',
+          'Si no te llegó, espera 30 segundos y toca "Reenviar código".',
         ],
         errors: {
-          TOKEN_FORMATO: '"Ingresá los 6 dígitos del código." → no podés enviar incompleto.',
-          TOKEN_INCORRECTO: '"Código incorrecto. Intentos restantes: X." → revisá tu email/WhatsApp por el último código enviado.',
-          TOKEN_BLOQUEADO: '"Demasiados intentos. Por seguridad, debes empezar de nuevo." → recargá la página y arrancá desde el RUC.',
+          TOKEN_FORMATO: 'Si ves "Ingresa los 6 dígitos del código", aún te falta llenar algún cuadro.',
+          TOKEN_INCORRECTO: 'Si ves "Código incorrecto. Intentos restantes: X", revisa tu email / WhatsApp y usa el último código enviado.',
+          TOKEN_BLOQUEADO: 'Si ves "Demasiados intentos. Por seguridad, debes empezar de nuevo", recarga la página y arranca desde el RUC.',
         },
-        tip: 'En modo demo el código siempre es 123456 y aparece también en la consola del navegador (F12 → Console).',
+        tip: 'En la versión de demostración el código siempre es 123456. También aparece en la consola del navegador (presiona F12 → pestaña Console).',
         animKey: 'token',
       },
       {
         id: 'clave',
-        title: 'Creá tu clave',
-        intro: 'Mínimo 4 caracteres — vos elegís la complejidad. La barra te indica el nivel de seguridad usando entropía Shannon, igual que NIST 800-63B.',
+        title: 'Crea tu clave',
+        intro: 'Mínimo 4 caracteres — tú eliges la complejidad. La barra de seguridad usa entropía Shannon (el mismo enfoque de NIST 800-63B) para clasificar tu clave.',
         rules: [
           'Largo mínimo: 4 caracteres.',
-          'Sin requisitos forzados — podés usar sólo dígitos, letras o lo que prefieras.',
-          'La confirmación debe coincidir exacto con la clave principal.',
-          'La barra calcula la entropía y la clasifica: Baja (<35 bits), Media (35-59), Alta (≥60).',
+          'Sin requisitos forzados — puedes usar solo dígitos, solo letras o lo que prefieras.',
+          'La confirmación debe coincidir exactamente con la clave principal.',
+          'Niveles de seguridad: Baja (< 35 bits), Media (35-59 bits), Alta (≥ 60 bits).',
         ],
         errors: {
-          CLAVE_CORTA: '"La clave debe tener al menos 4 caracteres." → tipeá al menos 4.',
-          CLAVE_NO_COINCIDE: '"Las claves no coinciden." → confirmá que escribiste lo mismo en los dos campos.',
-          CLAVE_GUARDAR: '"No pudimos guardar la clave. Intenta de nuevo." → puede ser un problema de red transitorio.',
+          CLAVE_CORTA: 'Si ves "La clave debe tener al menos 4 caracteres", agrega más caracteres.',
+          CLAVE_NO_COINCIDE: 'Si ves "Las claves no coinciden", revisa que escribiste lo mismo en los dos campos.',
+          CLAVE_GUARDAR: 'Si ves "No pudimos guardar la clave. Intenta de nuevo", suele ser un problema temporal de conexión.',
         },
-        tip: 'Patrones obvios como "1234", "qwerty" o "password" bajan la fuerza a Baja aunque cumpla la longitud — sigue siendo válida pero no recomendada.',
+        tip: 'Patrones obvios como "1234", "qwerty" o "password" bajan la fuerza a Baja, aunque la clave cumpla la longitud mínima. Sigue siendo válida, pero no recomendada.',
         animKey: 'clave',
       },
       {
         id: 'firma',
-        title: 'Subí tu firma electrónica',
-        intro: 'Es opcional. Aceptamos archivos .p12 o .pfx de cualquier proveedor autorizado del Ecuador. La clave de tu firma NUNCA sale de tu navegador.',
+        title: 'Sube tu firma electrónica',
+        intro: 'Es opcional. Aceptamos archivos .p12 o .pfx de cualquier proveedor autorizado en Ecuador. La clave de tu firma NUNCA sale de tu navegador.',
         rules: [
-          'Formato: .p12 o .pfx (no .cer ni tokens físicos).',
+          'Formato: .p12 o .pfx (no aceptamos .cer ni tokens físicos).',
           'Tamaño máximo: 5 MB.',
           'El RUC del certificado debe coincidir con el RUC de tu registro.',
           'El certificado no puede estar caducado.',
-          'Si todavía no la tenés, tocá "No tengo firma electrónica" y te ayudamos a tramitarla por WhatsApp.',
+          'Si todavía no la tienes, toca "No tengo firma electrónica" y te ayudamos a tramitarla por WhatsApp.',
         ],
         errors: {
-          FIRMA_FORMATO: '"El archivo no parece ser un .p12 o .pfx válido." → revisá la extensión y que el archivo no esté corrupto.',
-          FIRMA_CLAVE: '"La clave de la firma es incorrecta." → la clave del .p12, no la clave de tu cuenta TributaSoft.',
-          FIRMA_RUC_NO_COINCIDE: '"El RUC del certificado no coincide con el RUC del registro." → estás subiendo la firma equivocada.',
-          FIRMA_CADUCADA: '"La firma caducó." → tenés que renovarla con tu proveedor antes de seguir.',
+          FIRMA_FORMATO: 'Si ves "El archivo no parece ser un .p12 o .pfx válido", revisa la extensión y que el archivo no esté dañado.',
+          FIRMA_CLAVE: 'Si ves "La clave de la firma es incorrecta", recuerda: es la clave del archivo .p12, no la clave de tu cuenta TributaSoft.',
+          FIRMA_RUC_NO_COINCIDE: 'Si ves "El RUC del certificado no coincide con el RUC del registro", estás subiendo la firma equivocada.',
+          FIRMA_CADUCADA: 'Si ves "La firma caducó", debes renovarla con tu proveedor antes de continuar.',
         },
-        tip: 'Si la subís ahora se valida en el navegador con node-forge — vemos titular, RUC y caducidad. Si la dejás para después, podés cargarla desde el portal sin perder tu cuenta.',
+        tip: 'Si la subes ahora, se valida en el navegador con node-forge — verás titular, RUC y caducidad. Si la dejas para después, puedes cargarla desde el portal sin perder tu cuenta.',
         animKey: 'firma',
       },
       {
         id: 'logo',
-        title: 'Personalizá tu logo',
-        intro: 'Tenés dos opciones: subir tu logo o generar uno con tu nombre comercial. El resultado es un banner de 2970×300 PNG.',
+        title: 'Personaliza tu logo',
+        intro: 'Tienes dos opciones: subir tu logo o generar uno con tu nombre comercial. El resultado es un banner de 2970×300 píxeles en formato PNG.',
         rules: [
           'Formato del logo: PNG o JPG, máximo 5 MB.',
           'Se ajusta automáticamente al banner (2970×300) sin deformarse.',
-          'Si pedís auto-generación, usamos tu nombre comercial. Si no marcaste uno, usamos la razón social.',
-          'La capitalización se normaliza: "lEnin PerEira" → "Lenin Pereira".',
+          'Si pides auto-generación, usamos tu nombre comercial. Si marcaste "No aplica", usamos la razón social.',
+          'La capitalización se normaliza: "lEnin PerEira" se convierte en "Lenin Pereira".',
         ],
         errors: {
-          LOGO_FORMATO: '"Sólo se aceptan archivos PNG o JPG." → convertí tu archivo o subí otro.',
-          LOGO_TAMANO: '"El logo no puede pesar más de 5 MB." → comprimilo o subí uno más liviano.',
-          LOGO_PROCESO: '"No pudimos procesar la imagen." → intentá con otro archivo.',
+          LOGO_FORMATO: 'Si ves "Solo se aceptan archivos PNG o JPG", convierte tu archivo o sube otro.',
+          LOGO_TAMANO: 'Si ves "El logo no puede pesar más de 5 MB", comprime la imagen o usa una más liviana.',
+          LOGO_PROCESO: 'Si ves "No pudimos procesar la imagen", intenta con otro archivo.',
         },
-        tip: 'El banner se guarda en tu cuenta y aparece en tus comprobantes electrónicos. Podés cambiarlo desde el portal cuando quieras.',
+        tip: 'El banner se guarda en tu cuenta y aparece en tus comprobantes electrónicos. Puedes cambiarlo desde el portal cuando quieras.',
         animKey: 'logo',
       },
       {
         id: 'confirm',
-        title: 'Confirmá y al portal',
-        intro: 'Última pantalla antes de crear tu cuenta. Te mostramos tu usuario y te ofrecemos guardar la clave en este navegador.',
+        title: 'Confirma y entra al portal',
+        intro: 'Última pantalla antes de crear tu cuenta. Te mostramos cuál será tu usuario y te ofrecemos guardar la clave en este navegador.',
         rules: [
-          'Tu usuario es los primeros 10 dígitos de tu RUC.',
-          'Si marcás "Guardar mi clave", la próxima vez que entres a tbc.tributasoft.com.ec el navegador te ofrece autocompletar.',
-          'Una vez confirmás, los datos quedan grabados — para cambios contactá a soporte.',
+          'Tu usuario son los primeros 10 dígitos de tu RUC.',
+          'Si marcas "Guardar mi clave", la próxima vez que entres a tbc.tributasoft.com.ec el navegador te ofrece autocompletar.',
+          'Una vez confirmas, los datos quedan grabados — para cambios contacta a soporte.',
           'Te redirigimos a tbc.tributasoft.com.ec con tu usuario pre-rellenado.',
         ],
         errors: {
-          FINAL_BACKEND: '"Error finalizando el registro." → puede ser red. Reintentá.',
+          FINAL_BACKEND: 'Si ves "Error finalizando el registro", suele ser un problema temporal de red. Intenta de nuevo.',
         },
         tip: 'Después de este paso ya estás dentro del portal. Cualquier cambio (firma, datos, banner) se hace desde ahí.',
         animKey: 'confirm',
@@ -154,40 +156,40 @@ export const MANUAL = {
   cotizacion: {
     label: 'Cotización',
     title: 'Cómo cotizar tu plan',
-    description: 'Calculá en segundos cuánto te cuesta tu plan anual y descargate la propuesta en PDF.',
+    description: 'Calcula en segundos cuánto cuesta tu plan anual y descarga la propuesta en PDF.',
     icon: 'quote',
     steps: [
       {
         id: 'open',
-        title: 'Abrí el cotizador',
-        intro: 'No hace falta estar registrado. Tocá "Cotizar" en la esquina superior derecha de la landing.',
+        title: 'Abre el cotizador',
+        intro: 'No hace falta estar registrado. Toca "Cotizar" en la esquina superior derecha de la página.',
         rules: [
           'El botón Cotizar siempre está disponible.',
-          'En móvil aparece como ícono — el texto se oculta para ahorrar espacio.',
+          'En celular aparece como ícono — el texto se oculta para ahorrar espacio.',
         ],
         errors: {},
-        tip: 'Si ya tenés cuenta, podés volver al cotizador para descargar PDFs de planes alternativos.',
+        tip: 'Si ya tienes cuenta, puedes volver al cotizador para descargar PDFs de planes alternativos.',
         animKey: 'cotOpen',
       },
       {
         id: 'volumen',
-        title: 'Ingresá tu volumen mensual',
-        intro: 'Cantidad promedio de comprobantes que emitís por mes. Si todavía no facturás, estimá el primer año.',
+        title: 'Ingresa tu volumen mensual',
+        intro: 'Cantidad promedio de comprobantes que emites por mes. Si todavía no facturas, estima el primer año.',
         rules: [
           'Mínimo: 1 documento por mes.',
-          'Máximo: 100,000,000 (cualquier valor mayor se considera empresa de gran volumen — contactanos).',
-          'Sólo dígitos — sin punto, coma ni espacios.',
+          'Máximo: 100,000,000 (cualquier valor mayor se considera empresa de gran volumen — contáctanos).',
+          'Solo dígitos. Sin punto, coma ni espacios.',
         ],
         errors: {
-          COT_VOLUMEN: '"Ingresá un número entre 1 y 100,000,000." → fuera de rango o vacío.',
+          COT_VOLUMEN: 'Si ves "Ingresa un número entre 1 y 100,000,000", el valor está fuera de rango o el campo está vacío.',
         },
-        tip: 'Un comprobante = factura, nota de crédito, nota de débito, retención o guía de remisión. Cada emisión, registro o anulación cuenta como uno.',
+        tip: 'Un comprobante = factura, nota de crédito, nota de débito, comprobante de retención o guía de remisión. Cada emisión, registro o anulación cuenta como uno.',
         animKey: 'cotVol',
       },
       {
         id: 'calcular',
-        title: 'Calculá tu plan',
-        intro: 'Tocá "Calcular" y te mostramos el resumen anual. Fórmula transparente — podés validarla.',
+        title: 'Calcula tu plan',
+        intro: 'Toca "Calcular" y te mostramos el resumen anual. La fórmula es transparente — puedes verificarla.',
         rules: [
           'Documentos por año = volumen mensual × 12.',
           'Subtotal = $6.00 base + (documentos por año × $0.20).',
@@ -196,110 +198,113 @@ export const MANUAL = {
           'Vigencia: 12 meses desde la contratación o hasta agotar el cupo, lo que ocurra primero.',
         ],
         errors: {},
-        tip: 'Si querés probar con otro volumen, tocá "Refrescar" y empezás de cero.',
+        tip: 'Si quieres probar con otro volumen, toca "Refrescar" y empiezas de cero.',
         animKey: 'cotCalc',
       },
       {
         id: 'pdf',
-        title: 'Descargá tu cotización',
-        intro: 'PDF corporativo de una página, ~60 KB, con texto seleccionable y tipografía Roboto Condensed.',
+        title: 'Descarga tu cotización',
+        intro: 'PDF corporativo de una página, alrededor de 60 KB, con texto seleccionable y tipografía Roboto Condensed.',
         rules: [
-          'El archivo se llama cotizacion-tributasoft-YYYYMMDD.pdf.',
+          'El archivo se llama cotizacion-tributasoft-AAAAMMDD.pdf.',
           'Incluye tu volumen, cálculo, vigencia y firma "TributaSoft S.A. — Departamento de Facturación Electrónica Pre-Pago".',
           'Es válido como propuesta comercial.',
         ],
         errors: {
-          PDF_GENERAR: '"No pudimos generar el PDF." → revisá tu conexión, intentá de nuevo.',
+          PDF_GENERAR: 'Si ves "No pudimos generar el PDF", revisa tu conexión e intenta de nuevo.',
         },
-        tip: 'El PDF se genera 100% en tu navegador. No subimos nada a ningún servidor.',
+        tip: 'El PDF se genera 100% en tu navegador. No subimos nada a ningún servidor externo.',
         animKey: 'cotPdf',
       },
     ],
   },
 
   contratacion: {
-    label: 'Contratación',
+    // Mantenemos la clave 'contratacion' para no romper el localStorage de
+    // los usuarios que ya navegaron el manual antes; pero el LABEL visible
+    // pasa a ser "Pago" para que coincida con el tabbing del cliente.
+    label: 'Pago',
     title: 'Cómo contratar y pagar',
-    description: 'Una vez tenés tu cotización, contratás en 3 pasos y reportás el pago para activar tu cuenta.',
+    description: 'Una vez tienes tu cotización, contratas en 3 pasos y reportas el pago para activar tu cuenta.',
     icon: 'contract',
     steps: [
       {
         id: 'cotizar-primero',
-        title: 'Calculá una cotización',
+        title: 'Calcula primero una cotización',
         intro: 'No se puede contratar sin cotizar antes — necesitamos saber qué plan vas a comprar.',
         rules: [
-          'Seguí los pasos del manual de cotización primero.',
-          'Cualquier volumen entre 1 y 100,000,000 docs/mes funciona.',
+          'Sigue los pasos del proceso "Cotización" primero.',
+          'Cualquier volumen entre 1 y 100,000,000 documentos por mes funciona.',
         ],
         errors: {},
-        tip: 'Podés cotizar varias veces hasta encontrar el plan que mejor se ajusta a tu negocio.',
+        tip: 'Puedes cotizar varias veces hasta encontrar el plan que mejor se ajusta a tu negocio.',
         animKey: 'contQuote',
       },
       {
         id: 'click-contratar',
-        title: 'Tocá "Contratar"',
+        title: 'Toca "Contratar"',
         intro: 'En el resumen de la cotización, abajo a la derecha. Te lleva al paso de validación de RUC.',
         rules: [
-          'El botón Contratar aparece sólo después de calcular.',
-          'Podés descargar el PDF antes y volver a contratar después.',
+          'El botón Contratar aparece solo después de calcular.',
+          'Puedes descargar el PDF antes y volver a contratar después.',
         ],
         errors: {},
-        tip: 'Si te arrepentís en cualquier paso, podés cerrar el modal con la flecha atrás (← arriba a la izquierda).',
+        tip: 'Si te arrepientes en cualquier paso, puedes cerrar el modal con la flecha "atrás" (← arriba a la izquierda).',
         animKey: 'contClick',
       },
       {
         id: 'ruc-empresa',
-        title: 'Confirmá tu RUC',
+        title: 'Confirma tu RUC',
         intro: 'Validamos que tu RUC esté en nuestra base de empresas registradas antes de cobrarte.',
         rules: [
           'El RUC debe estar previamente registrado en TributaSoft.',
-          'Si nunca te registraste, no podés contratar — primero seguí el flujo de Registro.',
-          'Validación en dos capas: estructura (mismo algoritmo SRI) + presencia en tabla "empresas".',
+          'Si nunca te registraste, no puedes contratar — primero completa el flujo de Registro.',
+          'Validación en dos capas: estructura (mismo algoritmo del SRI) + presencia en la tabla "empresas".',
         ],
         errors: {
-          RUC_NO_REGISTRADO: '"No encontramos este RUC como empresa registrada." → o el RUC está mal o todavía no completaste el registro.',
+          RUC_NO_REGISTRADO: 'Si ves "No encontramos este RUC como empresa registrada", revisa que el número esté bien o completa primero el registro.',
         },
-        tip: 'Para probar la demo podés usar 0930452024001, 0992703601001, 1710034065001 o 1792060346001 — están en la tabla mock.',
+        tip: 'Para probar la versión de demostración puedes usar 0930452024001, 0992703601001, 1710034065001 o 1792060346001 — están en la tabla de prueba.',
         animKey: 'contRuc',
       },
       {
         id: 'pago',
-        title: 'Reportá tu pago',
-        intro: 'Banco, fecha, forma de pago (depósito o transferencia) y comprobante. Te damos toda la info bancaria de TributaSoft.',
+        title: 'Reporta tu pago',
+        intro: 'Banco, fecha, forma de pago (depósito o transferencia) y comprobante. Te damos toda la información bancaria de TributaSoft.',
         rules: [
           'Bancos aceptados: Procredit, Pichincha, Pacífico.',
-          'Forma de pago: depósito en efectivo o transferencia (preferentemente del mismo banco).',
-          'Comprobante: JPG, PNG o PDF, máximo 400 KB.',
-          'Tocá "Información bancaria" para copiar las cuentas al portapapeles.',
+          'Forma de pago: depósito en efectivo o transferencia (preferentemente desde el mismo banco).',
+          'Comprobante: JPG, PNG o PDF. Máximo 400 KB.',
+          'Toca "Información bancaria" para copiar las cuentas al portapapeles.',
         ],
         errors: {
-          PAGO_BANCO: '"Selecciona el banco." → no podés enviar sin esto.',
-          PAGO_ARCHIVO_TIPO: '"Sólo se aceptan archivos JPG, PNG o PDF." → convertí tu archivo.',
-          PAGO_ARCHIVO_PESO: '"El archivo no puede pesar más de 400 KB." → comprimí o sacá una foto más liviana.',
+          PAGO_BANCO: 'Si ves "Selecciona el banco", debes elegir uno antes de enviar.',
+          PAGO_ARCHIVO_TIPO: 'Si ves "Solo se aceptan archivos JPG, PNG o PDF", convierte tu archivo a uno de esos formatos.',
+          PAGO_ARCHIVO_PESO: 'Si ves "El archivo no puede pesar más de 400 KB", comprime la imagen o saca una foto más liviana.',
         },
-        tip: 'Si tenés dudas con el comprobante, tocá "Soporte" para abrir WhatsApp con un mensaje pre-llenado.',
+        tip: 'Si tienes dudas con el comprobante, toca "Soporte" para abrir WhatsApp con un mensaje pre-rellenado.',
         animKey: 'contPago',
       },
       {
         id: 'enviar',
-        title: 'Enviar y esperar validación',
+        title: 'Envía y espera la validación',
         intro: 'Una vez enviado, validamos tu pago en máximo 2 horas. Te avisamos por correo cuando tu cuenta queda activa.',
         rules: [
-          'Aceptás los términos y condiciones (incluyen la cláusula de pago erróneo o fraudulento).',
+          'Aceptas los términos y condiciones (incluyen la cláusula de pago erróneo o fraudulento).',
           'Si el monto no coincide con lo cotizado, suspendemos el servicio hasta regularizar.',
           'Te llega la factura por correo en cuestión de segundos.',
         ],
         errors: {
-          PAGO_TERMS: '"Tenés que aceptar los términos." → marcá la casilla.',
+          PAGO_TERMS: 'Si ves "Tienes que aceptar los términos", marca la casilla antes de enviar.',
         },
-        tip: 'Si no te efectivizan el pago en 2 horas, contactanos por WhatsApp al +593 96 917 3466 con tu nombre y RUC.',
+        tip: 'Si el pago no se efectiviza en 2 horas, escríbenos por WhatsApp al +593 96 917 3466 con tu nombre y RUC.',
         animKey: 'contEnviar',
       },
     ],
   },
 };
 
-// Mapa de errorCode → ubicación en el manual.
+// Mapa errorCode → ubicación en el manual.
 // Lo usa la integración con setFieldError para que el popup de ayuda
 // salte directo al paso correcto del manual.
 export const ERROR_TO_MANUAL = {
@@ -308,6 +313,8 @@ export const ERROR_TO_MANUAL = {
   RUC_INCOMPLETO:    { proceso: 'registro', paso: 'ruc' },
   RUC_NO_001:        { proceso: 'registro', paso: 'ruc' },
   RUC_DIGITO_BAD:    { proceso: 'registro', paso: 'ruc' },
+  RUC_FORMAT:        { proceso: 'registro', paso: 'ruc' },
+  RUC_PROVINCIA:     { proceso: 'registro', paso: 'ruc' },
 
   // Datos del formulario
   EMAIL_INVALIDO:    { proceso: 'registro', paso: 'datos' },
@@ -337,7 +344,7 @@ export const ERROR_TO_MANUAL = {
   // Cotizador
   COT_VOLUMEN:       { proceso: 'cotizacion', paso: 'volumen' },
 
-  // Contratación
+  // Contratación / Pago
   RUC_NO_REGISTRADO: { proceso: 'contratacion', paso: 'ruc-empresa' },
   PAGO_BANCO:        { proceso: 'contratacion', paso: 'pago' },
   PAGO_ARCHIVO_TIPO: { proceso: 'contratacion', paso: 'pago' },
@@ -346,7 +353,6 @@ export const ERROR_TO_MANUAL = {
 };
 
 // Helper: dado un fieldId del DOM, retorna el step del manual al que apunta.
-// Permite enganchar el popup de ayuda contextual directamente sobre los inputs.
 export const FIELD_TO_MANUAL = {
   'ruc':                 { proceso: 'registro', paso: 'ruc' },
   'razon-social':        { proceso: 'registro', paso: 'datos' },

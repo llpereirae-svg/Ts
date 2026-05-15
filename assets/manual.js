@@ -5,7 +5,7 @@
 // - Popup contextual de ayuda al cursor sobre errores.
 // - Generación del manual estático en PDF (Roboto Condensed embebida).
 
-import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260514y';
+import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260514z';
 
 // =========================================================================
 // Helpers DOM y animación
@@ -493,13 +493,21 @@ function buildManualModal() {
   dlg.className = 'manual-modal';
   dlg.innerHTML = `
     <div class="manual-shell">
-      <header class="manual-header">
-        <h2 class="manual-title">Manual interactivo de TributaSoft</h2>
-        <button class="manual-pdf-btn" id="manual-download-pdf" type="button" title="Descargar manual en PDF">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          PDF
-        </button>
-        <button class="manual-close" id="manual-close" type="button" aria-label="Cerrar">×</button>
+      <header class="manual-header manual-header--brand">
+        <a class="manual-brand-block" href="https://tributasoft.com.ec" target="_blank" rel="noopener">
+          <img class="manual-brand-mark" src="./assets/Logo%20TributaSoft.png" alt="">
+          <span class="manual-brand-wordmark">
+            <span class="manual-brand-tributa">Tributa</span><span class="manual-brand-soft">Soft</span>
+          </span>
+          <span class="manual-brand-tagline">...todo bajo control</span>
+        </a>
+        <div class="manual-header-actions">
+          <button class="manual-pdf-btn" id="manual-download-pdf" type="button" title="Descargar manual en PDF">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            PDF
+          </button>
+          <button class="manual-close" id="manual-close" type="button" aria-label="Cerrar">×</button>
+        </div>
       </header>
       <nav class="manual-tabs" role="tablist">
         ${Object.entries(MANUAL).map(([key, p]) => `
@@ -536,7 +544,7 @@ function buildManualModal() {
               <ul class="manual-rules" id="manual-rules"></ul>
             </div>
             <div class="manual-section manual-section--errors">
-              <h4>Si algo falla</h4>
+              <h4>Mensajes que puedes ver</h4>
               <ul class="manual-errors" id="manual-errors"></ul>
             </div>
             <div class="manual-section manual-tip" id="manual-tip-wrap">
@@ -547,12 +555,22 @@ function buildManualModal() {
         </main>
       </div>
       <footer class="manual-footer">
-        <button class="manual-prev" id="manual-prev" type="button">← Anterior</button>
-        <div class="manual-progress">
-          <div class="manual-progress-bar"><div class="manual-progress-fill" id="manual-progress-fill"></div></div>
-          <span class="manual-progress-text" id="manual-progress-text">0%</span>
+        <div class="manual-trace" id="manual-trace">
+          <span class="manual-trace-prefix">Manual de Usuario · </span>
+          <span class="manual-trace-procs">
+            ${Object.entries(MANUAL).map(([key, p], i, arr) => `
+              <span class="manual-trace-proc" data-proceso="${key}">${p.label}</span>${i < arr.length - 1 ? '<span class="manual-trace-sep">|</span>' : ''}
+            `).join('')}
+          </span>
         </div>
-        <button class="manual-next" id="manual-next" type="button">Siguiente →</button>
+        <div class="manual-footer-row">
+          <button class="manual-prev" id="manual-prev" type="button">← Anterior</button>
+          <div class="manual-progress">
+            <div class="manual-progress-bar"><div class="manual-progress-fill" id="manual-progress-fill"></div></div>
+            <span class="manual-progress-text" id="manual-progress-text">0%</span>
+          </div>
+          <button class="manual-next" id="manual-next" type="button">Siguiente →</button>
+        </div>
       </footer>
     </div>
   `;
@@ -566,6 +584,9 @@ function buildManualModal() {
   $('#manual-download-pdf').addEventListener('click', () => descargarManualPDF());
   $$('#modal-manual .manual-tab').forEach((t) => {
     t.addEventListener('click', () => switchProceso(t.dataset.proceso));
+  });
+  $$('#modal-manual .manual-trace-proc').forEach((p) => {
+    p.addEventListener('click', () => switchProceso(p.dataset.proceso));
   });
   // Click en backdrop cierra
   dlg.addEventListener('click', (e) => {
@@ -598,6 +619,9 @@ function highlightActiveStep() {
   $$('#modal-manual .manual-tab').forEach((t) => {
     t.classList.toggle('is-active', t.dataset.proceso === _currentProceso);
   });
+  $$('#modal-manual .manual-trace-proc').forEach((p) => {
+    p.classList.toggle('is-active', p.dataset.proceso === _currentProceso);
+  });
 }
 
 function renderStep(proceso, idx) {
@@ -612,8 +636,8 @@ function renderStep(proceso, idx) {
 
   const errs = Object.entries(step.errors || {});
   $('#manual-errors').innerHTML = errs.length
-    ? errs.map(([code, msg]) => `<li><code>${code}</code> ${msg}</li>`).join('')
-    : `<li class="manual-no-errors">No hay errores en este paso — sólo seguís adelante.</li>`;
+    ? errs.map(([code, msg]) => `<li>${msg}</li>`).join('')
+    : `<li class="manual-no-errors">No hay mensajes de error en este paso. Solo continúa.</li>`;
 
   const tipWrap = $('#manual-tip-wrap');
   if (step.tip) {
@@ -911,14 +935,42 @@ function drawHeaderOnPage(doc, pageW, MARGIN_X, RIGHT, logoData) {
   doc.setLineWidth(0.4);
   doc.line(MARGIN_X, 26, RIGHT, 26);
 }
-function drawFooterOnPage(doc, pageNum, pageW, pageH, MARGIN_X, RIGHT) {
+function drawFooterOnPage(doc, pageNum, pageW, pageH, MARGIN_X, RIGHT, currentProc) {
   doc.setDrawColor(209, 213, 219);
   doc.setLineWidth(0.2);
   doc.line(MARGIN_X, pageH - 14, RIGHT, pageH - 14);
   doc.setFont('RC', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text('TributaSoft S.A. — Departamento de Facturación Electrónica Pre-Pago', MARGIN_X, pageH - 9);
+
+  // "Manual de Usuario · Registro de usuario | Cotización | Pago" — el
+  // proceso actual va en bold + navy, los demás quedan en gris.
+  let x = MARGIN_X;
+  doc.text('Manual de Usuario · ', x, pageH - 9);
+  x += doc.getTextWidth('Manual de Usuario · ');
+  const procs = Object.entries(MANUAL);
+  procs.forEach(([key, p], i) => {
+    const isCurrent = key === currentProc;
+    if (isCurrent) {
+      doc.setFont('RC', 'bold');
+      doc.setTextColor(...COLORS.navy);
+    } else {
+      doc.setFont('RC', 'normal');
+      doc.setTextColor(...COLORS.muted);
+    }
+    doc.text(p.label, x, pageH - 9);
+    x += doc.getTextWidth(p.label);
+    if (i < procs.length - 1) {
+      doc.setFont('RC', 'normal');
+      doc.setTextColor(...COLORS.muted);
+      doc.text(' | ', x, pageH - 9);
+      x += doc.getTextWidth(' | ');
+    }
+  });
+
+  // Número de página (alineado a la derecha)
+  doc.setFont('RC', 'normal');
+  doc.setTextColor(...COLORS.muted);
   doc.text(`${pageNum}`, RIGHT, pageH - 9, { align: 'right' });
 }
 
@@ -935,11 +987,12 @@ export async function descargarManualPDF() {
     const RIGHT = PAGE_W - MARGIN_X;
     let pageNum = 1;
     let y = MARGIN_TOP;
+    let currentProc = 'registro'; // se actualiza al entrar a cada sección
 
     drawHeaderOnPage(doc, PAGE_W, MARGIN_X, RIGHT, logoData);
 
     function newPage() {
-      drawFooterOnPage(doc, pageNum, PAGE_W, PAGE_H, MARGIN_X, RIGHT);
+      drawFooterOnPage(doc, pageNum, PAGE_W, PAGE_H, MARGIN_X, RIGHT, currentProc);
       doc.addPage();
       pageNum++;
       drawHeaderOnPage(doc, PAGE_W, MARGIN_X, RIGHT, logoData);
@@ -983,6 +1036,7 @@ export async function descargarManualPDF() {
 
     // ---- PROCESOS ----
     Object.entries(MANUAL).forEach(([key, p], procIdx) => {
+      currentProc = key; // actualizar antes del newPage para que el footer quede correcto
       newPage();
       // Título de proceso
       doc.setFont('RC', 'bold');
@@ -1083,7 +1137,7 @@ export async function descargarManualPDF() {
       });
     });
 
-    drawFooterOnPage(doc, pageNum, PAGE_W, PAGE_H, MARGIN_X, RIGHT);
+    drawFooterOnPage(doc, pageNum, PAGE_W, PAGE_H, MARGIN_X, RIGHT, currentProc);
 
     const stamp = (() => {
       const d = new Date();
