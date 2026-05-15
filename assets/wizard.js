@@ -479,16 +479,20 @@ export async function startWizard() {
   // Cargar e instalar las pantallas con contenido real.
   // Cada bloque del rewrite agrega más imports aquí.
   try {
-    const [firmaMod, datosMod, tribMod] = await Promise.all([
-      import('./screen-firma.js?v=20260516o'),
-      import('./screen-datos.js?v=20260516o'),
-      import('./screen-tributaria.js?v=20260516o'),
+    const [firmaMod, datosMod, tokenMod, tribMod] = await Promise.all([
+      import('./screen-firma.js?v=20260516p'),
+      import('./screen-datos.js?v=20260516p'),
+      import('./screen-token.js?v=20260516p'),
+      import('./screen-tributaria.js?v=20260516p'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);
 
     registerScreen('datos', datosMod.renderPantallaDatos);
     setValidator('datos', datosMod.validarPantallaDatos);
+
+    registerScreen('token', tokenMod.renderPantallaToken);
+    setValidator('token', tokenMod.validarPantallaToken);
 
     registerScreen('tributaria', tribMod.renderPantallaTributaria);
     setValidator('tributaria', tribMod.validarPantallaTributaria);

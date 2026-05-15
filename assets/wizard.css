@@ -585,6 +585,129 @@ body.is-pc .wiz-loading-text {
   vertical-align: middle;
 }
 
+/* ---------------- Pantalla 3 (Token) ---------------- */
+.token-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 640px) {
+  .token-grid { grid-template-columns: 1fr; }
+}
+.token-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+}
+.token-card-header {
+  display: flex;
+  gap: .65rem;
+  align-items: flex-start;
+  margin-bottom: .85rem;
+  color: var(--color-primary);
+}
+.token-card-header svg { flex-shrink: 0; margin-top: .15rem; }
+.token-card-header h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+.token-destino {
+  margin: .1rem 0 0;
+  font-size: .82rem;
+  color: var(--color-muted);
+  word-break: break-all;
+}
+.token-inputs {
+  border: 0;
+  padding: 0;
+  margin: 0 0 .65rem;
+  display: flex;
+  gap: .4rem;
+  justify-content: flex-start;
+}
+.token-inputs input {
+  width: 2.6rem;
+  height: 3rem;
+  border: 1.5px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-card);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+.token-inputs input:focus {
+  outline: none;
+  border-color: var(--color-cta);
+  box-shadow: 0 0 0 4px rgba(239, 115, 6, .14);
+}
+.token-inputs input.is-ok {
+  border-color: var(--color-teal-dark);
+  background: var(--color-teal-light);
+}
+.token-inputs input.is-error {
+  border-color: var(--color-error);
+  background: var(--color-error-container);
+  animation: tokenShake 0.4s ease-in-out;
+}
+@keyframes tokenShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.token-status {
+  margin: .35rem 0 .5rem;
+  font-size: .82rem;
+  color: var(--color-muted);
+}
+.token-status.is-error { color: var(--color-error); }
+.token-status.is-ok { color: var(--color-teal-dark); font-weight: 600; }
+.token-reenviar {
+  background: transparent;
+  border: 0;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: .85rem;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-body);
+}
+.token-reenviar:hover:not(:disabled) { text-decoration: underline; }
+.token-reenviar:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+/* Bloque DEMO con los códigos visibles (quitar cuando se integre backend) */
+.token-debug {
+  background: rgba(135, 199, 220, .14);
+  border: 1px dashed var(--color-teal-dark);
+  border-radius: var(--radius-sm);
+  padding: .75rem 1rem;
+  font-size: .85rem;
+  color: var(--color-teal-dark);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem;
+}
+.token-debug-code {
+  background: var(--color-card);
+  border: 1px solid var(--color-teal-dark);
+  border-radius: 999px;
+  padding: .2rem .65rem;
+  font-family: 'Roboto Condensed', monospace;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.token-debug small { display: block; width: 100%; opacity: .85; font-style: italic; }
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,
