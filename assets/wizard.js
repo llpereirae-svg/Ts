@@ -206,10 +206,11 @@ export async function goTo(idOrIdx) {
 }
 
 async function transitionTo(newIdx) {
-  // Laptop: pantalla rápida, necesita más ms para que el ciclo del bombillo
-  // se aprecie. Móvil/tablet: ciclo más corto se siente natural.
+  // El ciclo del bombillo es 3.8s en PC y 2.4s en móvil/tablet (CSS).
+  // Sincronizamos el tiempo visible para que el usuario perciba un ciclo
+  // de fade completo (subir y bajar) antes de que aparezca la pantalla.
   const dev = getDevice();
-  const visibleMs = dev.isPC ? 2000 : 1200;
+  const visibleMs = dev.isPC ? 2200 : 1400;
   showLoading('Cargando…');
   await wait(visibleMs);
   showScreen(newIdx);
@@ -381,13 +382,16 @@ async function finishWizard() {
 }
 
 // ---------------- Sanitización para backend ----------------
-// UPPERCASE + ñ → NI + sin tildes
+// UPPERCASE + ñ → NI + sin tildes.
+// IMPORTANTE: el reemplazo de Ñ va ANTES de normalize('NFD'), porque la
+// normalización descompone Ñ en N + combining-tilde, y el strip de
+// combining marks la dejaría como N (perdiendo la regla "año" → "ANIO").
 export function sanitizeStr(str) {
   if (str == null) return '';
   return String(str)
     .toUpperCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/Ñ/g, 'NI');
+    .replace(/Ñ/g, 'NI')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 export function sanitizeForBackend(obj) {
   const out = {};

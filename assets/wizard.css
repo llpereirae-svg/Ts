@@ -239,24 +239,19 @@
 .wiz-loading-logo {
   width: 64px;
   height: 64px;
-  /* Mobile/tablet: ciclo de 1.6s (pantallas más lentas, la duración corta se ve bien) */
-  animation: wizGlow 1.6s ease-in-out infinite;
-  will-change: filter, opacity;
+  /* Colores neutros base, sin filtros: solo opacidad que se aviva y se opaca. */
+  animation: wizFade 2.4s ease-in-out infinite;
+  will-change: opacity;
 }
-/* En laptop/desktop la pantalla responde más rápido y el ciclo corto se siente
-   acelerado; lo extendemos para que el "encendido" se aprecie pausado. */
-body.is-pc .wiz-loading-logo {
-  animation-duration: 2.6s;
+/* En laptop la pantalla responde mucho más rápido que móvil/tablet,
+   así que el ciclo se siente acelerado. Lo extendemos para que se aprecie pausado. */
+body.is-pc .wiz-loading-logo,
+body.is-pc .wiz-loading-text {
+  animation-duration: 3.8s;
 }
-@keyframes wizGlow {
-  0%, 100% {
-    filter: brightness(0.72) saturate(0.55) drop-shadow(0 0 0 transparent);
-    opacity: .62;
-  }
-  50% {
-    filter: brightness(1.18) saturate(1.35) drop-shadow(0 0 14px rgba(239, 115, 6, .55));
-    opacity: 1;
-  }
+@keyframes wizFade {
+  0%, 100% { opacity: .38; }
+  50%      { opacity: 1; }
 }
 .wiz-loading-text {
   font-family: var(--font-display);
@@ -264,11 +259,8 @@ body.is-pc .wiz-loading-logo {
   color: var(--color-primary);
   font-weight: 600;
   letter-spacing: -.01em;
-  animation: wizPulse 1.6s ease-in-out infinite;
-}
-@keyframes wizPulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: .55; }
+  /* Misma animación y duración que el logo → pulsan sincronizados. */
+  animation: wizFade 2.4s ease-in-out infinite;
 }
 
 /* ---------------- Pantalla de resumen (Confirmación) ---------------- */
