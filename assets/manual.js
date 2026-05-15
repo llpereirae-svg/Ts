@@ -135,12 +135,64 @@ const MOCK = {
       </div>
     </div>
   `,
+  // Renombrado: ahora es la pantalla 8 'Revisa tus datos antes de finalizar'.
+  // Mantenemos el id 'confirmCard' por compatibilidad con animaciones existentes.
   confirmCard: () => `
     <div class="mock mock-firma">
-      <div class="mock-form-header">Estás a punto de finalizar</div>
-      <p class="mock-help">Una vez confirmes, creamos tu cuenta y te llevamos al portal.</p>
-      <div class="mock-confirm-user">Tu usuario será: <strong data-anim="user">—</strong></div>
-      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="confirmBtn">Confirmar y continuar</button>
+      <div class="mock-form-header">Revisa tus datos</div>
+      <p class="mock-help">Cada tarjeta tiene un botón "Editar" que regresa a esa pantalla.</p>
+      <div class="mock-confirm-user">Usuario: <strong data-anim="user">—</strong></div>
+      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="confirmBtn">Confirmar y finalizar</button>
+    </div>
+  `,
+  // Pantalla 4 — Información tributaria
+  tributariaCard: () => `
+    <div class="mock mock-form">
+      <div class="mock-form-header">Información tributaria</div>
+      <div class="mock-row"><span class="mock-flabel">Régimen</span><input class="mock-input mock-tiny mock-locked" value="GENERAL" readonly></div>
+      <div class="mock-row"><span class="mock-flabel">Tipo de Contribuyente</span><input class="mock-input mock-tiny mock-locked" value="Agente de Retención" readonly></div>
+      <div class="mock-row" data-anim="tribResWrap"><span class="mock-flabel">No. Resolución</span><input class="mock-input mock-tiny" data-anim="tribRes" readonly placeholder="NAC-..."></div>
+      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="tribBtn">Continuar</button>
+    </div>
+  `,
+  // Pantalla 5 — Situación de facturación
+  facturacionCard: () => `
+    <div class="mock mock-form">
+      <div class="mock-form-header">Situación de facturación</div>
+      <div class="mock-radio-row">
+        <label class="mock-radio" data-anim="modoNuevo"><span class="mock-radio-dot"></span> Empezar desde cero</label>
+        <label class="mock-radio" data-anim="modoCont"><span class="mock-radio-dot"></span> Continuar con mi facturación</label>
+      </div>
+      <div data-anim="factCont" hidden>
+        <div class="mock-row mock-row--split">
+          <span class="mock-flabel">Establecimiento</span><input class="mock-input mock-tiny" data-anim="factEst" value="001" readonly>
+          <span class="mock-flabel">Punto</span><input class="mock-input mock-tiny" data-anim="factPto" value="002" readonly>
+        </div>
+        <div class="mock-row"><span class="mock-flabel">Factura</span><input class="mock-input mock-tiny" data-anim="factSeq" value="000000027" readonly></div>
+      </div>
+      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="factBtn">Continuar</button>
+    </div>
+  `,
+  // Pantalla 8 — Resumen con cards Editar
+  resumenCard: () => `
+    <div class="mock mock-resumen">
+      <div class="mock-resumen-card">
+        <div class="mock-resumen-head">
+          <strong>Datos personales</strong>
+          <button class="mock-btn mock-btn--ghost mock-btn--small" data-anim="editDatos">Editar</button>
+        </div>
+        <div class="mock-resumen-row"><span>Razón social</span><span>TRIBUTASOFT S.A.</span></div>
+        <div class="mock-resumen-row"><span>Email</span><span>tributasoft@gmail.com</span></div>
+      </div>
+      <div class="mock-resumen-card">
+        <div class="mock-resumen-head">
+          <strong>Acceso al portal</strong>
+          <button class="mock-btn mock-btn--ghost mock-btn--small" data-anim="editClave">Editar</button>
+        </div>
+        <div class="mock-resumen-row"><span>Usuario</span><span data-anim="resUser">—</span></div>
+        <div class="mock-resumen-row"><span>Clave</span><span>••••••</span></div>
+      </div>
+      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="resBtn">Confirmar y finalizar</button>
     </div>
   `,
   cotizadorCard: () => `
@@ -309,13 +361,54 @@ const RENDERERS = {
     banner.innerHTML = '<span style="font-family:Lobster,cursive;color:#00236f;font-size:36px">Lenin Pereira</span>';
   },
 
-  confirm: async (stage, signal) => {
-    stage.innerHTML = MOCK.confirmCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
+  // Pantalla 4 — Información tributaria (paso nuevo)
+  tributaria: async (stage, signal) => {
+    stage.innerHTML = MOCK.tributariaCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
     const cursor = stage.querySelector('[data-anim="cursor"]');
-    const userEl = stage.querySelector('[data-anim="user"]');
-    userEl.textContent = '1792060346';
+    const resInput = stage.querySelector('[data-anim="tribRes"]');
     await wait(400);
-    const btn = stage.querySelector('[data-anim="confirmBtn"]');
+    await moveCursor(cursor, resInput);
+    if (signal?.aborted) return;
+    resInput.classList.add('mock-focused');
+    await typeText(resInput, 'NAC-DGERCGC23-00012345', 35, signal);
+    resInput.classList.remove('mock-focused');
+    const btn = stage.querySelector('[data-anim="tribBtn"]');
+    await moveCursor(cursor, btn);
+    await clickPulse(btn);
+  },
+
+  // Pantalla 5 — Facturación (paso nuevo)
+  facturacion: async (stage, signal) => {
+    stage.innerHTML = MOCK.facturacionCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
+    const cursor = stage.querySelector('[data-anim="cursor"]');
+    const modoCont = stage.querySelector('[data-anim="modoCont"]');
+    await wait(400);
+    await moveCursor(cursor, modoCont);
+    if (signal?.aborted) return;
+    await clickPulse(modoCont);
+    modoCont.classList.add('mock-radio-active');
+    const factCont = stage.querySelector('[data-anim="factCont"]');
+    factCont.hidden = false;
+    await wait(300);
+    const btn = stage.querySelector('[data-anim="factBtn"]');
+    await moveCursor(cursor, btn);
+    await clickPulse(btn);
+  },
+
+  // Pantalla 8 — Resumen con cards Editar (reemplaza el viejo 'confirm')
+  resumen: async (stage, signal) => {
+    stage.innerHTML = MOCK.resumenCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
+    const cursor = stage.querySelector('[data-anim="cursor"]');
+    stage.querySelector('[data-anim="resUser"]').textContent = '1792060346';
+    await wait(400);
+    // Simular hover sobre un botón Editar
+    const editBtn = stage.querySelector('[data-anim="editDatos"]');
+    await moveCursor(cursor, editBtn);
+    if (signal?.aborted) return;
+    await clickPulse(editBtn);
+    await wait(400);
+    // Y luego al botón Confirmar
+    const btn = stage.querySelector('[data-anim="resBtn"]');
     await moveCursor(cursor, btn);
     if (signal?.aborted) return;
     await clickPulse(btn);

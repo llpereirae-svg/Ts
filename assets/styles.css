@@ -2067,6 +2067,92 @@ dialog.manual-modal {
 .mock-confirm-user strong { font-family: ui-monospace, monospace; color: var(--color-primary); }
 .mock-cont-result[hidden] { display: none; }
 
+/* ---------------- Mocks nuevos para el manual (wizard 8 pasos) ---------------- */
+
+/* Campo bloqueado en mock (gris, no editable visualmente) */
+.mock-input.mock-locked {
+  background: var(--color-surface-low);
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* Fila con dos campos (Establecimiento + Punto) */
+.mock-row--split {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mock-row--split .mock-flabel { min-width: 0; flex: 0 0 auto; }
+.mock-row--split .mock-input { flex: 1; min-width: 60px; }
+
+/* Radio del modo (mock visual) */
+.mock-radio-row {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  margin: .35rem 0 .65rem;
+}
+.mock-radio {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: .78rem;
+  color: var(--color-muted);
+  transition: all .15s ease;
+}
+.mock-radio-dot {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--color-outline);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mock-radio.mock-radio-active {
+  border-color: var(--color-cta);
+  background: var(--color-cta-light);
+  color: var(--color-primary);
+}
+.mock-radio.mock-radio-active .mock-radio-dot {
+  border-color: var(--color-cta);
+  background: radial-gradient(circle, var(--color-cta) 0 5px, transparent 5px);
+}
+
+/* Resumen (pantalla 8) — tarjetas con Editar */
+.mock-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  max-width: 320px;
+}
+.mock-resumen-card {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: .6rem .75rem;
+  font-size: .78rem;
+}
+.mock-resumen-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .4rem;
+}
+.mock-resumen-head strong { color: var(--color-primary); font-size: .82rem; }
+.mock-resumen-row {
+  display: flex;
+  justify-content: space-between;
+  padding: .15rem 0;
+  font-size: .72rem;
+  border-top: 1px dashed var(--color-border);
+}
+.mock-resumen-row span:first-child { color: var(--color-muted); }
+.mock-resumen-row span:last-child { color: var(--color-text); font-weight: 600; }
+
 /* Cursor virtual */
 .mock-cursor {
   position: absolute;

@@ -12,143 +12,175 @@
 //   - errors          mapa errorCode → mensaje cuando algo falla
 //   - tip             consejo / aclaración opcional
 //   - animKey         clave de la animación a reproducir (ver manual.js)
+//
+// IMPORTANTE: los ids de los pasos del proceso 'registro' coinciden con
+// los SCREENS del wizard (assets/wizard.js). Si agregas/quitas pantallas
+// del wizard, hay que sincronizar esta tabla.
 
 export const MANUAL = {
   registro: {
     label: 'Registro de usuario',
     title: 'Cómo registrar tu cuenta',
-    description: 'El proceso completo desde tu RUC hasta el portal de TributaSoft. Toma entre 3 y 5 minutos.',
+    description: 'El proceso completo en 8 pantallas: desde subir tu firma electrónica hasta llegar al portal. Toma entre 4 y 6 minutos si tienes los archivos a mano.',
     icon: 'register',
     steps: [
+      // ────────────────────────────────────────────────────────────────
       {
-        id: 'ruc',
-        title: 'Ingresa tu RUC',
-        intro: 'Validamos en segundos que tu RUC esté bien formado y que pertenezca a una persona natural o jurídica habilitada por el SRI.',
+        id: 'firma',
+        title: 'Paso 1 · Términos, firma y RUC',
+        intro: 'Aceptas los términos, subes tu firma electrónica (.p12) y tu Certificado de RUC en PDF. Estos dos archivos son lo único que necesitas para empezar.',
         rules: [
-          'Debe tener exactamente 13 dígitos numéricos.',
-          'Los dos primeros indican la provincia (01 a 24).',
-          'Termina en 001 — identifica al contribuyente, no a un establecimiento.',
-          'El último dígito es verificador y debe coincidir con el algoritmo del SRI.',
+          'Marcamos el checkbox de términos solo después que abras el modal y bajes hasta el final del texto.',
+          'La firma debe ser .p12 (no aceptamos .cer ni tokens físicos). Su clave nunca sale de tu navegador.',
+          'El Certificado de RUC debe ser PDF original del SRI (no foto ni escaneo) y tener máximo 1 mes de antigüedad.',
+          'El RUC del certificado y el RUC de la firma deben coincidir.',
         ],
         errors: {
-          RUC_FORMAT: 'Si ves "El RUC debe tener exactamente 13 dígitos", revisa que no falten ni sobren números.',
-          RUC_PROVINCIA: 'Si ves "Provincia inválida (01-24)", cambia los dos primeros dígitos.',
-          RUC_NO_001: 'Si ves "El RUC debe terminar en 001", recuerda: 001 identifica al contribuyente principal; los códigos del establecimiento van más adelante en el formulario.',
-          RUC_DIGITO_BAD: 'Si ves "Dígito verificador no válido", muy probablemente escribiste mal un número del RUC.',
+          TERMS_NO_LEIDOS: 'Si el botón "Acepto" del modal está deshabilitado, te falta bajar hasta el final del texto.',
+          FIRMA_FORMATO: 'Si ves "El archivo debe ser .p12 o .pfx", revisa la extensión.',
+          FIRMA_CLAVE: 'Si ves "La clave de la firma es incorrecta", es la clave del archivo .p12, no la clave de tu cuenta TributaSoft.',
+          CERT_FECHA_VIEJA: 'Si ves "Estimado cliente, cargue su RUC actualizado", el PDF tiene más de 1 mes de antigüedad.',
+          RUC_NO_COINCIDE: 'Si ves "El RUC del certificado no coincide con el de tu firma", subiste un cert que pertenece a otra persona/empresa.',
         },
-        tip: 'Si el SRI ya te tiene registrado, autocompletamos razón social, dirección y régimen tributario en el siguiente paso. Solo confirmas.',
-        animKey: 'ruc',
+        tip: 'Si no tienes firma, toca el botón "No tengo firma electrónica" y te enviamos por WhatsApp el contacto del proveedor más rápido.',
+        animKey: 'firma',
       },
+      // ────────────────────────────────────────────────────────────────
       {
         id: 'datos',
-        title: 'Completa tus datos',
-        intro: 'Razón social, dirección, provincia / ciudad y contacto. Si el SRI tiene tu información, varios campos se autocompletan y solo confirmas.',
+        title: 'Paso 2 · Tus datos',
+        intro: 'Mostramos los datos extraídos de tu firma y de tu Certificado de RUC. Los campos con candado vienen pre-llenados y bloqueados. Email, celular y dirección los puedes editar.',
         rules: [
-          'Razón social: tal cual aparece en tu RUC.',
-          'Nombre comercial: opcional. Marca "No aplica" si no usas uno.',
-          'Email: con formato válido (ej. ventas@tuempresa.com). Es donde recibes la factura.',
-          'Celular: 09XXXXXXXX para Ecuador (10 dígitos). Para otros países, mismo formato local.',
-          'Provincia → ciudad: las ciudades dependen de la provincia que eliges.',
+          'Razón social / Nombre, Nombre comercial, Provincia y Ciudad vienen del Certificado de RUC y quedan bloqueados.',
+          'Si el cert no trae Nombre Comercial, aparece "No Aplica".',
+          'Email viene del cert pero puedes corregirlo si está desactualizado.',
+          'Celular para Ecuador: 10 dígitos empezando en 09. Para otros países, formato local.',
+          'Dirección la ingresas manualmente (no la extraemos del cert).',
         ],
         errors: {
-          RAZON_SOCIAL: 'Si ves "Ingresa la razón social", el campo es obligatorio.',
-          EMAIL_INVALIDO: 'Si ves "Formato de email inválido", revisa que tenga arroba (@) y dominio.',
-          CELULAR_INVALIDO: 'Si ves "Para Ecuador, el número debe tener 10 dígitos empezando en 09", asegúrate del prefijo.',
-          PROVINCIA_FALTA: 'Si ves "Selecciona una provincia", elige una del menú desplegable.',
-          CIUDAD_FALTA: 'Si ves "Selecciona la ciudad", primero debes elegir la provincia.',
+          EMAIL_INVALIDO: 'Si ves "Correo inválido", revisa que tenga arroba (@) y dominio.',
+          CELULAR_INVALIDO: 'Si ves "Celular inválido", revisa la longitud según tu país.',
+          DIRECCION_FALTA: 'Si ves "Ingresa tu dirección", el campo es obligatorio.',
         },
-        tip: 'El régimen tributario condiciona qué tipos de contribuyente aparecen como opción. Si eliges RIMPE — Negocio Popular, queda fijado en "No Obligado a Llevar Contabilidad".',
+        tip: 'Si algo de los datos bloqueados está mal, regresa a Paso 1 y verifica que subiste el Certificado de RUC correcto y vigente.',
         animKey: 'datos',
       },
+      // ────────────────────────────────────────────────────────────────
       {
         id: 'token',
-        title: 'Verifica tu código',
-        intro: 'Te enviamos un código de 6 dígitos por email o WhatsApp (tú eliges dónde). Lo escribes y lo validamos.',
+        title: 'Paso 3 · Verifica tu identidad',
+        intro: 'Enviamos dos códigos de 4 dígitos: uno al correo electrónico y otro al celular. Necesitas ingresar los dos para continuar.',
         rules: [
-          'El código tiene 6 dígitos y dura 5 minutos.',
-          'Tienes 5 intentos antes de que se bloquee. Si te quedas sin intentos, hay que empezar de nuevo.',
-          'Puedes copiar y pegar el código completo y se distribuye automáticamente en los 6 cuadros.',
-          'Si no te llegó, espera 30 segundos y toca "Reenviar código".',
+          'Cada código es numérico de 4 dígitos y dura 5 minutos.',
+          'Los dos códigos son independientes — el del email no sirve para el SMS y viceversa.',
+          'Auto-tab: al escribir un dígito, salta automáticamente al siguiente cuadro.',
+          'Puedes pegar el código completo (4 dígitos) y se distribuye solo.',
+          'El botón "Reenviar" tiene 30 segundos de espera entre envíos para evitar abuso.',
         ],
         errors: {
-          TOKEN_FORMATO: 'Si ves "Ingresa los 6 dígitos del código", aún te falta llenar algún cuadro.',
-          TOKEN_INCORRECTO: 'Si ves "Código incorrecto. Intentos restantes: X", revisa tu email / WhatsApp y usa el último código enviado.',
-          TOKEN_BLOQUEADO: 'Si ves "Demasiados intentos. Por seguridad, debes empezar de nuevo", recarga la página y arranca desde el RUC.',
+          TOKEN_FORMATO: 'Si el código tiene letras o menos de 4 dígitos, no se considera válido.',
+          TOKEN_INCORRECTO: 'Si ves "El código de correo no coincide" (o "de celular"), revisa cuál es el último código enviado y vuelve a intentar.',
+          TOKEN_EXPIRADO: 'Si ves "El código expiró", toca "Reenviar" para recibir uno nuevo.',
         },
-        tip: 'En la versión de demostración el código siempre es 123456. También aparece en la consola del navegador (presiona F12 → pestaña Console).',
+        tip: 'En modo demostración verás los códigos generados debajo de las cajas (caja celeste). En producción los recibes solo en tu correo y celular.',
         animKey: 'token',
       },
+      // ────────────────────────────────────────────────────────────────
+      {
+        id: 'tributaria',
+        title: 'Paso 4 · Información tributaria',
+        intro: 'Pre-llenamos tu Régimen y Tipo de Contribuyente desde el cert. Solo si tu tipo requiere un No. de Resolución del SRI te lo pedimos abajo.',
+        rules: [
+          'Régimen: detectamos automáticamente GENERAL / RIMPE Emprendedor / RIMPE Negocio Popular.',
+          'Tipo de Contribuyente: usamos prioridad Especial > Agente de Retención > Obligado > No Obligado.',
+          'Si el cert detecta Contribuyente Especial, puedes elegir entre Contri Especial o Gran Contribuyente (estos últimos no figuran como flag en el cert).',
+          'Tipos que requieren No. de Resolución: Agente de Retención, Contribuyente Especial y Gran Contribuyente.',
+          'No. Resolución: acepta letras, números, guiones (-), puntos (.), barras (/) y guion bajo (_). Mínimo 8 alfanuméricos.',
+        ],
+        errors: {
+          RESOLUCION_FORMATO: 'Si ves "Solo letras, números y - . / _", quita el carácter no permitido.',
+          RESOLUCION_CORTA: 'Si ves "Debe tener al menos 8 caracteres", agrega más caracteres (los separadores no cuentan).',
+          RESOLUCION_FALTA: 'Si ves "Ingresa el No. de Resolución…", tu tipo de contribuyente requiere uno obligatoriamente.',
+        },
+        tip: 'Si no figuras como Agente de Retención, Contribuyente Especial ni Gran Contribuyente, este paso se ve solo con dos campos bloqueados — solo le das Continuar.',
+        animKey: 'tributaria',
+      },
+      // ────────────────────────────────────────────────────────────────
+      {
+        id: 'facturacion',
+        title: 'Paso 5 · Situación de facturación',
+        intro: 'Dos modos: arrancas desde cero o continúas con tu facturación electrónica actual. El segundo modo te pide algunos datos extra.',
+        rules: [
+          'Modo "Empezar desde cero": se asigna automáticamente Establecimiento 001 y Punto de emisión 001.',
+          'Modo "Continuar con mi facturación": el Establecimiento queda 001 y el Punto pasa a 002 (porque ya tienes el 001 ocupado).',
+          'Si tu Establecimiento o Punto son distintos, los puedes editar manualmente.',
+          'Códigos: 3 dígitos, no se permite 000.',
+          'Descripción del punto: solo letras, números y espacios (máx. 50). Por defecto "Electrónicas".',
+          'Próxima factura a emitir: 9 dígitos. Si tu última factura fue 26, ingresas 000000027 (la SIGUIENTE).',
+        ],
+        errors: {
+          COD_FORMATO: 'Si ves "Debe tener 3 dígitos", asegúrate de no dejar el campo corto.',
+          COD_000: 'Si ves "No puede ser 000", el SRI no acepta ese código.',
+          DESC_INVALIDA: 'Si ves "Solo letras, números y espacios", quita los caracteres especiales.',
+          SEQ_FORMATO: 'Si ves "Debe tener 9 dígitos" en la secuencia, completa con ceros a la izquierda.',
+        },
+        tip: 'Las secuencias de Notas de Crédito, Débito, Retenciones y Guías arrancan automáticamente en 000000001 — no te las pedimos para simplificar.',
+        animKey: 'facturacion',
+      },
+      // ────────────────────────────────────────────────────────────────
       {
         id: 'clave',
-        title: 'Crea tu clave',
-        intro: 'Mínimo 4 caracteres — tú eliges la complejidad. La barra de seguridad usa entropía Shannon (el mismo enfoque de NIST 800-63B) para clasificar tu clave.',
+        title: 'Paso 6 · Crea tu clave',
+        intro: 'Esta es la clave con la que ingresarás al portal de TributaSoft. Mínimo 4 caracteres — tú eliges la complejidad.',
         rules: [
-          'Largo mínimo: 4 caracteres.',
-          'Sin requisitos forzados — puedes usar solo dígitos, solo letras o lo que prefieras.',
-          'La confirmación debe coincidir exactamente con la clave principal.',
-          'Niveles de seguridad: Baja (< 35 bits), Media (35-59 bits), Alta (≥ 60 bits).',
+          'Largo mínimo: 4 caracteres. Sin requisitos de mayúscula/número forzados.',
+          'La confirmación debe coincidir EXACTAMENTE con la clave principal.',
+          'El medidor de seguridad usa entropía Shannon: Baja (< 35 bits), Media (35-59), Alta (≥ 60).',
+          'Patrones obvios como "1234", "qwerty" o "password" bajan la fuerza, pero la clave sigue siendo válida.',
+          'Botón "👁": muestra/oculta la clave para que verifiques lo que escribiste.',
         ],
         errors: {
           CLAVE_CORTA: 'Si ves "La clave debe tener al menos 4 caracteres", agrega más caracteres.',
           CLAVE_NO_COINCIDE: 'Si ves "Las claves no coinciden", revisa que escribiste lo mismo en los dos campos.',
-          CLAVE_GUARDAR: 'Si ves "No pudimos guardar la clave. Intenta de nuevo", suele ser un problema temporal de conexión.',
         },
-        tip: 'Patrones obvios como "1234", "qwerty" o "password" bajan la fuerza a Baja, aunque la clave cumpla la longitud mínima. Sigue siendo válida, pero no recomendada.',
+        tip: 'No usamos esta clave para nada más que tu cuenta — no la uses en otros sitios. Para mejor seguridad, mezcla letras, números y símbolos.',
         animKey: 'clave',
       },
-      {
-        id: 'firma',
-        title: 'Sube tu firma electrónica',
-        intro: 'Es opcional. Aceptamos archivos .p12 o .pfx de cualquier proveedor autorizado en Ecuador. La clave de tu firma NUNCA sale de tu navegador.',
-        rules: [
-          'Formato: .p12 o .pfx (no aceptamos .cer ni tokens físicos).',
-          'Tamaño máximo: 5 MB.',
-          'El RUC del certificado debe coincidir con el RUC de tu registro.',
-          'El certificado no puede estar caducado.',
-          'Si todavía no la tienes, toca "No tengo firma electrónica" y te ayudamos a tramitarla por WhatsApp.',
-        ],
-        errors: {
-          FIRMA_FORMATO: 'Si ves "El archivo no parece ser un .p12 o .pfx válido", revisa la extensión y que el archivo no esté dañado.',
-          FIRMA_CLAVE: 'Si ves "La clave de la firma es incorrecta", recuerda: es la clave del archivo .p12, no la clave de tu cuenta TributaSoft.',
-          FIRMA_RUC_NO_COINCIDE: 'Si ves "El RUC del certificado no coincide con el RUC del registro", estás subiendo la firma equivocada.',
-          FIRMA_CADUCADA: 'Si ves "La firma caducó", debes renovarla con tu proveedor antes de continuar.',
-        },
-        tip: 'Si la subes ahora, se valida en el navegador con node-forge — verás titular, RUC y caducidad. Si la dejas para después, puedes cargarla desde el portal sin perder tu cuenta.',
-        animKey: 'firma',
-      },
+      // ────────────────────────────────────────────────────────────────
       {
         id: 'logo',
-        title: 'Personaliza tu logo',
-        intro: 'Tienes dos opciones: subir tu logo o generar uno con tu nombre comercial. El resultado es un banner de 2970×300 píxeles en formato PNG.',
+        title: 'Paso 7 · Tu logo (opcional)',
+        intro: 'Personaliza el banner que va en tus comprobantes. Sube tu logo o generamos uno automáticamente con tu nombre comercial.',
         rules: [
-          'Formato del logo: PNG o JPG, máximo 5 MB.',
-          'Se ajusta automáticamente al banner (2970×300) sin deformarse.',
-          'Si pides auto-generación, usamos tu nombre comercial. Si marcaste "No aplica", usamos la razón social.',
-          'La capitalización se normaliza: "lEnin PerEira" se convierte en "Lenin Pereira".',
+          'Si subes un logo EXACTO 2970×300 px → lo usamos tal cual.',
+          'Si subes uno de otras dimensiones → lo alineamos a la izquierda y a la derecha pintamos tu Nombre Comercial (Lobster grande) + Razón Social abajo.',
+          'Si tocas "Generar uno" → banner blanco con tu Nombre Comercial centrado en Lobster + Razón Social pequeña debajo.',
+          'Formato: PNG o JPG. Máximo 4 MB.',
+          'El texto se normaliza para presentación: "TRIBUTASOFT S.A." → "Tributasoft S.A." (siglas con punto se quedan en mayúsculas).',
         ],
         errors: {
-          LOGO_FORMATO: 'Si ves "Solo se aceptan archivos PNG o JPG", convierte tu archivo o sube otro.',
-          LOGO_TAMANO: 'Si ves "El logo no puede pesar más de 5 MB", comprime la imagen o usa una más liviana.',
-          LOGO_PROCESO: 'Si ves "No pudimos procesar la imagen", intenta con otro archivo.',
+          LOGO_FORMATO: 'Si ves un error al subir, asegúrate que sea PNG o JPG.',
+          LOGO_PESO: 'Si ves "El archivo es muy grande", comprime la imagen.',
         },
-        tip: 'El banner se guarda en tu cuenta y aparece en tus comprobantes electrónicos. Puedes cambiarlo desde el portal cuando quieras.',
+        tip: 'Este paso es OPCIONAL — si no quieres logo, dale Continuar sin subir ni generar nada y pasas al resumen. Lo puedes configurar después desde el portal.',
         animKey: 'logo',
       },
+      // ────────────────────────────────────────────────────────────────
       {
-        id: 'confirm',
-        title: 'Confirma y entra al portal',
-        intro: 'Última pantalla antes de crear tu cuenta. Te mostramos cuál será tu usuario y te ofrecemos guardar la clave en este navegador.',
+        id: 'resumen',
+        title: 'Paso 8 · Revisa y confirma',
+        intro: 'Última pantalla antes de crear tu cuenta. Verifica todos los datos en las tarjetas. Si algo está mal, toca "Editar" en la sección correspondiente y vuelves a esa pantalla.',
         rules: [
-          'Tu usuario son los primeros 10 dígitos de tu RUC.',
-          'Si marcas "Guardar mi clave", la próxima vez que entres a tbc.tributasoft.com.ec el navegador te ofrece autocompletar.',
-          'Una vez confirmas, los datos quedan grabados — para cambios contacta a soporte.',
-          'Te redirigimos a tbc.tributasoft.com.ec con tu usuario pre-rellenado.',
+          'Cada tarjeta tiene un botón "Editar" que regresa a esa pantalla específica del wizard.',
+          'En la tarjeta "Acceso al portal" verás tu Usuario (primeros 10 dígitos del RUC) y tu Clave (•••).',
+          'Al confirmar, generamos tu cuenta y enviamos un email de bienvenida con un resumen y tus credenciales.',
+          'El email incluye Usuario + Clave en monospace y un botón directo al portal.',
         ],
         errors: {
-          FINAL_BACKEND: 'Si ves "Error finalizando el registro", suele ser un problema temporal de red. Intenta de nuevo.',
+          CONFIRM_BACKEND: 'Si ves "Hubo un problema al finalizar tu registro", suele ser un problema temporal de red. Intenta de nuevo.',
         },
-        tip: 'Después de este paso ya estás dentro del portal. Cualquier cambio (firma, datos, banner) se hace desde ahí.',
-        animKey: 'confirm',
+        tip: 'Después de confirmar, ya estás dentro. Cualquier cambio posterior (logo, datos, etc.) se hace desde el portal de TributaSoft.',
+        animKey: 'resumen',
       },
     ],
   },
@@ -308,66 +340,88 @@ export const MANUAL = {
 // Lo usa la integración con setFieldError para que el popup de ayuda
 // salte directo al paso correcto del manual.
 export const ERROR_TO_MANUAL = {
-  // RUC (paso 1 del registro)
-  RUC_FORMAT_BAD:    { proceso: 'registro', paso: 'ruc' },
-  RUC_INCOMPLETO:    { proceso: 'registro', paso: 'ruc' },
-  RUC_NO_001:        { proceso: 'registro', paso: 'ruc' },
-  RUC_DIGITO_BAD:    { proceso: 'registro', paso: 'ruc' },
-  RUC_FORMAT:        { proceso: 'registro', paso: 'ruc' },
-  RUC_PROVINCIA:     { proceso: 'registro', paso: 'ruc' },
+  // Paso 1 — Firma + RUC + Certificado
+  TERMS_NO_LEIDOS:       { proceso: 'registro', paso: 'firma' },
+  FIRMA_FORMATO:         { proceso: 'registro', paso: 'firma' },
+  FIRMA_CLAVE:           { proceso: 'registro', paso: 'firma' },
+  FIRMA_CADUCADA:        { proceso: 'registro', paso: 'firma' },
+  CERT_FECHA_VIEJA:      { proceso: 'registro', paso: 'firma' },
+  RUC_NO_COINCIDE:       { proceso: 'registro', paso: 'firma' },
 
-  // Datos del formulario
-  EMAIL_INVALIDO:    { proceso: 'registro', paso: 'datos' },
-  CELULAR_INVALIDO:  { proceso: 'registro', paso: 'datos' },
-  RAZON_SOCIAL:      { proceso: 'registro', paso: 'datos' },
-  DIRECCION:         { proceso: 'registro', paso: 'datos' },
-  PROVINCIA:         { proceso: 'registro', paso: 'datos' },
-  CIUDAD:            { proceso: 'registro', paso: 'datos' },
-  RESOLUCION:        { proceso: 'registro', paso: 'datos' },
+  // Paso 2 — Datos
+  EMAIL_INVALIDO:        { proceso: 'registro', paso: 'datos' },
+  CELULAR_INVALIDO:      { proceso: 'registro', paso: 'datos' },
+  DIRECCION_FALTA:       { proceso: 'registro', paso: 'datos' },
 
-  // Token (paso 3)
-  TOKEN_FORMATO:     { proceso: 'registro', paso: 'token' },
-  TOKEN_INCORRECTO:  { proceso: 'registro', paso: 'token' },
-  TOKEN_BLOQUEADO:   { proceso: 'registro', paso: 'token' },
+  // Paso 3 — Token
+  TOKEN_FORMATO:         { proceso: 'registro', paso: 'token' },
+  TOKEN_INCORRECTO:      { proceso: 'registro', paso: 'token' },
+  TOKEN_EXPIRADO:        { proceso: 'registro', paso: 'token' },
 
-  // Clave (paso 4)
-  CLAVE_CORTA:       { proceso: 'registro', paso: 'clave' },
-  CLAVE_NO_COINCIDE: { proceso: 'registro', paso: 'clave' },
-  CLAVE_GUARDAR:     { proceso: 'registro', paso: 'clave' },
+  // Paso 4 — Tributaria
+  RESOLUCION_FORMATO:    { proceso: 'registro', paso: 'tributaria' },
+  RESOLUCION_CORTA:      { proceso: 'registro', paso: 'tributaria' },
+  RESOLUCION_FALTA:      { proceso: 'registro', paso: 'tributaria' },
 
-  // Firma (paso 5)
-  FIRMA_FORMATO:     { proceso: 'registro', paso: 'firma' },
-  FIRMA_CLAVE:       { proceso: 'registro', paso: 'firma' },
-  FIRMA_RUC_NO_COINCIDE: { proceso: 'registro', paso: 'firma' },
-  FIRMA_CADUCADA:    { proceso: 'registro', paso: 'firma' },
+  // Paso 5 — Facturación
+  COD_FORMATO:           { proceso: 'registro', paso: 'facturacion' },
+  COD_000:               { proceso: 'registro', paso: 'facturacion' },
+  DESC_INVALIDA:         { proceso: 'registro', paso: 'facturacion' },
+  SEQ_FORMATO:           { proceso: 'registro', paso: 'facturacion' },
+
+  // Paso 6 — Clave
+  CLAVE_CORTA:           { proceso: 'registro', paso: 'clave' },
+  CLAVE_NO_COINCIDE:     { proceso: 'registro', paso: 'clave' },
+
+  // Paso 7 — Logo
+  LOGO_FORMATO:          { proceso: 'registro', paso: 'logo' },
+  LOGO_PESO:             { proceso: 'registro', paso: 'logo' },
+
+  // Paso 8 — Resumen
+  CONFIRM_BACKEND:       { proceso: 'registro', paso: 'resumen' },
 
   // Cotizador
-  COT_VOLUMEN:       { proceso: 'cotizacion', paso: 'volumen' },
+  COT_VOLUMEN:           { proceso: 'cotizacion', paso: 'volumen' },
+  PDF_GENERAR:           { proceso: 'cotizacion', paso: 'pdf' },
 
   // Contratación / Pago
-  RUC_NO_REGISTRADO: { proceso: 'contratacion', paso: 'ruc-empresa' },
-  PAGO_BANCO:        { proceso: 'contratacion', paso: 'pago' },
-  PAGO_ARCHIVO_TIPO: { proceso: 'contratacion', paso: 'pago' },
-  PAGO_ARCHIVO_PESO: { proceso: 'contratacion', paso: 'pago' },
-  PAGO_TERMS:        { proceso: 'contratacion', paso: 'enviar' },
+  RUC_NO_REGISTRADO:     { proceso: 'contratacion', paso: 'ruc-empresa' },
+  PAGO_BANCO:            { proceso: 'contratacion', paso: 'pago' },
+  PAGO_ARCHIVO_TIPO:     { proceso: 'contratacion', paso: 'pago' },
+  PAGO_ARCHIVO_PESO:     { proceso: 'contratacion', paso: 'pago' },
+  PAGO_TERMS:            { proceso: 'contratacion', paso: 'enviar' },
 };
 
 // Helper: dado un fieldId del DOM, retorna el step del manual al que apunta.
+// Estos IDs son los de los campos del wizard nuevo (con prefijo f-/c-/d-/t-).
 export const FIELD_TO_MANUAL = {
-  'ruc':                 { proceso: 'registro', paso: 'ruc' },
-  'razon-social':        { proceso: 'registro', paso: 'datos' },
-  'nombre-comercial':    { proceso: 'registro', paso: 'datos' },
-  'direccion':           { proceso: 'registro', paso: 'datos' },
-  'provincia':           { proceso: 'registro', paso: 'datos' },
-  'ciudad':              { proceso: 'registro', paso: 'datos' },
-  'email':               { proceso: 'registro', paso: 'datos' },
-  'celular':             { proceso: 'registro', paso: 'datos' },
-  'no-resolucion':       { proceso: 'registro', paso: 'datos' },
-  'clave':               { proceso: 'registro', paso: 'clave' },
-  'confirmar-clave':     { proceso: 'registro', paso: 'clave' },
-  'firma-uploader':      { proceso: 'registro', paso: 'firma' },
-  'firma-clave':         { proceso: 'registro', paso: 'firma' },
+  // Paso 1
+  'f-terminos':          { proceso: 'registro', paso: 'firma' },
+  'f-firma-file':        { proceso: 'registro', paso: 'firma' },
+  'f-firma-clave':       { proceso: 'registro', paso: 'firma' },
+  'f-cert-file':         { proceso: 'registro', paso: 'firma' },
+  // Paso 2
+  'd-direccion':         { proceso: 'registro', paso: 'datos' },
+  'd-email':             { proceso: 'registro', paso: 'datos' },
+  'd-celular':           { proceso: 'registro', paso: 'datos' },
+  // Paso 3
+  't-email-inputs':      { proceso: 'registro', paso: 'token' },
+  't-sms-inputs':        { proceso: 'registro', paso: 'token' },
+  // Paso 4
+  't-resolucion':        { proceso: 'registro', paso: 'tributaria' },
+  // Paso 5
+  'f-establecimiento':   { proceso: 'registro', paso: 'facturacion' },
+  'f-punto':             { proceso: 'registro', paso: 'facturacion' },
+  'f-descripcion':       { proceso: 'registro', paso: 'facturacion' },
+  'f-seq-factura':       { proceso: 'registro', paso: 'facturacion' },
+  // Paso 6
+  'c-clave':             { proceso: 'registro', paso: 'clave' },
+  'c-confirmar':         { proceso: 'registro', paso: 'clave' },
+  // Paso 7
+  'l-uploader':          { proceso: 'registro', paso: 'logo' },
+  // Cotizador
   'cot-docs':            { proceso: 'cotizacion', paso: 'volumen' },
+  // Contratación
   'contratar-ruc':       { proceso: 'contratacion', paso: 'ruc-empresa' },
   'pago-banco':          { proceso: 'contratacion', paso: 'pago' },
   'pago-archivo':        { proceso: 'contratacion', paso: 'pago' },

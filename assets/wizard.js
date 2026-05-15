@@ -412,7 +412,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517f');
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517g');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -581,13 +581,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517f'),
-      import('./screen-datos.js?v=20260517f'),
-      import('./screen-token.js?v=20260517f'),
-      import('./screen-tributaria.js?v=20260517f'),
-      import('./screen-facturacion.js?v=20260517f'),
-      import('./screen-clave.js?v=20260517f'),
-      import('./screen-logo.js?v=20260517f'),
+      import('./screen-firma.js?v=20260517g'),
+      import('./screen-datos.js?v=20260517g'),
+      import('./screen-token.js?v=20260517g'),
+      import('./screen-tributaria.js?v=20260517g'),
+      import('./screen-facturacion.js?v=20260517g'),
+      import('./screen-clave.js?v=20260517g'),
+      import('./screen-logo.js?v=20260517g'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

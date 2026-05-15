@@ -17,7 +17,7 @@
      - Link al portal
      - Aviso de seguridad sobre la clave */
 
-import { formatCelular } from './wizard.js?v=20260517f';
+import { formatCelular } from './wizard.js?v=20260517g';
 
 const PORTAL_URL = 'https://tbc.tributasoft.com.ec';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
