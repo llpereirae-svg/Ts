@@ -3,9 +3,9 @@
    El RUC ya NO se ingresa manualmente: viene de la firma y se valida
    contra el RUC del certificado. */
 
-import { validarFirmaP12 } from './firma-validator.js?v=20260516l';
-import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516l';
-import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516l';
+import { validarFirmaP12 } from './firma-validator.js?v=20260516m';
+import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516m';
+import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516m';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -125,25 +125,32 @@ export function renderPantallaFirma(body, wizardData) {
 
 function wireFirmaScreen(root, wizardData) {
   // -------- T&C --------
+  // El checkbox NO se puede marcar directamente: cualquier intento abre el modal
+  // con scroll-to-bottom obligatorio. Solo el botón "Acepto" del modal puede
+  // marcar el checkbox (vía dispatchEvent change).
   const tc = root.querySelector('#f-terminos');
+
+  tc.addEventListener('click', (e) => {
+    // Si todavía no aceptó, bloqueamos el toggle y abrimos el modal.
+    if (!wizardData.terminos) {
+      e.preventDefault();
+      openTermsModalForCheckbox(tc);
+      return;
+    }
+    // Si ya aceptó, permitir desmarcar (revoca la aceptación).
+  });
+
   tc.addEventListener('change', () => {
     wizardData.terminos = tc.checked;
     toggleLock(root.querySelector('#f-firma-block'), !tc.checked);
     updateCertLock(root, wizardData);
   });
 
-  root.querySelector('#f-link-terms').addEventListener('click', () => {
-    const modal = document.getElementById('modal-terms');
-    if (modal) {
-      try { modal.showModal(); } catch { modal.setAttribute('open', ''); }
-    }
-  });
-
-  document.addEventListener('terms-accepted', () => {
-    tc.checked = true;
-    wizardData.terminos = true;
-    toggleLock(root.querySelector('#f-firma-block'), false);
-    updateCertLock(root, wizardData);
+  // El link "términos y condiciones" también abre el modal (no toggle del checkbox).
+  root.querySelector('#f-link-terms').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openTermsModalForCheckbox(tc);
   });
 
   // -------- Firma --------
@@ -341,6 +348,61 @@ function toggleLock(el, locked) {
   if (!el) return;
   if (locked) el.setAttribute('data-locked', 'true');
   else el.removeAttribute('data-locked');
+}
+
+/**
+ * Abre el modal de Términos y Condiciones y configura un handler one-shot
+ * en el botón "Acepto" para marcar el checkbox específico cuando se acepte.
+ * El botón "Acepto" del modal está deshabilitado hasta que el usuario haga
+ * scroll hasta el final (lógica que vive en app.js sobre #terms-body).
+ */
+function openTermsModalForCheckbox(checkbox) {
+  const modal = document.getElementById('modal-terms');
+  if (!modal) return;
+
+  const body = document.getElementById('terms-body');
+  const aceptarBtn = document.getElementById('terms-aceptar');
+  const cancelarBtn = document.getElementById('terms-cancelar');
+  const hint = document.getElementById('terms-hint');
+
+  // Reset estado del modal cada vez que se abre
+  if (body) body.scrollTop = 0;
+  if (aceptarBtn) aceptarBtn.disabled = true;
+  if (hint) {
+    hint.textContent = 'Desliza hasta el final del documento para habilitar la aceptación.';
+    hint.classList.remove('is-bottom');
+  }
+
+  // Handler nuestro de "Acepto" — usa { once: true } para no acumular listeners.
+  // Cuando se hace click, marcamos el checkbox del wizard y disparamos change.
+  const onAceptar = () => {
+    if (cancelarBtn) cancelarBtn.removeEventListener('click', onCancelar);
+    if (!checkbox.checked) {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    try { modal.close(); } catch { modal.removeAttribute('open'); }
+  };
+  const onCancelar = () => {
+    if (aceptarBtn) aceptarBtn.removeEventListener('click', onAceptar);
+  };
+
+  if (aceptarBtn) aceptarBtn.addEventListener('click', onAceptar, { once: true });
+  if (cancelarBtn) cancelarBtn.addEventListener('click', onCancelar, { once: true });
+
+  // Si el contenido cabe sin scroll, habilitamos de inmediato (el usuario
+  // ya está viendo todo el texto).
+  setTimeout(() => {
+    if (body && aceptarBtn && body.scrollHeight <= body.clientHeight + 8) {
+      aceptarBtn.disabled = false;
+      if (hint) {
+        hint.textContent = '✓ Ya puedes aceptar los términos.';
+        hint.classList.add('is-bottom');
+      }
+    }
+  }, 80);
+
+  try { modal.showModal(); } catch { modal.setAttribute('open', ''); }
 }
 
 function updateCertLock(root, wizardData) {
