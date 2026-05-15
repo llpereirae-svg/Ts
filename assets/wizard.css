@@ -424,6 +424,28 @@ body.is-pc .wiz-loading-text {
   margin-top: .2rem;
   flex-shrink: 0;
 }
+.firma-terms input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.firma-terms input[type="checkbox"]:disabled + span {
+  color: var(--color-muted);
+}
+.terms-hint-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: .6rem 0 0;
+  padding: .45rem .65rem;
+  font-size: .82rem;
+  color: var(--color-teal-dark);
+  background: rgba(135, 199, 220, .14);
+  border-radius: var(--radius-sm);
+}
+.terms-hint-row svg {
+  flex-shrink: 0;
+  opacity: .75;
+}
 .firma-block-header {
   display: flex;
   align-items: center;

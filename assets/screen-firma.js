@@ -3,9 +3,9 @@
    El RUC ya NO se ingresa manualmente: viene de la firma y se valida
    contra el RUC del certificado. */
 
-import { validarFirmaP12 } from './firma-validator.js?v=20260516n';
-import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516n';
-import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516n';
+import { validarFirmaP12 } from './firma-validator.js?v=20260516o';
+import { parseCertificadoRUC, validarFechaEmisionCert } from './pdf-parser.js?v=20260516o';
+import { showLoading, hideLoading, detectDevice } from './wizard.js?v=20260516o';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -27,12 +27,29 @@ export function renderPantallaFirma(body, wizardData) {
   body.innerHTML = `
     ${deviceWarning}
 
-    <!-- BLOQUE 1: Términos y condiciones -->
+    <!-- BLOQUE 1: Términos y condiciones.
+         El checkbox está deshabilitado hasta que el usuario lea el modal
+         (con scroll-to-bottom) y haga click en "Acepto". Solo el modal
+         puede marcarlo. Sin esto, el usuario podría aceptar sin leer. -->
     <div class="firma-block firma-block--terms">
-      <label class="firma-terms">
-        <input type="checkbox" id="f-terminos" ${wizardData.terminos ? 'checked' : ''}>
-        <span>Acepto los <button type="button" class="link-button" id="f-link-terms">términos y condiciones</button> de TributaSoft.</span>
-      </label>
+      <div class="firma-terms" id="f-terms-row">
+        <input type="checkbox" id="f-terminos"
+          ${wizardData.terminos ? 'checked' : ''}
+          ${wizardData.terminos ? '' : 'disabled'}>
+        <span>
+          Acepto los
+          <button type="button" class="link-button" id="f-link-terms">términos y condiciones</button>
+          de TributaSoft.
+        </span>
+      </div>
+      ${!wizardData.terminos ? `
+        <p class="terms-hint-row">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Haz clic en el link para leerlos. El checkbox se marcará cuando aceptes.
+        </p>
+      ` : ''}
     </div>
 
     <!-- BLOQUE 2: Firma electrónica -->
@@ -125,32 +142,43 @@ export function renderPantallaFirma(body, wizardData) {
 
 function wireFirmaScreen(root, wizardData) {
   // -------- T&C --------
-  // El checkbox NO se puede marcar directamente: cualquier intento abre el modal
-  // con scroll-to-bottom obligatorio. Solo el botón "Acepto" del modal puede
-  // marcar el checkbox (vía dispatchEvent change).
+  // El checkbox arranca DISABLED + UNCHECKED. Solo se habilita y marca cuando
+  // el usuario abre el modal, scrollea hasta el final y hace click en "Acepto".
+  // El usuario nunca puede marcarlo directamente.
   const tc = root.querySelector('#f-terminos');
-
-  tc.addEventListener('click', (e) => {
-    // Si todavía no aceptó, bloqueamos el toggle y abrimos el modal.
-    if (!wizardData.terminos) {
-      e.preventDefault();
-      openTermsModalForCheckbox(tc);
-      return;
-    }
-    // Si ya aceptó, permitir desmarcar (revoca la aceptación).
-  });
 
   tc.addEventListener('change', () => {
     wizardData.terminos = tc.checked;
     toggleLock(root.querySelector('#f-firma-block'), !tc.checked);
     updateCertLock(root, wizardData);
+    // Refresh hint
+    const hint = root.querySelector('.terms-hint-row');
+    if (tc.checked && hint) hint.remove();
   });
 
-  // El link "términos y condiciones" también abre el modal (no toggle del checkbox).
+  // El link "términos y condiciones" abre el modal.
   root.querySelector('#f-link-terms').addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     openTermsModalForCheckbox(tc);
+  });
+
+  // También permitir click en la fila completa para abrir el modal (mejor UX)
+  root.querySelector('#f-terms-row').addEventListener('click', (e) => {
+    // Si clickeó directamente el checkbox o el link, sus handlers ya actuaron
+    if (e.target === tc) {
+      // El checkbox está disabled, no pasa nada — pero igual abrimos modal si aún no aceptaron
+      if (!wizardData.terminos) {
+        e.preventDefault();
+        openTermsModalForCheckbox(tc);
+      }
+      return;
+    }
+    if (e.target.id === 'f-link-terms') return;
+    // Click en el área de la fila → abrir modal si aún no aceptó
+    if (!wizardData.terminos) {
+      openTermsModalForCheckbox(tc);
+    }
   });
 
   // -------- Firma --------
@@ -374,9 +402,10 @@ function openTermsModalForCheckbox(checkbox) {
   }
 
   // Handler nuestro de "Acepto" — usa { once: true } para no acumular listeners.
-  // Cuando se hace click, marcamos el checkbox del wizard y disparamos change.
+  // Cuando se hace click, habilitamos el checkbox, lo marcamos y disparamos change.
   const onAceptar = () => {
     if (cancelarBtn) cancelarBtn.removeEventListener('click', onCancelar);
+    checkbox.disabled = false;
     if (!checkbox.checked) {
       checkbox.checked = true;
       checkbox.dispatchEvent(new Event('change', { bubbles: true }));

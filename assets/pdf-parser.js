@@ -33,6 +33,10 @@ async function loadPdfJs() {
 
 /**
  * Extrae texto del PDF reconstruyendo líneas por coordenada Y.
+ * pdf.js no garantiza que content.items venga en orden de lectura
+ * (puede venir en orden del stream del PDF). Por eso agrupamos por
+ * coordenada Y con tolerancia, ordenamos los grupos de arriba a abajo,
+ * y dentro de cada grupo ordenamos por X (izquierda a derecha).
  */
 async function extractText(file) {
   const pdfjs = await loadPdfJs();
@@ -42,20 +46,33 @@ async function extractText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    let lastY = null;
-    let linea = '';
+
+    // Agrupar por Y con tolerancia ±2 px. Map: Yclave → array de items.
+    const yGroups = new Map();
     for (const item of content.items) {
+      if (!item || typeof item.str !== 'string') continue;
       const y = Math.round(item.transform[5]);
-      if (lastY !== null && Math.abs(y - lastY) > 4) {
-        partes.push(linea.trim());
-        linea = '';
+      // Buscar Y existente cercano
+      let key = null;
+      for (const existingY of yGroups.keys()) {
+        if (Math.abs(existingY - y) <= 2) { key = existingY; break; }
       }
-      linea += item.str + ' ';
-      lastY = y;
+      if (key === null) key = y;
+      if (!yGroups.has(key)) yGroups.set(key, []);
+      yGroups.get(key).push(item);
     }
-    if (linea.trim()) partes.push(linea.trim());
+
+    // Ordenar grupos por Y descendente (en PDF, Y crece hacia arriba)
+    const sortedYs = Array.from(yGroups.keys()).sort((a, b) => b - a);
+    for (const y of sortedYs) {
+      const items = yGroups.get(y);
+      // Dentro del grupo, ordenar por X ascendente
+      items.sort((a, b) => (a.transform[4] || 0) - (b.transform[4] || 0));
+      const linea = items.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim();
+      if (linea) partes.push(linea);
+    }
   }
-  return partes.filter(Boolean).join('\n');
+  return partes.join('\n');
 }
 
 function clean(s) {
@@ -103,35 +120,31 @@ export async function parseCertificadoRUC(file) {
   const rucMatch = text.match(/\b(\d{10}001)\b/);
   const ruc = rucMatch ? rucMatch[1] : '';
 
-  // --- Razón Social / Apellidos y nombres ---
-  // El SRI usa "Razón Social" para jurídicas y "Apellidos y nombres" para naturales.
-  // Layout esperado en el PDF (visual):
-  //   Razón Social        Número RUC
-  //   TRIBUTASOFT S.A.    0992703601001
-  //
-  // Pero pdf.js puede agrupar texto por coordenada Y de varias formas:
-  //   Caso A: dos líneas separadas (label arriba, valor abajo)
-  //   Caso B: una sola línea con label+valor mezclados (si Y casi-coincide)
-  //
-  // Para ser robusto: usamos el RUC como ANCLA. Encontramos la línea que contiene
-  // el RUC, le quitamos el RUC y los labels conocidos → lo que sobra es el nombre.
-  // Si la línea del RUC no tiene el label, miramos también la línea anterior.
-  let razonSocial = '';
+  // --- Detección del tipo (natural vs jurídica) ---
+  // El cert del SRI siempre incluye una sección "Tipo" con el valor:
+  //   - "PERSONAS NATURALES" → persona natural
+  //   - "SOCIEDADES" → persona jurídica
+  // Es el indicador más confiable porque no depende del layout del header.
+  // Como respaldo, también miramos los labels "Razón Social" / "Apellidos y nombres".
   let esJuridica = false;
+  if (/\bPERSONAS?\s*NATURALES?\b/i.test(text)) {
+    esJuridica = false;
+  } else if (/\bSOCIEDADES?\b/i.test(text)) {
+    esJuridica = true;
+  } else if (/raz[oó]n\s*social/i.test(text) && !/apellidos\s*y\s*nombres/i.test(text)) {
+    esJuridica = true;
+  } else if (/apellidos\s*y\s*nombres/i.test(text)) {
+    esJuridica = false;
+  }
+
+  // --- Razón Social / Apellidos y nombres ---
+  // Usamos el RUC como ANCLA. La línea que contiene el RUC tiene también el
+  // nombre. Sacamos labels y RUC → lo que sobra es el nombre.
+  let razonSocial = '';
   {
     const rucIdx = lines.findIndex((l) => /\b\d{10}001\b/.test(l));
     if (rucIdx >= 0) {
       const rucLine = lines[rucIdx];
-      const prevLine = rucIdx > 0 ? lines[rucIdx - 1] : '';
-
-      // Detectar tipo en cualquiera de las dos líneas posibles
-      if (/raz[oó]n\s*social/i.test(rucLine) || /raz[oó]n\s*social/i.test(prevLine)) {
-        esJuridica = true;
-      } else if (/apellidos\s*y\s*nombres/i.test(rucLine) || /apellidos\s*y\s*nombres/i.test(prevLine)) {
-        esJuridica = false;
-      }
-
-      // Extraer el valor: limpiar labels y RUC de la línea del RUC
       let valor = rucLine
         .replace(/raz[oó]n\s*social/gi, '')
         .replace(/apellidos\s*y\s*nombres/gi, '')
@@ -139,7 +152,6 @@ export async function parseCertificadoRUC(file) {
         .replace(/\b\d{10}001\b/g, '')
         .replace(/\s+/g, ' ')
         .trim();
-
       razonSocial = valor;
     }
   }
