@@ -225,7 +225,8 @@ function showScreen(idx, { skipAnim = false } = {}) {
   document.querySelectorAll('.wiz-screen').forEach((el) => el.classList.remove('is-active'));
 
   // Mostrar la nueva
-  const screen = document.getElementById(`wiz-screen-${SCREENS[idx].id}`);
+  const screenId = SCREENS[idx].id;
+  const screen = document.getElementById(`wiz-screen-${screenId}`);
   screen.classList.add('is-active');
 
   // Actualizar progress bar
@@ -240,13 +241,26 @@ function showScreen(idx, { skipAnim = false } = {}) {
   const nextBtn = document.getElementById('wiz-next');
   nextBtn.textContent = (idx === SCREENS.length - 1) ? 'Confirmar y finalizar' : 'Continuar';
 
-  // Si entramos al resumen, re-renderizar
-  if (SCREENS[idx].id === 'resumen') {
-    renderSummary();
+  // Re-renderizar el cuerpo si tiene un renderer registrado.
+  // Esto permite que cada pantalla recoja los datos más frescos de wizardData
+  // (ej: datos auto-llenados desde la firma validada en la pantalla anterior).
+  const renderer = screenRenderers.get(screenId);
+  if (renderer) {
+    const body = document.querySelector(`[data-body="${screenId}"]`);
+    if (body) {
+      try {
+        renderer(body, wizardData);
+      } catch (err) {
+        console.error(`[wizard] error renderizando pantalla "${screenId}"`, err);
+      }
+    }
   }
 
+  // El resumen tiene su renderer propio (definido en este módulo)
+  if (screenId === 'resumen') renderSummary();
+
   currentIdx = idx;
-  if (onNavigateCb) onNavigateCb(SCREENS[idx].id, idx);
+  if (onNavigateCb) onNavigateCb(screenId, idx);
 
   // Scroll al inicio
   window.scrollTo({ top: 0, behavior: skipAnim ? 'auto' : 'smooth' });
@@ -454,13 +468,29 @@ function labelTipoContribuyente(t) {
 }
 
 // ---------------- Auto-arranque ----------------
-export function startWizard() {
+export async function startWizard() {
   const root = document.getElementById('wizard-root');
   if (!root) {
     console.error('[wizard] no se encontró #wizard-root en el DOM');
     return;
   }
   mountWizard(root);
+
+  // Cargar e instalar las pantallas con contenido real.
+  // Cada bloque del rewrite agrega más imports aquí.
+  try {
+    const [firmaMod, datosMod] = await Promise.all([
+      import('./screen-firma.js?v=20260516i'),
+      import('./screen-datos.js?v=20260516i'),
+    ]);
+    registerScreen('firma', firmaMod.renderPantallaFirma);
+    setValidator('firma', firmaMod.validarPantallaFirma);
+
+    registerScreen('datos', datosMod.renderPantallaDatos);
+    setValidator('datos', datosMod.validarPantallaDatos);
+  } catch (err) {
+    console.error('[wizard] error cargando pantallas', err);
+  }
 }
 
 // API pública para que otros módulos hagan callback al cambiar de pantalla

@@ -394,6 +394,153 @@ body.is-pc .wiz-loading-text {
 }
 .wiz-device-warning strong { display: block; margin-bottom: .15rem; }
 
+/* ---------------- Bloques de la Pantalla 1 (Firma) ---------------- */
+.firma-block {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  transition: opacity var(--transition);
+}
+.firma-block[data-locked="true"] {
+  opacity: .45;
+  pointer-events: none;
+  filter: grayscale(.25);
+}
+.firma-block--terms {
+  background: var(--color-teal-light);
+  border-color: var(--color-teal-dark);
+}
+.firma-terms {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+  font-size: .95rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.firma-terms input[type="checkbox"] {
+  margin-top: .2rem;
+  flex-shrink: 0;
+}
+.firma-block-header {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .35rem;
+}
+.firma-block-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  font-weight: 700;
+  font-size: .82rem;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+.firma-block h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--color-primary);
+}
+.firma-block-help {
+  margin: 0 0 .85rem;
+  font-size: .88rem;
+  color: var(--color-muted);
+}
+.firma-uploader-row {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+}
+.firma-uploader-row .btn {
+  margin: 0;
+  width: auto;
+  max-width: none;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+.firma-block .firma-nombre {
+  font-size: .88rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  word-break: break-all;
+}
+.firma-block .field { margin-bottom: .75rem; }
+.firma-block .modal-actions { margin: 0 0 .75rem; }
+.firma-block .modal-actions .btn { margin: 0; }
+.firma-block .firma-resumen {
+  background: var(--color-teal-light);
+  border-color: var(--color-teal-dark);
+  margin-top: .25rem;
+}
+.firma-block .firma-error:not(:empty) {
+  background: var(--color-error-container);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+  padding: .55rem .75rem;
+  margin: .5rem 0;
+  font-size: .88rem;
+  font-weight: 500;
+}
+.firma-block #f-ruc-ok {
+  background: var(--color-teal-light);
+  color: var(--color-teal-dark);
+  padding: .5rem .75rem;
+  border-radius: var(--radius-sm);
+  margin: .5rem 0 0;
+  font-size: .9rem;
+  font-weight: 600;
+}
+.btn--soporte-firma {
+  margin-top: .65rem;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--color-outline);
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+}
+.btn--soporte-firma:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ---------------- Pantalla 2 (Datos) — badge auto-llenado ---------------- */
+.datos-intro {
+  margin: 0 0 1rem;
+  font-size: .9rem;
+  color: var(--color-muted);
+  background: var(--color-surface-low);
+  padding: .65rem .85rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-teal-dark);
+}
+.auto-badge {
+  display: inline-block;
+  background: var(--color-teal-light);
+  color: var(--color-teal-dark);
+  font-size: .68rem;
+  font-weight: 600;
+  padding: .12rem .5rem;
+  border-radius: 999px;
+  margin-left: .45rem;
+  letter-spacing: .02em;
+  vertical-align: middle;
+}
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,
