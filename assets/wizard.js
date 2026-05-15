@@ -100,6 +100,10 @@ export function mountWizard(rootEl) {
       </div>
 
       <div id="wiz-screens"></div>
+
+      <footer class="wiz-copyright">
+        <p>© 2026 TributaSoft S.A. — Todos los derechos reservados.</p>
+      </footer>
     </div>
 
     <nav class="wiz-nav" id="wiz-nav" aria-label="Navegación del wizard">
@@ -408,7 +412,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517e');
+    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517f');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -577,13 +581,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517e'),
-      import('./screen-datos.js?v=20260517e'),
-      import('./screen-token.js?v=20260517e'),
-      import('./screen-tributaria.js?v=20260517e'),
-      import('./screen-facturacion.js?v=20260517e'),
-      import('./screen-clave.js?v=20260517e'),
-      import('./screen-logo.js?v=20260517e'),
+      import('./screen-firma.js?v=20260517f'),
+      import('./screen-datos.js?v=20260517f'),
+      import('./screen-token.js?v=20260517f'),
+      import('./screen-tributaria.js?v=20260517f'),
+      import('./screen-facturacion.js?v=20260517f'),
+      import('./screen-clave.js?v=20260517f'),
+      import('./screen-logo.js?v=20260517f'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

@@ -820,6 +820,20 @@ body.is-pc .wiz-loading-text {
 .wiz-success-creds a { color: var(--color-cta); text-decoration: none; font-weight: 600; }
 .wiz-success-creds a:hover { text-decoration: underline; }
 
+/* ---------------- Copyright al pie del wizard ---------------- */
+.wiz-copyright {
+  margin-top: 1.5rem;
+  padding: 1rem 1rem 1.5rem;
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+}
+.wiz-copyright p {
+  margin: 0;
+  font-size: .78rem;
+  color: var(--color-muted);
+  letter-spacing: .01em;
+}
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,
