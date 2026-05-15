@@ -24,10 +24,14 @@ const TIPOS_VISIBLES = new Set(['factura']);
 const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]{1,50}$/;
 
 export function renderPantallaFacturacion(body, wizardData) {
-  // Defaults
+  // Defaults. Punto de emisión depende del modo:
+  //   - 'nuevo'    → 001 (es el primer punto)
+  //   - 'continuar'→ 002 (el cliente ya tiene un 001 en uso)
   if (!wizardData.modoFacturacion) wizardData.modoFacturacion = 'nuevo';
   if (!wizardData.codEstablecimiento) wizardData.codEstablecimiento = '001';
-  if (!wizardData.codPunto) wizardData.codPunto = '002';
+  if (!wizardData.codPunto) {
+    wizardData.codPunto = (wizardData.modoFacturacion === 'continuar') ? '002' : '001';
+  }
   if (!wizardData.nombrePunto) wizardData.nombrePunto = 'Electrónicas';
   // Forzar init de TODAS las secuencias (wizardData.secuencias arranca como {}
   // desde wizard.js, así que el chequeo "if (!secuencias)" era siempre falso).
@@ -134,7 +138,7 @@ export function renderPantallaFacturacion(body, wizardData) {
         <input id="f-descripcion-nuevo" type="text" maxlength="50" value="${escapeAttr(wizardData.nombrePunto)}" placeholder="Ej: Electrónicas">
         <div id="f-descripcion-nuevo-error" class="error" role="alert" aria-live="polite"></div>
       </div>
-      <p class="hint">Se asignará Establecimiento 001 y Punto de emisión 002 automáticamente.</p>
+      <p class="hint">Se asignará Establecimiento 001 y Punto de emisión 001 automáticamente.</p>
     </div>
   `;
 
@@ -150,11 +154,14 @@ function wireFacturacion(root, wd) {
       // Alternar bloques visibles
       root.querySelector('#f-est-bloque').hidden = r.value !== 'continuar';
       root.querySelector('#f-nuevo-bloque').hidden = r.value !== 'nuevo';
-      // Si vuelve a "nuevo", resetear establecimiento/punto
-      if (r.value === 'nuevo') {
-        wd.codEstablecimiento = '001';
-        wd.codPunto = '002';
-      }
+      // Reset establecimiento + punto al default del nuevo modo
+      wd.codEstablecimiento = '001';
+      wd.codPunto = (r.value === 'continuar') ? '002' : '001';
+      // Reflejar en los inputs visibles del bloque "continuar"
+      const estIn = root.querySelector('#f-establecimiento');
+      const puntoIn = root.querySelector('#f-punto');
+      if (estIn) estIn.value = wd.codEstablecimiento;
+      if (puntoIn) puntoIn.value = wd.codPunto;
     });
   });
 
