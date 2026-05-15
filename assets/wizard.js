@@ -473,13 +473,14 @@ export async function startWizard() {
   // Cargar e instalar las pantallas con contenido real.
   // Cada bloque del rewrite agrega más imports aquí.
   try {
-    const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod] = await Promise.all([
-      import('./screen-firma.js?v=20260516z'),
-      import('./screen-datos.js?v=20260516z'),
-      import('./screen-token.js?v=20260516z'),
-      import('./screen-tributaria.js?v=20260516z'),
-      import('./screen-facturacion.js?v=20260516z'),
-      import('./screen-clave.js?v=20260516z'),
+    const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
+      import('./screen-firma.js?v=20260517a'),
+      import('./screen-datos.js?v=20260517a'),
+      import('./screen-token.js?v=20260517a'),
+      import('./screen-tributaria.js?v=20260517a'),
+      import('./screen-facturacion.js?v=20260517a'),
+      import('./screen-clave.js?v=20260517a'),
+      import('./screen-logo.js?v=20260517a'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);
@@ -498,6 +499,9 @@ export async function startWizard() {
 
     registerScreen('clave', claveMod.renderPantallaClave);
     setValidator('clave', claveMod.validarPantallaClave);
+
+    registerScreen('logo', logoMod.renderPantallaLogo);
+    setValidator('logo', logoMod.validarPantallaLogo);
   } catch (err) {
     console.error('[wizard] error cargando pantallas', err);
   }

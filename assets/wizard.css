@@ -753,6 +753,17 @@ body.is-pc .wiz-loading-text {
 .pwd-toggle:hover { color: var(--color-primary); background: var(--color-teal-light); }
 .pwd-toggle:focus-visible { outline: 2px solid var(--color-cta); outline-offset: 2px; }
 
+/* ---------------- Pantalla 7 (Logo) — hint final ---------------- */
+.logo-skip-hint {
+  margin: 1.25rem 0 0;
+  padding: .65rem .85rem;
+  font-size: .85rem;
+  color: var(--color-muted);
+  background: var(--color-surface-low);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-outline);
+}
+
 /* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
 body.wiz-mode #hero,
 body.wiz-mode #ruc-card,
