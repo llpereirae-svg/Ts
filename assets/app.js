@@ -69,10 +69,10 @@ const TOOLTIPS = {
       'Ejemplo: en 001-002-000000123, el punto de emisión es 002.',
   },
   factura: {
-    title: 'Facturas',
+    title: 'Próxima factura a emitir',
     body:
-      'Ingrese la última secuencia emitida en facturas.\n\n' +
-      'Ejemplo: si la última factura fue 000000026, registre 000000026 y el sistema emitirá la siguiente como 000000027.',
+      'Ingresa el número de la próxima factura que vas a emitir.\n\n' +
+      'Ejemplo: si tu última factura emitida fue 000000026, registra 000000027 — esa será tu próxima factura.',
   },
   nc: {
     title: 'Notas de crédito',

@@ -1,15 +1,24 @@
 /* screen-facturacion.js — Pantalla 5 del wizard.
    El usuario indica si arranca desde cero o continúa con su facturación
    electrónica actual. Si continúa: pide establecimiento, punto de emisión,
-   descripción y la última secuencia por tipo de documento. */
+   descripción y la PRÓXIMA factura a emitir.
 
+   IMPORTANTE: en modo "continuar" solo se muestra Factura. Para los demás
+   tipos de documento (NC, ND, retención, guía) se envía secuencia 1 al
+   backend automáticamente. Si en el futuro queremos exponerlos visualmente,
+   agregar el id de cada uno a TIPOS_VISIBLES. */
+
+// Todos los tipos que se guardan en wizardData.secuencias
 const TIPOS_DOCUMENTO = [
-  { id: 'factura', label: 'Facturas' },
+  { id: 'factura', label: 'Próxima factura a emitir' },
   { id: 'nc', label: 'Notas de crédito' },
   { id: 'nd', label: 'Notas de débito' },
   { id: 'retencion', label: 'Comprobantes de retención' },
   { id: 'guia', label: 'Guías de remisión' },
 ];
+
+// IDs visibles en la UI; los demás se envían en silencio con '000000001'.
+const TIPOS_VISIBLES = new Set(['factura']);
 
 // Descripción del punto de emisión: sólo letras (con tildes/ñ) y dígitos.
 const NOMBRE_PUNTO_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ]{1,50}$/;
@@ -73,12 +82,18 @@ export function renderPantallaFacturacion(body, wizardData) {
       </div>
       <div class="codigos-fila">
         <div class="field">
-          <label for="f-establecimiento">Establecimiento</label>
+          <label for="f-establecimiento">
+            Establecimiento
+            <button type="button" class="tooltip-i" data-tooltip="est" aria-label="Información sobre Establecimiento">i</button>
+          </label>
           <input id="f-establecimiento" type="text" maxlength="3" value="${escapeAttr(wizardData.codEstablecimiento)}" inputmode="numeric">
           <div id="f-establecimiento-error" class="error" role="alert" aria-live="polite"></div>
         </div>
         <div class="field">
-          <label for="f-punto">Punto de emisión</label>
+          <label for="f-punto">
+            Punto de emisión
+            <button type="button" class="tooltip-i" data-tooltip="punto" aria-label="Información sobre Punto de emisión">i</button>
+          </label>
           <input id="f-punto" type="text" maxlength="3" value="${escapeAttr(wizardData.codPunto)}" inputmode="numeric">
           <div id="f-punto-error" class="error" role="alert" aria-live="polite"></div>
         </div>
@@ -90,17 +105,17 @@ export function renderPantallaFacturacion(body, wizardData) {
       </div>
 
       <div class="secuencias">
-        <p class="secuencias-titulo">Última secuencia emitida por tipo de documento</p>
-        <div class="secuencias-grid">
-          ${TIPOS_DOCUMENTO.map((t) => `
-            <div class="field">
-              <label for="f-seq-${t.id}">${t.label}</label>
-              <input id="f-seq-${t.id}" type="text" maxlength="9" inputmode="numeric"
-                     data-tipo="${t.id}" value="${escapeAttr(wizardData.secuencias[t.id] || '000000001')}">
-              <div id="f-seq-${t.id}-error" class="error" role="alert" aria-live="polite"></div>
-            </div>
-          `).join('')}
-        </div>
+        ${TIPOS_DOCUMENTO.filter(t => TIPOS_VISIBLES.has(t.id)).map((t) => `
+          <div class="field">
+            <label for="f-seq-${t.id}">
+              ${t.label}
+              <button type="button" class="tooltip-i" data-tooltip="${t.id}" aria-label="Información sobre ${t.label}">i</button>
+            </label>
+            <input id="f-seq-${t.id}" type="text" maxlength="9" inputmode="numeric"
+                   data-tipo="${t.id}" value="${escapeAttr(wizardData.secuencias[t.id] || '000000001')}">
+            <div id="f-seq-${t.id}-error" class="error" role="alert" aria-live="polite"></div>
+          </div>
+        `).join('')}
       </div>
     </div>
 
