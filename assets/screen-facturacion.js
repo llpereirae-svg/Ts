@@ -10,7 +10,7 @@
 
 // Todos los tipos que se guardan en wizardData.secuencias
 const TIPOS_DOCUMENTO = [
-  { id: 'factura', label: 'Próxima factura a emitir' },
+  { id: 'factura', label: 'Factura' },
   { id: 'nc', label: 'Notas de crédito' },
   { id: 'nd', label: 'Notas de débito' },
   { id: 'retencion', label: 'Comprobantes de retención' },
@@ -27,11 +27,16 @@ export function renderPantallaFacturacion(body, wizardData) {
   // Defaults
   if (!wizardData.modoFacturacion) wizardData.modoFacturacion = 'nuevo';
   if (!wizardData.codEstablecimiento) wizardData.codEstablecimiento = '001';
-  if (!wizardData.codPunto) wizardData.codPunto = '001';
+  if (!wizardData.codPunto) wizardData.codPunto = '002';
   if (!wizardData.nombrePunto) wizardData.nombrePunto = 'Electrónicas';
-  if (!wizardData.secuencias) {
-    wizardData.secuencias = TIPOS_DOCUMENTO.reduce((acc, t) => { acc[t.id] = '000000001'; return acc; }, {});
+  // Forzar init de TODAS las secuencias (wizardData.secuencias arranca como {}
+  // desde wizard.js, así que el chequeo "if (!secuencias)" era siempre falso).
+  if (!wizardData.secuencias || typeof wizardData.secuencias !== 'object') {
+    wizardData.secuencias = {};
   }
+  TIPOS_DOCUMENTO.forEach((t) => {
+    if (!wizardData.secuencias[t.id]) wizardData.secuencias[t.id] = '000000001';
+  });
 
   const modo = wizardData.modoFacturacion;
 
@@ -129,7 +134,7 @@ export function renderPantallaFacturacion(body, wizardData) {
         <input id="f-descripcion-nuevo" type="text" maxlength="50" value="${escapeAttr(wizardData.nombrePunto)}" placeholder="Ej: Electrónicas">
         <div id="f-descripcion-nuevo-error" class="error" role="alert" aria-live="polite"></div>
       </div>
-      <p class="hint">Se asignará Establecimiento 001 y Punto de emisión 001 automáticamente.</p>
+      <p class="hint">Se asignará Establecimiento 001 y Punto de emisión 002 automáticamente.</p>
     </div>
   `;
 
@@ -148,7 +153,7 @@ function wireFacturacion(root, wd) {
       // Si vuelve a "nuevo", resetear establecimiento/punto
       if (r.value === 'nuevo') {
         wd.codEstablecimiento = '001';
-        wd.codPunto = '001';
+        wd.codPunto = '002';
       }
     });
   });

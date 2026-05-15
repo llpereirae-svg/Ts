@@ -60,7 +60,7 @@ export const wizardData = {
   // facturacion
   modoFacturacion: 'nuevo', // 'nuevo' | 'continuar'
   codEstablecimiento: '001',
-  codPunto: '001',
+  codPunto: '002',
   nombrePunto: 'Electrónicas',
   secuencias: {},
   // clave
