@@ -193,9 +193,9 @@ export async function goTo(idOrIdx) {
 
 async function transitionTo(newIdx) {
   showLoading('Cargando…');
-  await wait(420);
+  await wait(800);          // tiempo suficiente para ver una rotación completa
   showScreen(newIdx);
-  await wait(140);
+  await wait(180);
   hideLoading();
 }
 
