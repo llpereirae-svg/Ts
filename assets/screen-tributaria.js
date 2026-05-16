@@ -10,7 +10,7 @@
      (Agente de Retención, Contribuyente Especial o Gran Contribuyente). */
 
 import { validarNoResolucion } from './validators.js?v=20260515a';
-import { goNext } from './wizard.js?v=20260517l';
+import { goNext } from './wizard.js?v=20260517m';
 
 const TIPOS_CON_RESOLUCION = new Set([
   'AGENTE_RETENCION',

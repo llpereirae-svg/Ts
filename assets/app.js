@@ -399,8 +399,42 @@ function init() {
   $('#btn-cotizar').addEventListener('click', openCotizar);
   $('#btn-help').addEventListener('click', () => {
     track('manual_open', { trigger: 'header' });
-    openManual();
+    // Si el usuario está en una pantalla del wizard, abrir el manual en el
+    // paso correspondiente. Si es la pantalla 8 (resumen), el manual no la
+    // tiene, así que abrimos en el último paso disponible (logo).
+    const activeScreenEl = document.querySelector('.wiz-screen.is-active');
+    const screenId = activeScreenEl?.dataset?.id;
+    if (screenId === 'resumen') {
+      openManual('registro', 'logo');
+    } else if (screenId) {
+      openManual('registro', screenId);
+    } else {
+      openManual();
+    }
   });
+
+  // Ayuda dentro del cotizador → abre manual en tab Cotización + Volver
+  const cotHelpBtn = document.getElementById('cot-help-btn');
+  if (cotHelpBtn) {
+    cotHelpBtn.addEventListener('click', () => {
+      track('manual_open', { trigger: 'cotizar' });
+      // Cerrar el modal cotizar antes de abrir el manual
+      const m = document.getElementById('modal-cotizar');
+      try { m.close(); } catch { m.removeAttribute('open'); }
+      openManual('cotizacion', null, 'cotizar');
+    });
+  }
+
+  // Ayuda dentro del pago → abre manual en tab Pago + Volver
+  const pagoHelpBtn = document.getElementById('pago-help-btn');
+  if (pagoHelpBtn) {
+    pagoHelpBtn.addEventListener('click', () => {
+      track('manual_open', { trigger: 'pago' });
+      const m = document.getElementById('modal-pago');
+      try { m.close(); } catch { m.removeAttribute('open'); }
+      openManual('contratacion', null, 'pago');
+    });
+  }
 
   // Inicializar el manual interactivo (construye el modal lazy en localStorage).
   initManual();

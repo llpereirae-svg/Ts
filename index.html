@@ -35,8 +35,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260517l">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260517l">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260517m">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260517m">
 </head>
 <body data-state="IDLE">
 
@@ -557,6 +557,12 @@
     <!-- MODAL COTIZAR -->
     <dialog id="modal-cotizar" aria-labelledby="modal-cotizar-h">
       <div class="modal-content modal-content--wide">
+        <button type="button" class="modal-help-btn" id="cot-help-btn" aria-label="Ver manual de Cotización">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Ayuda
+        </button>
         <h2 id="modal-cotizar-h">Cotizador TributaSoft</h2>
         <p>Calcula el costo anual de tu plan según el volumen de comprobantes que emites cada mes.</p>
 
@@ -622,6 +628,12 @@
     <!-- MODAL PAGO (renovación prepago) -->
     <dialog id="modal-pago" aria-labelledby="modal-pago-h">
       <div class="modal-content modal-content--wide">
+        <button type="button" class="modal-help-btn" id="pago-help-btn" aria-label="Ver manual de Pago">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Ayuda
+        </button>
         <h2 id="modal-pago-h">Confirma tu pago</h2>
         <p>Reporta tu transferencia o depósito. Validamos el pago en un máximo de 2 horas.</p>
 
@@ -764,7 +776,7 @@
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
        Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260517l';
+    const APP_VER = '20260517m';
 
     // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
     import(`./assets/wizard.js?v=${APP_VER}`)

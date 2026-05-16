@@ -2221,6 +2221,82 @@ dialog.manual-modal {
 .mock-resumen-card--creds { background: rgba(135, 199, 220, .14); }
 .mock-mono { font-family: 'Courier New', monospace; letter-spacing: .03em; }
 
+/* Token dual: dos bloques (email + SMS) en el mock paso 3 */
+.mock-token--dual {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  padding: .85rem 1rem;
+}
+.mock-token--dual .mock-token-title {
+  text-align: center;
+  margin-bottom: .25rem;
+}
+.mock-token-block {
+  background: var(--color-surface-low);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: .55rem .7rem;
+}
+.mock-token-chan {
+  font-size: .68rem;
+  color: var(--color-muted);
+  margin-bottom: .35rem;
+  text-align: center;
+}
+.mock-token-chan strong { color: var(--color-primary); }
+.mock-token-ico { margin-right: .15rem; }
+.mock-token--dual .mock-codigo {
+  display: flex; justify-content: center; gap: .3rem;
+}
+.mock-token--dual .mock-cdig {
+  width: 28px; height: 32px;
+}
+
+/* Botón Ayuda dentro de modales (Cotizar / Pago) */
+.modal-help-btn {
+  position: absolute;
+  top: 1rem;
+  right: 3.5rem;
+  background: var(--color-teal-light);
+  border: 1px solid var(--color-teal-dark);
+  color: var(--color-teal-dark);
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  transition: all var(--transition);
+}
+.modal-help-btn:hover {
+  background: var(--color-teal-dark);
+  color: white;
+}
+
+/* Botón Volver en el header del manual (solo cuando _returnTo está activo) */
+.manual-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .75rem;
+  border: 1px solid var(--color-outline);
+  background: white;
+  color: var(--color-primary);
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.manual-volver:hover {
+  background: var(--color-teal-light);
+  border-color: var(--color-teal-dark);
+}
+.manual-volver[hidden] { display: none; }
+
 /* Cursor virtual */
 .mock-cursor {
   position: absolute;

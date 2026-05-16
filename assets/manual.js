@@ -6,6 +6,7 @@
 // - Generación del manual estático en PDF (Roboto Condensed embebida).
 
 import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260515a';
+import { detectDevice } from './wizard.js?v=20260517m';
 
 // =========================================================================
 // Helpers DOM y animación
@@ -97,13 +98,20 @@ const MOCK = {
     </div>
   `,
   tokenCard: () => `
-    <div class="mock mock-token">
-      <div class="mock-token-title">Verifica tu código</div>
-      <div class="mock-token-sub">Te enviamos un código a <strong>tu@email.com</strong></div>
-      <div class="mock-codigo">
-        ${[1,2,3,4,5,6].map((i) => `<input class="mock-cdig" data-anim="d${i}" readonly>`).join('')}
+    <div class="mock mock-token mock-token--dual">
+      <div class="mock-token-title">Verifica tu identidad</div>
+      <div class="mock-token-block">
+        <div class="mock-token-chan"><span class="mock-token-ico">✉</span> Correo · <strong>tu@email.com</strong></div>
+        <div class="mock-codigo">
+          ${[1,2,3,4].map((i) => `<input class="mock-cdig" data-anim="e${i}" readonly>`).join('')}
+        </div>
       </div>
-      <button class="mock-btn mock-btn--cta mock-btn--small" data-anim="tokenBtn">Verificar</button>
+      <div class="mock-token-block">
+        <div class="mock-token-chan"><span class="mock-token-ico">📱</span> SMS · <strong>099-842-9901</strong></div>
+        <div class="mock-codigo">
+          ${[1,2,3,4].map((i) => `<input class="mock-cdig" data-anim="s${i}" readonly>`).join('')}
+        </div>
+      </div>
     </div>
   `,
   claveCard: () => `
@@ -289,20 +297,31 @@ const RENDERERS = {
   token: async (stage, signal) => {
     stage.innerHTML = MOCK.tokenCard() + `<div class="mock-cursor" data-anim="cursor"></div>`;
     const cursor = stage.querySelector('[data-anim="cursor"]');
-    const codigo = '123456';
-    for (let i = 1; i <= 6; i++) {
+    // Dos códigos independientes: email (4 dígitos) y SMS (4 dígitos)
+    const emailCode = '7559';
+    const smsCode = '3273';
+    // Email
+    for (let i = 1; i <= 4; i++) {
       if (signal?.aborted) return;
-      const d = stage.querySelector(`[data-anim="d${i}"]`);
-      await moveCursor(cursor, d, 250);
+      const d = stage.querySelector(`[data-anim="e${i}"]`);
+      await moveCursor(cursor, d, 230);
       d.classList.add('mock-focused');
-      d.value = codigo[i - 1];
+      d.value = emailCode[i - 1];
       d.classList.add('mock-cdig-filled');
-      await wait(150);
+      await wait(110);
       d.classList.remove('mock-focused');
     }
-    const btn = stage.querySelector('[data-anim="tokenBtn"]');
-    await moveCursor(cursor, btn);
-    await clickPulse(btn);
+    // SMS
+    for (let i = 1; i <= 4; i++) {
+      if (signal?.aborted) return;
+      const d = stage.querySelector(`[data-anim="s${i}"]`);
+      await moveCursor(cursor, d, 230);
+      d.classList.add('mock-focused');
+      d.value = smsCode[i - 1];
+      d.classList.add('mock-cdig-filled');
+      await wait(110);
+      d.classList.remove('mock-focused');
+    }
     stage.querySelectorAll('.mock-cdig').forEach((d) => d.classList.add('mock-success'));
   },
 
@@ -632,6 +651,12 @@ function buildManualModal() {
           <span class="manual-brand-tagline">...todo bajo control</span>
         </a>
         <div class="manual-header-actions">
+          <!-- Botón Volver: se muestra solo cuando el manual fue abierto
+               desde Cotizar o Pago para que el usuario regrese a su contexto. -->
+          <button class="manual-volver" id="manual-volver" type="button" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            <span id="manual-volver-text">Volver</span>
+          </button>
           <button class="manual-pdf-btn" id="manual-download-pdf" type="button" title="Descargar manual en PDF">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             PDF
@@ -657,28 +682,9 @@ function buildManualModal() {
         </aside>
         <main class="manual-main">
           <div class="manual-stage-wrap">
-            <!-- Toggle de dispositivo: cambia el ancho del mock para mostrar
-                 cómo se ve el formulario en PC / Tablet / Móvil. -->
-            <div class="manual-device-toggle" role="tablist" aria-label="Dispositivo">
-              <button type="button" class="manual-device-btn is-active" data-device="pc" aria-pressed="true" title="Vista PC">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-                <span>PC</span>
-              </button>
-              <button type="button" class="manual-device-btn" data-device="tablet" aria-pressed="false" title="Vista Tablet">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
-                </svg>
-                <span>Tablet</span>
-              </button>
-              <button type="button" class="manual-device-btn" data-device="mobile" aria-pressed="false" title="Vista Móvil">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
-                </svg>
-                <span>Móvil</span>
-              </button>
-            </div>
+            <!-- El stage se ajusta automáticamente al dispositivo del usuario
+                 (data-device="pc|tablet|mobile" se setea al abrir el manual
+                 según la detección de detectDevice() del wizard). -->
             <div class="manual-stage" id="manual-stage" data-device="pc"></div>
             <button class="manual-replay" id="manual-replay" title="Volver a reproducir">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -730,25 +736,25 @@ function buildManualModal() {
 
   // Wire eventos
   $('#manual-close').addEventListener('click', () => closeManual());
+  $('#manual-volver').addEventListener('click', () => {
+    const target = _returnTo;
+    closeManual();
+    // Reabrir el modal de origen tras un pequeño delay para que la
+    // transición de cerrado del manual termine antes.
+    setTimeout(() => {
+      if (target === 'cotizar') {
+        const m = document.getElementById('modal-cotizar');
+        if (m) { try { m.showModal(); } catch { m.setAttribute('open', ''); } }
+      } else if (target === 'pago') {
+        const m = document.getElementById('modal-pago');
+        if (m) { try { m.showModal(); } catch { m.setAttribute('open', ''); } }
+      }
+    }, 200);
+  });
   $('#manual-prev').addEventListener('click', () => goPrev());
   $('#manual-next').addEventListener('click', () => goNext());
   $('#manual-replay').addEventListener('click', () => playCurrent());
   $('#manual-download-pdf').addEventListener('click', () => descargarManualPDF());
-
-  // Toggle PC / Tablet / Móvil — cambia el ancho del stage y re-reproduce
-  $$('.manual-device-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const device = btn.dataset.device;
-      $$('.manual-device-btn').forEach((b) => {
-        b.classList.toggle('is-active', b === btn);
-        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-      });
-      const stage = $('#manual-stage');
-      stage.dataset.device = device;
-      // Re-reproducir la animación al cambiar dispositivo para que se vea adaptada
-      playCurrent();
-    });
-  });
   $$('#modal-manual .manual-tab').forEach((t) => {
     t.addEventListener('click', () => switchProceso(t.dataset.proceso));
   });
@@ -886,7 +892,13 @@ function loadProgress() {
   } catch { return null; }
 }
 
-export function openManual(proceso, paso) {
+// _returnTo: 'cotizar' | 'pago' | null
+// Recordamos desde dónde se abrió el manual para mostrar el botón "Volver"
+// que regresa al modal correspondiente.
+let _returnTo = null;
+
+export function openManual(proceso, paso, returnTo) {
+  _returnTo = returnTo || null;
   buildManualModal();
   // Determinar qué mostrar
   let p = proceso, idx = 0;
@@ -908,6 +920,26 @@ export function openManual(proceso, paso) {
   _currentStepIdx = idx;
   renderSidebar(p);
   renderStep(p, idx);
+  // Auto-detectar dispositivo del usuario y ajustar el stage para que el
+  // mock se vea con el ancho real del dispositivo (sin toggle visible).
+  const dev = detectDevice();
+  const device = dev.isPC ? 'pc' : dev.isTablet ? 'tablet' : 'mobile';
+  const stage = $('#manual-stage');
+  if (stage) stage.dataset.device = device;
+  // Mostrar/ocultar el botón Volver según el contexto desde donde se abrió
+  const volverBtn = $('#manual-volver');
+  const volverText = $('#manual-volver-text');
+  if (volverBtn && volverText) {
+    if (_returnTo === 'cotizar') {
+      volverBtn.hidden = false;
+      volverText.textContent = 'Volver al cotizador';
+    } else if (_returnTo === 'pago') {
+      volverBtn.hidden = false;
+      volverText.textContent = 'Volver al pago';
+    } else {
+      volverBtn.hidden = true;
+    }
+  }
   const dlg = $('#modal-manual');
   dlg.showModal?.();
   dlg.classList.add('is-open');
