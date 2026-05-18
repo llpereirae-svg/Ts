@@ -9,17 +9,17 @@
 import {
   validarRUC, validarCelular, validarEmail, validarClave,
   validarFirmaArchivo, validarCodigoToken, validarNoResolucion,
-} from './utils/validators.js?v=20260518a';
-import { createMachine, STATES, EVENTS } from './utils/state-machine.js?v=20260518a';
-import { consultarRUC } from './services/sri-client.js?v=20260518a';
-import { COUNTRIES, findCountry } from './utils/countries.js?v=20260518a';
-import { citiesFor } from './utils/cities.js?v=20260518a';
+} from './utils/validators.js?v=20260518b';
+import { createMachine, STATES, EVENTS } from './utils/state-machine.js?v=20260518b';
+import { consultarRUC } from './services/sri-client.js?v=20260518b';
+import { COUNTRIES, findCountry } from './utils/countries.js?v=20260518b';
+import { citiesFor } from './utils/cities.js?v=20260518b';
 import {
   clienteExiste, iniciarRegistro, verificarToken,
   establecerClave, finalizarRegistro, validarEmpresa,
-} from './services/api-mocks.js?v=20260518a';
-import { validarFirmaP12 } from './parsers/firma-validator.js?v=20260518a';
-import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manual/manual.js?v=20260518a';
+} from './services/api-mocks.js?v=20260518b';
+import { validarFirmaP12 } from './parsers/firma-validator.js?v=20260518b';
+import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manual/manual.js?v=20260518b';
 
 // URL del portal de inicio de sesión final. Cuando el usuario confirma,
 // lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint

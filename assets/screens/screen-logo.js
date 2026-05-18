@@ -1,11 +1,11 @@
 /* screen-logo.js — Pantalla 7 del wizard (opcional).
    El usuario puede:
      1. Subir un PNG/JPG. Si encaja EXACTO en 2970×300 px → se usa tal cual.
-        Si tiene otras dimensiones → lo alineamos a la izquierda y a la
-        derecha pintamos en Lobster el Nombre Comercial (grande) y debajo
-        la Razón Social (más pequeña).
-     2. Generar uno automático: solo texto, mismo layout Nombre Comercial +
-        Razón Social en Lobster sobre fondo blanco.
+        Si tiene otras dimensiones → lo escalamos manteniendo aspecto y lo
+        centramos en el banner blanco. NO se agrega texto: respetamos el
+        logo del usuario sin tocarlo más que para que entre en la caja.
+     2. Generar uno automático: solo texto (Nombre Comercial + Razón Social
+        en Lobster) sobre fondo blanco. Solo se genera texto en esta opción.
      3. Omitir este paso. */
 
 const BANNER_W = 2970;
@@ -122,9 +122,9 @@ function wireLogoScreen(root, wd) {
         ctx.drawImage(img, 0, 0, BANNER_W, BANNER_H);
         fuente = `${file.name} · usado tal cual (${BANNER_W}×${BANNER_H} px)`;
       } else {
-        // No encaja → logo a la izquierda + texto a la derecha en Lobster
-        drawLogoConTexto(canvas, img, wd);
-        fuente = `${file.name} · alineado a la izquierda con tu nombre comercial al lado`;
+        // No encaja → solo ajustamos la imagen al banner (sin agregar texto)
+        drawLogoAjustado(canvas, img);
+        fuente = `${file.name} · ajustado a ${BANNER_W}×${BANNER_H} px (sin texto)`;
       }
       wd.logoDataUrl = canvas.toDataURL('image/png');
       wd.logoSource = fuente;
@@ -180,11 +180,15 @@ function showPreview(root, fuenteTexto) {
 }
 
 /**
- * Logo a la izquierda + texto a la derecha en Lobster.
- * Layout:
- *   [PADDING]  LOGO (altura completa - padding, ancho proporcional)  [GAP]  TEXTO  [PADDING]
+ * Ajusta la imagen subida al banner 2970×300 manteniendo el aspect ratio.
+ * NO agrega texto — solo centra y escala el logo del usuario sobre fondo blanco.
+ *
+ * Estrategia: la imagen se escala para que QUEPA completa dentro del banner
+ * (contain, no cover) y se centra. Si el aspect ratio del logo no coincide
+ * con el del banner, queda banda blanca a los costados o arriba/abajo.
+ * Se respeta un padding mínimo de 20 px arriba/abajo y 40 px a los lados.
  */
-function drawLogoConTexto(canvas, img, wd) {
+function drawLogoAjustado(canvas, img) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, BANNER_W, BANNER_H);
 
@@ -192,28 +196,27 @@ function drawLogoConTexto(canvas, img, wd) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, BANNER_W, BANNER_H);
 
-  // Logo a la izquierda
-  const padding = 40;
-  const gap = 60;
-  const maxLogoHeight = BANNER_H - padding * 2; // 220 px
-  const maxLogoWidth = 900;
-  const aspect = img.naturalWidth / img.naturalHeight;
-  let logoH = maxLogoHeight;
-  let logoW = logoH * aspect;
-  if (logoW > maxLogoWidth) {
-    logoW = maxLogoWidth;
-    logoH = logoW / aspect;
-  }
-  const logoX = padding;
-  const logoY = (BANNER_H - logoH) / 2;
-  ctx.drawImage(img, logoX, logoY, logoW, logoH);
+  // Calcular el escalado tipo "contain" con padding
+  const padX = 40;
+  const padY = 20;
+  const maxW = BANNER_W - padX * 2;
+  const maxH = BANNER_H - padY * 2;
 
-  // Texto a la derecha
-  drawTextoLateral(ctx, logoX + logoW + gap, BANNER_W - padding, wd);
+  const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+  const drawW = img.naturalWidth * scale;
+  const drawH = img.naturalHeight * scale;
+
+  // Centrar en el banner
+  const drawX = (BANNER_W - drawW) / 2;
+  const drawY = (BANNER_H - drawH) / 2;
+
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
 }
 
 /**
- * Banner solo de texto: si no hay logo, ponemos el texto centrado.
+ * Banner solo de texto: opción "Generar uno" — pinta el nombre comercial
+ * (o la razón social) en Lobster sobre fondo blanco. Único caso donde
+ * generamos texto.
  */
 function drawTextoSolo(canvas, wd) {
   const ctx = canvas.getContext('2d');
@@ -221,35 +224,6 @@ function drawTextoSolo(canvas, wd) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, BANNER_W, BANNER_H);
   drawTextoCentrado(ctx, wd);
-}
-
-function drawTextoLateral(ctx, x, xMax, wd) {
-  // Para el logo siempre usamos Title Case (con siglas en mayúsculas).
-  // El dato crudo en wizardData se queda como está; solo cambia la imagen.
-  const nombreComercial = (wd.nombreComercial && !wd.nombreComercialNA) ? toBrandCase(wd.nombreComercial) : '';
-  const razonSocial = toBrandCase(wd.razonSocial || '');
-  const widthDisponible = xMax - x;
-
-  // Si no hay nombre comercial, ponemos solo razón social grande
-  if (!nombreComercial) {
-    ctx.fillStyle = '#00236f';
-    ctx.font = 'bold 130px "Lobster", cursive';
-    ctx.textBaseline = 'middle';
-    drawShrinkToFit(ctx, razonSocial, x, BANNER_H / 2, widthDisponible, 130, 60);
-    return;
-  }
-
-  // Nombre Comercial en Lobster grande
-  ctx.fillStyle = '#00236f';
-  ctx.font = 'bold 150px "Lobster", cursive';
-  ctx.textBaseline = 'middle';
-  drawShrinkToFit(ctx, nombreComercial, x, 110, widthDisponible, 150, 70);
-
-  // Razón Social abajo
-  ctx.fillStyle = '#444651';
-  ctx.font = '500 60px "DM Sans", "Inter", sans-serif';
-  ctx.textBaseline = 'middle';
-  drawShrinkToFit(ctx, razonSocial, x, 220, widthDisponible, 60, 28);
 }
 
 function drawTextoCentrado(ctx, wd) {

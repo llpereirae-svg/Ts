@@ -7,9 +7,9 @@
    Campos EDITABLES (con auto-fill cuando hay dato): email, celular, dirección.
    Canal preferido siempre manual. */
 
-import { COUNTRIES } from '../utils/countries.js?v=20260518a';
-import { citiesFor } from '../utils/cities.js?v=20260518a';
-import { validarEmail, validarCelular } from '../utils/validators.js?v=20260518a';
+import { COUNTRIES } from '../utils/countries.js?v=20260518b';
+import { citiesFor } from '../utils/cities.js?v=20260518b';
+import { validarEmail, validarCelular } from '../utils/validators.js?v=20260518b';
 
 const PROVINCIAS = [
   'AZUAY','BOLIVAR','CANAR','CARCHI','CHIMBORAZO','COTOPAXI','EL ORO','ESMERALDAS','GALAPAGOS',

@@ -127,8 +127,8 @@ export const MANUAL = {
         title: 'Paso 7 · Tu logo (opcional)',
         intro: 'Sube tu logo o generamos uno con tu nombre. Puedes omitir este paso.',
         rules: [
-          'Subir mi logo: PNG o JPG, máximo 4 MB.',
-          'Generar uno: hacemos un banner con tu nombre comercial.',
+          'Subir mi logo: PNG o JPG, máximo 4 MB. Si no encaja en 2970×300 px, lo ajustamos manteniendo tu imagen tal cual (sin agregarle texto).',
+          'Generar uno: hacemos un banner solo con tu nombre comercial.',
           'Omitir: dale Continuar sin subir nada.',
         ],
         errors: {},

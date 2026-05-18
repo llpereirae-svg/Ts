@@ -241,7 +241,7 @@ Cada hito dispara `window.dispatchEvent(new CustomEvent('tributasoft:event', { d
 3. **El portal `app.tributasoft.ec/login`** existe y acepta el redireccionamiento post-registro.
 4. **Se puede generar `registroId`** transitorio sin tocar la tabla final de clientes hasta `finalizar`.
 5. **Existe proveedor SMS para Ecuador** y cuenta WhatsApp Business API (o se enviará por WhatsApp Web/Twilio). Si solo email está disponible inicialmente, deshabilitar SMS/WhatsApp en `index.html`.
-6. **El plan "300 facturas gratis"** ya está modelado en el ERP y el registro lo asigna automáticamente.
+6. **El plan "300 facturas o 3 meses gratis"** ya está modelado en el ERP y el registro lo asigna automáticamente.
 7. **Las consultas al SRI desde el servidor** no están limitadas por rate-limiting agresivo del portal — si lo están, hay que poner cache server-side adicional (Redis).
 
 ---
@@ -266,7 +266,7 @@ Cada hito dispara `window.dispatchEvent(new CustomEvent('tributasoft:event', { d
 ### P2 — mejoras post-lanzamiento
 12. Cache server-side de consultas SRI (Redis, TTL 24h) para reducir scraping.
 13. Migrar a servicio premium del SRI cuando el volumen lo justifique.
-14. A/B test del copy del hero ("2 minutos" vs "300 facturas gratis" como hook principal).
+14. A/B test del copy del hero ("2 minutos" vs "300 facturas o 3 meses GRATIS" como hook principal).
 15. Honeypot anti-spam en el formulario.
 
 ---
