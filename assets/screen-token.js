@@ -4,7 +4,7 @@
    La verificación es local mientras esté el mock; cuando el backend esté
    listo, token-service.js se encarga de hacer fetch al endpoint real. */
 
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from './token-service.js?v=20260517m';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from './token-service.js?v=20260517n';
 
 const REENVIAR_COOLDOWN_S = 30;
 
@@ -22,37 +22,19 @@ export async function renderPantallaToken(body, wizardData) {
 
   body.innerHTML = `
     <p class="datos-intro">
-      Te enviamos un código de <strong>${TOKEN_LENGTH} dígitos</strong> a tu correo y otro al celular.
-      Ingrésalos abajo para verificar tu identidad.
+      Te enviamos un código de <strong>${TOKEN_LENGTH} dígitos</strong> al celular.
+      Cuando lo confirmes, te enviamos el segundo al correo.
     </p>
 
     <div class="token-grid">
-      <!-- EMAIL -->
-      <div class="token-card">
-        <div class="token-card-header">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
-          </svg>
-          <div>
-            <h4>Código por correo</h4>
-            <p class="token-destino">${escapeHtml(email)}</p>
-          </div>
-        </div>
-        <fieldset class="token-inputs" id="t-email-inputs" aria-label="Código de correo">
-          ${renderInputs('te')}
-        </fieldset>
-        <p class="token-status" id="t-email-status">Enviando…</p>
-        <button type="button" class="token-reenviar" id="t-email-reenviar" disabled>Reenviar</button>
-      </div>
-
-      <!-- SMS -->
-      <div class="token-card">
+      <!-- SMS (PRIMERO) -->
+      <div class="token-card" id="t-sms-card">
         <div class="token-card-header">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>
           </svg>
           <div>
-            <h4>Código por SMS</h4>
+            <h4>Paso 1 · Código por SMS</h4>
             <p class="token-destino">${escapeHtml(celular)}</p>
           </div>
         </div>
@@ -62,6 +44,24 @@ export async function renderPantallaToken(body, wizardData) {
         <p class="token-status" id="t-sms-status">Enviando…</p>
         <button type="button" class="token-reenviar" id="t-sms-reenviar" disabled>Reenviar</button>
       </div>
+
+      <!-- EMAIL (SE DESBLOQUEA AL VALIDAR SMS) -->
+      <div class="token-card" id="t-email-card" data-locked="true">
+        <div class="token-card-header">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
+          </svg>
+          <div>
+            <h4>Paso 2 · Código por correo</h4>
+            <p class="token-destino">${escapeHtml(email)}</p>
+          </div>
+        </div>
+        <fieldset class="token-inputs" id="t-email-inputs" aria-label="Código de correo">
+          ${renderInputs('te')}
+        </fieldset>
+        <p class="token-status" id="t-email-status">Primero valida el código del SMS.</p>
+        <button type="button" class="token-reenviar" id="t-email-reenviar" disabled>Reenviar</button>
+      </div>
     </div>
 
     <div class="token-debug" id="t-debug" hidden></div>
@@ -69,8 +69,8 @@ export async function renderPantallaToken(body, wizardData) {
 
   wireTokenScreen(body, wizardData);
 
-  // Auto-generar y enviar ambos tokens al entrar a la pantalla
-  await enviarAmbos(body, wizardData);
+  // Solo enviamos el SMS al entrar. El email se envía cuando el SMS quede validado.
+  await enviarSms(body, wizardData);
 }
 
 function renderInputs(prefix) {
@@ -142,52 +142,74 @@ function wireInputs(root, prefix, onComplete) {
   });
 }
 
-async function enviarAmbos(root, wizardData) {
+/**
+ * Envío del SMS (Paso 1). Se llama al entrar a la pantalla.
+ * El email NO se envía aún — espera a que SMS quede validado.
+ */
+async function enviarSms(root, wizardData) {
   // Reset estado de pantalla
   _state.emailToken = null;
   _state.smsToken = null;
   wizardData.tokenEmailOk = false;
   wizardData.tokenSmsOk = false;
 
-  setStatus(root, 'email', 'Enviando…');
   setStatus(root, 'sms', 'Enviando…');
 
-  // Enviar en paralelo
-  const [emailRes, smsRes] = await Promise.all([
-    generarYEnviarToken({ canal: 'email', destino: wizardData.email }).catch((err) => ({ ok: false, error: err.message })),
-    generarYEnviarToken({ canal: 'sms', destino: wizardData.celular }).catch((err) => ({ ok: false, error: err.message })),
-  ]);
-
-  if (emailRes.ok) {
-    _state.emailToken = { token: emailRes.token, expiraEn: emailRes.expiraEn };
-    setStatus(root, 'email', `Código enviado. Revisa tu bandeja de entrada (y spam).`);
-  } else {
-    setStatus(root, 'email', `No pudimos enviar el código por correo: ${emailRes.error || 'reintenta'}`, true);
+  try {
+    const res = await generarYEnviarToken({ canal: 'sms', destino: wizardData.celular });
+    _state.smsToken = { token: res.token, expiraEn: res.expiraEn };
+    setStatus(root, 'sms', 'Código enviado a tu celular.');
+    iniciarCooldown(root, 'sms');
+    actualizarDebug(root);
+  } catch (err) {
+    setStatus(root, 'sms', `No pudimos enviar el SMS: ${err.message || 'reintenta'}`, true);
   }
+}
 
-  if (smsRes.ok) {
-    _state.smsToken = { token: smsRes.token, expiraEn: smsRes.expiraEn };
-    setStatus(root, 'sms', `Código enviado a tu celular.`);
-  } else {
-    setStatus(root, 'sms', `No pudimos enviar el SMS: ${smsRes.error || 'reintenta'}`, true);
+/**
+ * Envío del email (Paso 2). Se llama después que el SMS queda validado.
+ */
+async function enviarEmail(root, wizardData) {
+  setStatus(root, 'email', 'Enviando…');
+
+  try {
+    const res = await generarYEnviarToken({ canal: 'email', destino: wizardData.email });
+    _state.emailToken = { token: res.token, expiraEn: res.expiraEn };
+    setStatus(root, 'email', 'Código enviado. Revisa tu bandeja de entrada (y spam).');
+    iniciarCooldown(root, 'email');
+    actualizarDebug(root);
+  } catch (err) {
+    setStatus(root, 'email', `No pudimos enviar el correo: ${err.message || 'reintenta'}`, true);
   }
+}
 
-  // Activar cooldown del Reenviar en ambos
-  iniciarCooldown(root, 'email');
-  iniciarCooldown(root, 'sms');
-
-  // Mostrar los códigos en modo demo (MIENTRAS ES MOCK)
-  // Quitar este bloque cuando el backend esté integrado.
+/**
+ * Refresca el bloque DEMO con los códigos generados (modo mock).
+ * En producción este bloque queda oculto.
+ */
+function actualizarDebug(root) {
   const debug = root.querySelector('#t-debug');
-  if (debug && _state.emailToken && _state.smsToken) {
-    debug.hidden = false;
-    debug.innerHTML = `
-      <strong>MODO DEMO</strong> · Los códigos generados son:
-      <span class="token-debug-code">Email: ${_state.emailToken.token}</span>
-      <span class="token-debug-code">SMS: ${_state.smsToken.token}</span>
-      <small>En producción los tokens llegarán a tu correo y celular, no se mostrarán aquí.</small>
-    `;
-  }
+  if (!debug) return;
+  const partes = [];
+  if (_state.smsToken) partes.push(`<span class="token-debug-code">SMS: ${_state.smsToken.token}</span>`);
+  if (_state.emailToken) partes.push(`<span class="token-debug-code">Email: ${_state.emailToken.token}</span>`);
+  if (partes.length === 0) { debug.hidden = true; return; }
+  debug.hidden = false;
+  debug.innerHTML = `
+    <strong>MODO DEMO</strong> · Códigos generados:
+    ${partes.join(' ')}
+    <small>En producción los tokens llegarán a tu correo y celular, no se mostrarán aquí.</small>
+  `;
+}
+
+/**
+ * Desbloquea la tarjeta de email cuando el SMS quedó validado.
+ */
+function desbloquearEmail(root, wizardData) {
+  const emailCard = root.querySelector('#t-email-card');
+  if (emailCard) emailCard.removeAttribute('data-locked');
+  // Enviar el código de email ahora
+  enviarEmail(root, wizardData);
 }
 
 async function reenviar(root, wizardData, canal) {
@@ -199,23 +221,17 @@ async function reenviar(root, wizardData, canal) {
     else _state.smsToken = { token: res.token, expiraEn: res.expiraEn };
     setStatus(root, canal, 'Nuevo código enviado.');
     iniciarCooldown(root, canal);
-
-    // Refresh demo display
-    const debug = root.querySelector('#t-debug');
-    if (debug && _state.emailToken && _state.smsToken) {
-      debug.innerHTML = `
-        <strong>MODO DEMO</strong> · Los códigos generados son:
-        <span class="token-debug-code">Email: ${_state.emailToken.token}</span>
-        <span class="token-debug-code">SMS: ${_state.smsToken.token}</span>
-        <small>En producción los tokens llegarán a tu correo y celular, no se mostrarán aquí.</small>
-      `;
-    }
+    actualizarDebug(root);
   } catch (err) {
     setStatus(root, canal, `Error: ${err.message}`, true);
   }
 }
 
 function verificarSi(canal, root, wizardData) {
+  // Si la tarjeta está bloqueada (caso del email antes de validar SMS), ignorar
+  const card = root.querySelector(`#t-${canal}-card`);
+  if (card?.hasAttribute('data-locked')) return;
+
   const prefix = canal === 'email' ? 'te' : 'ts';
   const inputs = root.querySelectorAll(`input[data-prefix="${prefix}"]`);
   const codigo = Array.from(inputs).map((i) => i.value).join('');
@@ -232,14 +248,19 @@ function verificarSi(canal, root, wizardData) {
   });
   if (res.valid) {
     setStatus(root, canal, '✓ Código correcto');
-    if (canal === 'email') wizardData.tokenEmailOk = true;
-    else wizardData.tokenSmsOk = true;
-    // Marcar inputs como exitosos
     inputs.forEach((i) => i.classList.add('is-ok'));
+    if (canal === 'sms') {
+      wizardData.tokenSmsOk = true;
+      // Desbloquear email después de validar SMS
+      if (!_state.emailToken) {
+        desbloquearEmail(root, wizardData);
+      }
+    } else {
+      wizardData.tokenEmailOk = true;
+    }
   } else {
     setStatus(root, canal, res.reason, true);
     inputs.forEach((i) => i.classList.add('is-error'));
-    // Limpiar después de un momento para que pueda reintentar
     setTimeout(() => {
       inputs.forEach((i) => { i.classList.remove('is-error'); i.value = ''; });
       inputs[0].focus();

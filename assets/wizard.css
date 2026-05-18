@@ -618,6 +618,12 @@ body.is-pc .wiz-loading-text {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1rem 1.1rem;
+  transition: opacity var(--transition), filter var(--transition);
+}
+.token-card[data-locked="true"] {
+  opacity: .45;
+  pointer-events: none;
+  filter: grayscale(.25);
 }
 .token-card-header {
   display: flex;
