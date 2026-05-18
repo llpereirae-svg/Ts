@@ -5,8 +5,8 @@
 // - Popup contextual de ayuda al cursor sobre errores.
 // - Generación del manual estático en PDF (Roboto Condensed embebida).
 
-import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260515a';
-import { detectDevice } from './wizard.js?v=20260517n';
+import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260518a';
+import { detectDevice } from '../wizard.js?v=20260518a';
 
 // =========================================================================
 // Helpers DOM y animación
@@ -805,11 +805,14 @@ function renderStep(proceso, idx) {
   $('#manual-step-title').textContent = step.title;
   $('#manual-step-intro').textContent = step.intro;
 
-  $('#manual-rules').innerHTML = step.rules.map((r) => `<li>${r}</li>`).join('');
+  // step.rules viene de manual-data.js (contenido estático nuestro, no input
+  // del usuario), pero igual escapamos por defensive coding contra inyecciones
+  // accidentales si alguien edita manual-data.js a futuro.
+  $('#manual-rules').innerHTML = step.rules.map((r) => `<li>${escapeHtml(r)}</li>`).join('');
 
   const errs = Object.entries(step.errors || {});
   $('#manual-errors').innerHTML = errs.length
-    ? errs.map(([code, msg]) => `<li>${msg}</li>`).join('')
+    ? errs.map(([code, msg]) => `<li>${escapeHtml(msg)}</li>`).join('')
     : `<li class="manual-no-errors">No hay mensajes de error en este paso. Solo continúa.</li>`;
 
   const tipWrap = $('#manual-tip-wrap');
@@ -1348,4 +1351,15 @@ export async function descargarManualPDF() {
   } finally {
     if (btn) btn.disabled = false;
   }
+}
+
+// Escape para HTML — defensive coding contra inyecciones accidentales.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

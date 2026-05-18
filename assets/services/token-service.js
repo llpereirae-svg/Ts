@@ -58,6 +58,10 @@ function generarCodigo() {
  * @param {string} token   - código de TOKEN_LEN dígitos
  */
 async function sendEmail(destino, token) {
+  // SECURITY: este console.log existe SOLO en modo demo para que el dev pueda
+  // ver el código sin tener mailbox configurado. Al reemplazar esta función
+  // por el fetch real, BORRAR esta línea — un token de verificación NUNCA
+  // debe quedar en logs/consola en producción.
   console.log(`[token-service MOCK] Email a ${destino}: código ${token}`);
   // Simular latencia de red
   await new Promise((r) => setTimeout(r, 250));
@@ -80,6 +84,10 @@ async function sendEmail(destino, token) {
  * @param {string} token   - código de TOKEN_LEN dígitos
  */
 async function sendSms(destino, token) {
+  // SECURITY: este console.log existe SOLO en modo demo para que el dev pueda
+  // ver el código sin tener gateway SMS configurado. Al reemplazar esta función
+  // por el fetch real, BORRAR esta línea — un token de verificación NUNCA
+  // debe quedar en logs/consola en producción.
   console.log(`[token-service MOCK] SMS a ${destino}: código ${token}`);
   await new Promise((r) => setTimeout(r, 250));
   return { ok: true };

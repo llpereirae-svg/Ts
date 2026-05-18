@@ -407,12 +407,14 @@ async function finishWizard() {
     const clavePlana = wizardData.clave;
     const sanitizado = sanitizeForBackend(wizardData);
     sanitizado.clave = clavePlana;
-    console.log('[wizard] datos a enviar al backend:', sanitizado);
+    // SECURITY: NO loguear `sanitizado` completo — contiene RUC, email, clave, etc.
+    // Solo dejamos una traza mínima del envío.
+    console.log('[wizard] enviando registro', { ruc: sanitizado.ruc, email: sanitizado.email });
 
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./email-service.js?v=20260517n');
+    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260518a');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -581,13 +583,13 @@ export async function startWizard() {
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screen-firma.js?v=20260517n'),
-      import('./screen-datos.js?v=20260517n'),
-      import('./screen-token.js?v=20260517n'),
-      import('./screen-tributaria.js?v=20260517n'),
-      import('./screen-facturacion.js?v=20260517n'),
-      import('./screen-clave.js?v=20260517n'),
-      import('./screen-logo.js?v=20260517n'),
+      import('./screens/screen-firma.js?v=20260518a'),
+      import('./screens/screen-datos.js?v=20260518a'),
+      import('./screens/screen-token.js?v=20260518a'),
+      import('./screens/screen-tributaria.js?v=20260518a'),
+      import('./screens/screen-facturacion.js?v=20260518a'),
+      import('./screens/screen-clave.js?v=20260518a'),
+      import('./screens/screen-logo.js?v=20260518a'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

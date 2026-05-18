@@ -9,8 +9,8 @@
    - No. Resolución: aparece solo si el tipo requiere uno
      (Agente de Retención, Contribuyente Especial o Gran Contribuyente). */
 
-import { validarNoResolucion } from './validators.js?v=20260515a';
-import { goNext } from './wizard.js?v=20260517n';
+import { validarNoResolucion } from '../utils/validators.js?v=20260518a';
+import { goNext } from '../wizard.js?v=20260518a';
 
 const TIPOS_CON_RESOLUCION = new Set([
   'AGENTE_RETENCION',

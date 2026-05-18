@@ -17,7 +17,7 @@
      - Link al portal
      - Aviso de seguridad sobre la clave */
 
-import { formatCelular } from './wizard.js?v=20260517n';
+import { formatCelular } from '../wizard.js?v=20260518a';
 
 const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
@@ -39,10 +39,10 @@ const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.
  *   return { ok: true };
  */
 async function sendEmailHtml(destino, asunto, htmlBody) {
-  console.log(`[email-service MOCK] → ${destino}`);
-  console.log(`  Asunto: ${asunto}`);
-  console.log(`  HTML (${htmlBody.length} chars):`);
-  console.log(htmlBody);
+  // SECURITY: NO loguear el htmlBody — contiene la clave del usuario en
+  // texto plano dentro del template HTML del correo de bienvenida.
+  // Solo dejamos traza mínima del envío.
+  console.log(`[email-service MOCK] enviando a ${destino} — asunto: "${asunto}" (${htmlBody.length} chars)`);
   // Simular latencia
   await new Promise((r) => setTimeout(r, 600));
   return { ok: true };
