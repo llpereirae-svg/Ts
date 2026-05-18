@@ -6,7 +6,7 @@
    - Validación inline en rojo con mensaje breve
    El nivel es informativo: no bloquea el flujo, solo guía al usuario. */
 
-import { validarClave } from '../utils/validators.js?v=20260518b';
+import { validarClave } from '../utils/validators.js?v=20260518c';
 
 const LABELS_FUERZA = ['Baja', 'Media', 'Alta'];
 

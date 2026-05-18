@@ -35,8 +35,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260518b">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260518b">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260518c">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260518c">
 </head>
 <body data-state="IDLE">
 
@@ -70,6 +70,16 @@
   <div id="network-banner" class="network-banner" hidden role="status" aria-live="polite"></div>
 
   <main>
+    <!-- HERO: 3 líneas con colores específicos.
+         Va SIEMPRE visible (también arriba del wizard) — es el hook comercial principal. -->
+    <section id="hero" class="hero">
+      <h1>
+        <span class="h-tiempo">Por Tiempo Limitado!</span>
+        <span class="h-docs">300 facturas electrónicas o 3 meses</span>
+        <span class="h-gratis">totalmente GRATIS</span>
+      </h1>
+    </section>
+
     <!-- WIZARD TurboTax-style — punto de montaje del nuevo flujo de registro.
          El JS de wizard.js inyecta aquí el progreso + 8 pantallas + nav + loading.
          Cuando se monta, agrega body.wiz-mode que oculta el flujo legacy de abajo. -->
@@ -78,15 +88,6 @@
     <!-- ====== LEGACY (oculto cuando body.wiz-mode está activo) ======
          Lo dejamos en el DOM para que app.js no se rompa al buscar referencias.
          Los modales de Cotizar, Pago, Bank, Términos y Tooltip siguen activos. -->
-
-    <!-- HERO: 3 líneas con colores específicos -->
-    <section id="hero" class="hero">
-      <h1>
-        <span class="h-tiempo">Por Tiempo Limitado!</span>
-        <span class="h-docs">300 facturas electrónicas o 3 meses</span>
-        <span class="h-gratis">totalmente GRATIS</span>
-      </h1>
-    </section>
 
     <!-- TARJETA RUC -->
     <section id="ruc-card" class="ruc-card" aria-labelledby="ruc-label">
@@ -776,7 +777,7 @@
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
        Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260518b';
+    const APP_VER = '20260518c';
 
     // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
     import(`./assets/wizard.js?v=${APP_VER}`)
