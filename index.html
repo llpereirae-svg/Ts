@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#00236f">
-  <meta name="description" content="TributaSoft — 300 facturas electrónicas o 3 meses totalmente GRATIS por tiempo limitado.">
+  <meta name="description" content="TributaSoft — Para nuevos clientes: 300 facturas electrónicas o 3 meses TOTALMENTE GRATIS.">
 
   <!-- Cache control para que el navegador no aguante el HTML viejo entre deploys -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <title>TributaSoft — 300 facturas electrónicas o 3 meses GRATIS</title>
+  <title>TributaSoft — 300 facturas o 3 meses GRATIS para nuevos clientes</title>
 
   <!-- Fuentes Google: DM Sans (headlines) + Inter (body). 'Avenida' se carga vía @font-face en styles.css. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,8 +35,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260518c">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260518c">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260518d">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260518d">
 </head>
 <body data-state="IDLE">
 
@@ -74,9 +74,9 @@
          Va SIEMPRE visible (también arriba del wizard) — es el hook comercial principal. -->
     <section id="hero" class="hero">
       <h1>
-        <span class="h-tiempo">Por Tiempo Limitado!</span>
+        <span class="h-tiempo">Para nuevos clientes:</span>
         <span class="h-docs">300 facturas electrónicas o 3 meses</span>
-        <span class="h-gratis">totalmente GRATIS</span>
+        <span class="h-gratis">TOTALMENTE GRATIS</span>
       </h1>
     </section>
 
@@ -777,7 +777,7 @@
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
        Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260518c';
+    const APP_VER = '20260518d';
 
     // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
     import(`./assets/wizard.js?v=${APP_VER}`)
