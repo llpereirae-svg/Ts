@@ -1,0 +1,56 @@
+# Despliegue automático a GitHub Pages
+#
+# Cada push a main publica la landing en:
+#   https://llpereirae-svg.github.io/Ts/
+#
+# Como la landing es estática (HTML + CSS + JS modules), no hay build step.
+# Solo subimos todo el repo como artifact y Pages lo sirve directo.
+#
+# Setup requerido (una sola vez):
+#   1. En GitHub → Settings → Pages → Source = "GitHub Actions".
+#   2. Después, cualquier push a main dispara este workflow.
+
+name: Deploy a GitHub Pages
+
+on:
+  # Cada push a main
+  push:
+    branches: [main]
+  # También permite ejecutarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
+
+# Permisos mínimos necesarios para que la action oficial pueda
+# publicar a Pages con OIDC (sin necesidad de tokens manuales).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Evita despliegues simultáneos: si llega un push nuevo mientras hay
+# otro en curso, el viejo se cancela y se publica el más reciente.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empaquetar artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Todo el repo (root). Pages servirá index.html como entry point.
+          path: '.'
+
+      - name: Desplegar a Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
