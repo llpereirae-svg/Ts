@@ -1,25 +1,52 @@
-// app.js — Orquestador principal: conecta la máquina de estados, los validators,
-// el cliente SRI y los mocks del backend con el DOM.
+// app.js — Orquestador legacy del flujo previo (RUC card + formulario).
+//
+// IMPORTANTE: este archivo es código legacy que quedó vivo porque maneja
+// los modales auxiliares (Cotizar, Pago, Términos) y los handlers de UI
+// que el wizard NO necesita reimplementar. El flujo de registro real
+// vive ahora en wizard.js + screens/.
+//
+// Cuando se activa el wizard (body.wiz-mode), TODO el formulario legacy
+// queda oculto por CSS. Por eso eliminamos los servicios sri-client.js
+// y api-mocks.js: ya no hablamos con el SRI (ahora leemos firma .p12 +
+// cert PDF del usuario) y los mocks del backend de registro fueron
+// reemplazados por services/token-service.js + services/email-service.js.
+//
+// Lo que sigue activo en este archivo: openCotizar, descargarCotizacionPDF,
+// modal de pago, modal de términos, tooltips, banner generator legacy y
+// handlers de copia de credenciales.
 
-// Cache-busting de imports: el navegador cachea cada módulo por su URL
-// completa. Sin estos `?v=...` el bundle (`app.js?v=X`) se actualiza pero
-// los módulos que importa quedan viejos en caché. Cuando bumpeamos
-// APP_VER, también hay que bumpear este string para forzar fetch fresco
-// de TODO el grafo de módulos.
 import {
   validarRUC, validarCelular, validarEmail, validarClave,
   validarFirmaArchivo, validarCodigoToken, validarNoResolucion,
-} from './utils/validators.js?v=20260518d';
-import { createMachine, STATES, EVENTS } from './utils/state-machine.js?v=20260518d';
-import { consultarRUC } from './services/sri-client.js?v=20260518d';
-import { COUNTRIES, findCountry } from './utils/countries.js?v=20260518d';
-import { citiesFor } from './utils/cities.js?v=20260518d';
-import {
-  clienteExiste, iniciarRegistro, verificarToken,
-  establecerClave, finalizarRegistro, validarEmpresa,
-} from './services/api-mocks.js?v=20260518d';
-import { validarFirmaP12 } from './parsers/firma-validator.js?v=20260518d';
-import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manual/manual.js?v=20260518d';
+} from './utils/validators.js?v=20260518e';
+import { createMachine, STATES, EVENTS } from './utils/state-machine.js?v=20260518e';
+import { COUNTRIES, findCountry } from './utils/countries.js?v=20260518e';
+import { citiesFor } from './utils/cities.js?v=20260518e';
+import { validarFirmaP12 } from './parsers/firma-validator.js?v=20260518e';
+import { initManual, openManual, attachErrorHelp, detachErrorHelp } from './manual/manual.js?v=20260518e';
+
+// ---- Stubs de servicios LEGACY desactivados ----
+// Estos servicios fueron eliminados porque:
+//   - sri-client.js: ya NO consultamos el SRI. Los datos del contribuyente
+//     salen del certificado de RUC en PDF que el usuario sube (ver
+//     parsers/pdf-parser.js).
+//   - api-mocks.js: el flujo de registro legacy fue reemplazado por el
+//     wizard. Los servicios reales (token SMS/email y email de bienvenida)
+//     viven en services/token-service.js y services/email-service.js.
+//
+// Si alguna función legacy de este archivo intenta usarlos, falla con
+// un mensaje claro en consola — pero en práctica, con el wizard activo,
+// ninguno de estos handlers se dispara porque el DOM legacy está oculto.
+const _legacyDisabled = (nombre) => () => {
+  throw new Error(`[legacy] ${nombre}() — flujo movido al wizard, no debería llamarse`);
+};
+const consultarRUC      = _legacyDisabled('consultarRUC');
+const clienteExiste     = _legacyDisabled('clienteExiste');
+const iniciarRegistro   = _legacyDisabled('iniciarRegistro');
+const verificarToken    = _legacyDisabled('verificarToken');
+const establecerClave   = _legacyDisabled('establecerClave');
+const finalizarRegistro = _legacyDisabled('finalizarRegistro');
+const validarEmpresa    = _legacyDisabled('validarEmpresa');
 
 // URL del portal de inicio de sesión final. Cuando el usuario confirma,
 // lo enviamos aquí con su usuario (primeros 10 dígitos del RUC) como hint
