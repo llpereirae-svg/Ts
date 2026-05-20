@@ -44,6 +44,10 @@ jobs:
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
+        with:
+          # Si Pages aún no está activado en el repo, lo activa automáticamente.
+          # Requiere el permiso `pages: write` (declarado arriba).
+          enablement: true
 
       - name: Empaquetar artifact
         uses: actions/upload-pages-artifact@v3
