@@ -1,0 +1,465 @@
+{
+  "proyecto": "TributaSoft Landing — Wizard de Registro",
+  "version": "20260518e",
+  "fecha": "2026-05-18",
+  "descripcion": "Wizard de 8 pantallas. Toda la validación de identidad se hace en el navegador a partir de la firma .p12 + certificado RUC en PDF. El backend solo expone 4 endpoints: 2 para tokens (SMS/email), 1 para correo de bienvenida y 1 para persistir el registro.",
+  "orquestador": "assets/wizard.js",
+  "estadoGlobal": "wizardData (objeto exportado en wizard.js)",
+
+  "pasos": [
+    {
+      "n": 1,
+      "id": "firma",
+      "label": "Identidad",
+      "title": "Términos, firma y RUC",
+      "archivo": "assets/screens/screen-firma.js",
+      "dependencias": [
+        "assets/parsers/firma-validator.js  (node-forge desde CDN)",
+        "assets/parsers/pdf-parser.js       (pdf.js desde CDN)"
+      ],
+      "interaccionUsuario": [
+        "Marca el checkbox de términos (deshabilitado hasta abrir el modal y hacer scroll-to-bottom + clic en Acepto)",
+        "Sube su archivo de firma electrónica (.p12 o .pfx)",
+        "Escribe la clave de la firma",
+        "Sube el certificado de RUC en PDF original del SRI"
+      ],
+      "extraccionAutomatica": {
+        "fuenteFirma": {
+          "ruc": "13 dígitos",
+          "titular": "nombre completo del titular",
+          "razonSocial": "si la firma es de persona jurídica",
+          "representanteLegal": "si aplica",
+          "fechaCaducidad": "fecha de expiración del certificado"
+        },
+        "fuenteCertPDF": {
+          "ruc": "para cross-check con la firma",
+          "razonSocial": "denominación completa",
+          "nombreComercial": "si está en el cert",
+          "direccion": "dirección fiscal",
+          "provincia": "ej. GUAYAS",
+          "canton": "ej. GUAYAQUIL",
+          "parroquia": "si aplica",
+          "regimen": "GENERAL | RIMPE - EMPRENDEDOR | RIMPE - NEGOCIO POPULAR",
+          "tipoContribuyente": "NO_OBLIGADO | OBLIGADO | AGENTE_RETENCION | CONTRIBUYENTE_ESPECIAL | GRAN_CONTRIBUYENTE",
+          "email": "si está registrado en el cert",
+          "celular": "si está registrado en el cert",
+          "fechaEmision": "para validar antigüedad"
+        }
+      },
+      "validaciones": [
+        "Checkbox de términos marcado (terminos === true)",
+        "Firma .p12 válida — clave correcta + no caducada",
+        "Certificado PDF reciente — máximo 1 mes de antigüedad",
+        "RUC del cert coincide con el de la firma"
+      ],
+      "errores": {
+        "TERMS_NO_LEIDOS": "Modal de términos no completó scroll-to-bottom",
+        "FIRMA_CLAVE": "Clave del .p12 incorrecta",
+        "FIRMA_CADUCADA": "Certificado de firma electrónica vencido",
+        "CERT_FECHA_VIEJA": "Certificado de RUC con más de 30 días",
+        "CERT_FECHA_FUTURA": "Fecha de emisión inválida",
+        "RUC_NO_COINCIDE": "RUC del cert distinto al de la firma"
+      },
+      "salida": {
+        "wizardData.terminos": "true",
+        "wizardData.firma": "{ archivo, ruc, titular, razonSocial, repLegal, fechaCaducidad }",
+        "wizardData.rucManual": "RUC extraído",
+        "wizardData.certificadoRuc": "objeto con todos los campos extraídos",
+        "wizardData.razonSocial": "auto-fill",
+        "wizardData.nombreComercial": "auto-fill (puede quedar vacío → 'NO APLICA')",
+        "wizardData.direccion": "auto-fill",
+        "wizardData.provincia": "auto-fill",
+        "wizardData.ciudad": "auto-fill (desde cantón)",
+        "wizardData.email": "auto-fill si viene en cert",
+        "wizardData.celular": "auto-fill si viene en cert",
+        "wizardData.regimen": "auto-fill",
+        "wizardData.tipoContribuyente": "auto-fill",
+        "wizardData._tipoDetectado": "copia inmutable para lógica del paso 4"
+      },
+      "backend": "ninguno — todo se valida client-side"
+    },
+
+    {
+      "n": 2,
+      "id": "datos",
+      "label": "Datos",
+      "title": "Tus datos",
+      "archivo": "assets/screens/screen-datos.js",
+      "dependencias": [
+        "assets/utils/countries.js   (catálogo de países con dial codes)",
+        "assets/utils/cities.js      (catálogo de ciudades por provincia)",
+        "assets/utils/validators.js  (validarEmail, validarCelular)"
+      ],
+      "interaccionUsuario": [
+        "Revisa campos bloqueados (razón social, nombre comercial, provincia, ciudad)",
+        "Edita o confirma: dirección, email, celular",
+        "Selecciona país del celular (EC default; cambiable a US, etc.)",
+        "Marca 'No aplica' si no tiene nombre comercial"
+      ],
+      "camposBloqueados": [
+        "razonSocial",
+        "nombreComercial (con toggle 'NO APLICA')",
+        "provincia",
+        "ciudad"
+      ],
+      "camposEditables": [
+        "direccion (requerido, mínimo 5 caracteres)",
+        "email (requerido, formato válido)",
+        "celular (requerido, formato según país)",
+        "celularPais (default EC)"
+      ],
+      "validaciones": [
+        "Email con regex (RFC simplificado)",
+        "Celular 10 dígitos si país EC, formato libre con dial code para otros países",
+        "Dirección no vacía"
+      ],
+      "errores": {
+        "EMAIL_INVALIDO": "Formato de email incorrecto",
+        "CELULAR_INVALIDO": "Número fuera de formato del país elegido",
+        "DIRECCION_VACIA": "Dirección requerida"
+      },
+      "salida": {
+        "wizardData.direccion": "string",
+        "wizardData.email": "string en lowercase",
+        "wizardData.celular": "string numérico",
+        "wizardData.celularPais": "código ISO2 (EC, US, ...)",
+        "wizardData.nombreComercialNA": "boolean si marcó 'NO APLICA'"
+      },
+      "backend": "ninguno"
+    },
+
+    {
+      "n": 3,
+      "id": "token",
+      "label": "Verificación",
+      "title": "Verifica tu identidad",
+      "archivo": "assets/screens/screen-token.js",
+      "dependencias": [
+        "assets/services/token-service.js"
+      ],
+      "flujoSecuencial": [
+        "Al montar: se envía SMS automáticamente. La tarjeta de email aparece bloqueada (data-locked).",
+        "Usuario digita el código del SMS → se valida localmente.",
+        "Al validar SMS correctamente: se desbloquea la tarjeta del email y se envía el código por correo.",
+        "Usuario digita el código del email → se valida.",
+        "Cuando ambos están OK, el botón Continuar se habilita."
+      ],
+      "interaccionUsuario": [
+        "Ingresa código SMS de 4 dígitos (TOKEN_LENGTH)",
+        "Ingresa código Email de 4 dígitos",
+        "Puede pedir reenviar (cooldown 30 segundos por canal)"
+      ],
+      "tokenSpec": {
+        "longitud": 4,
+        "tipo": "numérico",
+        "generacion": "crypto.getRandomValues() (entropía real, no Math.random)",
+        "ttlSugerido": "5 minutos (recomendación para backend)"
+      },
+      "validaciones": [
+        "Código SMS coincide con el generado y enviado",
+        "Código Email coincide con el generado y enviado",
+        "Ambos tokens validados antes de avanzar"
+      ],
+      "errores": {
+        "TOKEN_INCORRECTO": "Código mal digitado",
+        "TOKEN_EXPIRADO": "Pasaron más de 5 minutos desde la emisión",
+        "ENVIO_FALLIDO": "El backend no pudo entregar el SMS o el correo"
+      },
+      "salida": {
+        "wizardData.tokenSmsOk": "true",
+        "wizardData.tokenEmailOk": "true"
+      },
+      "backend": {
+        "POST /api/token/sms": {
+          "request": "{ destino: '0998429901', token: '7559' }",
+          "response": "{ ok: true }",
+          "providersSugeridos": ["Twilio", "MessageBird", "Movistar/Claro/CNT"]
+        },
+        "POST /api/token/email": {
+          "request": "{ destino: 'cliente@empresa.com', token: '3273' }",
+          "response": "{ ok: true }",
+          "providersSugeridos": ["SendGrid", "AWS SES", "Mailgun"]
+        }
+      }
+    },
+
+    {
+      "n": 4,
+      "id": "tributaria",
+      "label": "Tributaria",
+      "title": "Información tributaria",
+      "archivo": "assets/screens/screen-tributaria.js",
+      "comportamientoEspecial": {
+        "autoAdvance": "Si no se requiere No. Resolución y el tipo detectado no permite upgrade, la pantalla muestra un mensaje breve y avanza automáticamente en 1.4s.",
+        "upgradeGranContribuyente": "Si el cert detecta CONTRIBUYENTE_ESPECIAL, aparece un dropdown que permite cambiar manualmente a GRAN_CONTRIBUYENTE."
+      },
+      "camposBloqueados": ["regimen"],
+      "camposEditables": [
+        "tipoContribuyente (solo si _tipoDetectado === CONTRIBUYENTE_ESPECIAL)",
+        "noResolucion (solo si tipo ∈ {AGENTE_RETENCION, CONTRIBUYENTE_ESPECIAL, GRAN_CONTRIBUYENTE})"
+      ],
+      "validaciones": [
+        "regimen presente (siempre debe venir del cert)",
+        "tipoContribuyente presente",
+        "Si tipo requiere resolución: noResolucion no vacía y con formato válido"
+      ],
+      "errores": {
+        "REGIMEN_VACIO": "El cert no trajo régimen — pedir cert correcto",
+        "TIPO_VACIO": "El cert no trajo tipo de contribuyente",
+        "RESOLUCION_VACIA": "El tipo seleccionado requiere No. de Resolución"
+      },
+      "salida": {
+        "wizardData.regimen": "GENERAL | RIMPE - EMPRENDEDOR | RIMPE - NEGOCIO POPULAR",
+        "wizardData.tipoContribuyente": "NO_OBLIGADO | OBLIGADO | AGENTE_RETENCION | CONTRIBUYENTE_ESPECIAL | GRAN_CONTRIBUYENTE",
+        "wizardData.noResolucion": "string (puede ser vacía si no aplica)"
+      },
+      "backend": "ninguno"
+    },
+
+    {
+      "n": 5,
+      "id": "facturacion",
+      "label": "Facturación",
+      "title": "Situación de facturación",
+      "archivo": "assets/screens/screen-facturacion.js",
+      "interaccionUsuario": [
+        "Elige modo: 'nuevo' (empezar desde cero) o 'continuar' (ya facturaba)",
+        "Modo 'nuevo': defaults preconfigurados, no edita nada",
+        "Modo 'continuar': edita establecimiento, punto de emisión, descripción y próxima factura"
+      ],
+      "defaults": {
+        "modoFacturacion": "nuevo",
+        "codEstablecimiento": "001",
+        "codPuntoNuevo": "001",
+        "codPuntoContinuar": "002",
+        "nombrePunto": "Electrónicas",
+        "secuenciaPorTipo": "000000001"
+      },
+      "tiposDocumento": [
+        { "id": "factura", "label": "Factura", "visibleEnUI": true },
+        { "id": "nc", "label": "Notas de crédito", "visibleEnUI": false },
+        { "id": "nd", "label": "Notas de débito", "visibleEnUI": false },
+        { "id": "retencion", "label": "Comprobantes de retención", "visibleEnUI": false },
+        { "id": "guia", "label": "Guías de remisión", "visibleEnUI": false }
+      ],
+      "notas": "En modo 'continuar' solo se pide el siguiente número de Factura. Las demás secuencias (NC, ND, retención, guía) se envían en silencio con '000000001'.",
+      "validaciones": [
+        "codEstablecimiento: 3 dígitos numéricos (NNN)",
+        "codPunto: 3 dígitos numéricos",
+        "nombrePunto: letras (con tildes/ñ) y dígitos, máximo 50 caracteres",
+        "Cada secuencia: 9 dígitos numéricos"
+      ],
+      "salida": {
+        "wizardData.modoFacturacion": "'nuevo' | 'continuar'",
+        "wizardData.codEstablecimiento": "string 3 dígitos",
+        "wizardData.codPunto": "string 3 dígitos",
+        "wizardData.nombrePunto": "string",
+        "wizardData.secuencias": {
+          "factura": "9 dígitos",
+          "nc": "9 dígitos",
+          "nd": "9 dígitos",
+          "retencion": "9 dígitos",
+          "guia": "9 dígitos"
+        }
+      },
+      "backend": "ninguno"
+    },
+
+    {
+      "n": 6,
+      "id": "clave",
+      "label": "Clave",
+      "title": "Crea tu clave",
+      "archivo": "assets/screens/screen-clave.js",
+      "interaccionUsuario": [
+        "Escribe su clave (mínimo 4 caracteres)",
+        "Confirma su clave (debe coincidir exactamente)",
+        "Puede toggle el icono del ojo para ver lo que escribe"
+      ],
+      "medidorFuerza": {
+        "algoritmo": "Entropía Shannon",
+        "niveles": ["Baja", "Media", "Alta"],
+        "bloqueante": false,
+        "comentario": "Es informativo: guía al usuario pero no impide avanzar"
+      },
+      "validaciones": [
+        "Mínimo 4 caracteres",
+        "Confirmación idéntica a la clave"
+      ],
+      "errores": {
+        "CLAVE_CORTA": "Menos de 4 caracteres",
+        "CLAVE_NO_COINCIDE": "Confirmación distinta a la clave"
+      },
+      "salida": {
+        "wizardData.clave": "string (NO se sanitiza al enviar al backend)"
+      },
+      "backend": "ninguno — se envía al final en /api/registro",
+      "seguridad": "El backend DEBE hashear con bcrypt o argon2 antes de persistir. NUNCA guardar en texto plano."
+    },
+
+    {
+      "n": 7,
+      "id": "logo",
+      "label": "Logo",
+      "title": "Tu logo",
+      "archivo": "assets/screens/screen-logo.js",
+      "opcional": true,
+      "comportamiento": {
+        "subirLogo": "Si la imagen es exactamente 2970×300 px → se pega tal cual. Si tiene otras dimensiones → se escala manteniendo aspect ratio y se centra sobre fondo blanco. NO se agrega texto.",
+        "generarUno": "Pinta un banner con el nombre comercial (o razón social si no hay) en Lobster centrado sobre fondo blanco. Única vía donde se genera texto.",
+        "omitir": "Avanza sin crear logo. logoDataUrl queda null."
+      },
+      "specsBanner": {
+        "ancho": 2970,
+        "alto": 300,
+        "formato": "PNG",
+        "fondo": "blanco (#FFFFFF)",
+        "tipografia": "Lobster (Google Fonts)"
+      },
+      "validaciones": [
+        "Si sube archivo: PNG o JPG, máximo 4 MB",
+        "Si genera: requiere razonSocial o nombreComercial poblado"
+      ],
+      "salida": {
+        "wizardData.logoDataUrl": "data:image/png;base64,... | null",
+        "wizardData.logoSource": "descripción human-readable de cómo se obtuvo el logo"
+      },
+      "backend": "ninguno — el banner se persiste con el resto en /api/registro"
+    },
+
+    {
+      "n": 8,
+      "id": "resumen",
+      "label": "Resumen",
+      "title": "Revisa tus datos antes de finalizar",
+      "archivo": "assets/wizard.js → renderResumen()",
+      "interaccionUsuario": [
+        "Revisa todos los datos en formato compacto",
+        "Puede hacer clic en 'Editar' de cada sección para volver al paso correspondiente",
+        "Hace clic en 'Confirmar y crear cuenta' para finalizar"
+      ],
+      "secciones": [
+        "Identidad — RUC, razón social, nombre comercial",
+        "Datos — dirección, provincia, ciudad, email, celular",
+        "Tributaria — régimen, tipo, no. resolución",
+        "Facturación — modo, establecimiento, punto emisión, secuencias",
+        "Logo — preview del banner"
+      ],
+      "alConfirmar": {
+        "fn": "finishWizard() en wizard.js",
+        "pasos": [
+          "1. Sanitizar wizardData → UPPERCASE, sin tildes, ñ → NI (excepto la clave)",
+          "2. Llamar a enviarEmailRegistro({ destino, datosRegistro }) → envía correo de bienvenida con credenciales",
+          "3. TODO: llamar a POST /api/registro para persistir en BD",
+          "4. Mostrar pantalla de éxito con usuario (primeros 10 dígitos del RUC) y link al portal"
+        ]
+      },
+      "backend": {
+        "POST /api/email/registro": {
+          "request": "{ destino: 'cliente@empresa.com', asunto: 'Bienvenido a TributaSoft — Tus credenciales', html: '<template HTML completo>' }",
+          "response": "{ ok: true }",
+          "notas": "El frontend pre-genera el HTML con marca + credenciales + resumen. El backend solo lo envía."
+        },
+        "POST /api/registro": {
+          "request": {
+            "ruc": "0992703601001",
+            "razonSocial": "TRIBUTASOFT S.A.",
+            "nombreComercial": "TRIBUTASOFT",
+            "direccion": "AV FRANCISCO DE ORELLANA 100",
+            "provincia": "GUAYAS",
+            "ciudad": "GUAYAQUIL",
+            "email": "TRIBUTASOFT@GMAIL.COM",
+            "celular": "0998429901",
+            "celularPais": "EC",
+            "regimen": "GENERAL",
+            "tipoContribuyente": "AGENTE_RETENCION",
+            "noResolucion": "NAC-DGERCGC23-00012345",
+            "modoFacturacion": "continuar",
+            "codEstablecimiento": "001",
+            "codPunto": "002",
+            "nombrePunto": "ELECTRONICAS",
+            "secuencias": {
+              "factura": "000000027",
+              "nc": "000000001",
+              "nd": "000000001",
+              "retencion": "000000001",
+              "guia": "000000001"
+            },
+            "clave": "Pa$$w0rd",
+            "logoDataUrl": "data:image/png;base64,..."
+          },
+          "response": "{ ok: true, usuario: '0992703601' }",
+          "notas": "TODOS los campos llegan sanitizados (UPPERCASE, sin tildes, ñ → NI). EXCEPTO la clave, que va tal cual la escribió el usuario."
+        }
+      }
+    }
+  ],
+
+  "sanitizacion": {
+    "aplicaA": "todos los datos string del wizardData",
+    "excepto": ["clave"],
+    "reglas": [
+      "toUpperCase()",
+      "Reemplazar Ñ y ñ por NI (antes de normalize NFD)",
+      "normalize('NFD') + remover combining marks (quita tildes)",
+      "trim()"
+    ],
+    "ejemplos": {
+      "Lenín Pérez": "LENIN PEREZ",
+      "Boticas Unidas del Ecuador S.A.": "BOTICAS UNIDAS DEL ECUADOR S.A.",
+      "Niño": "NINIO",
+      "año": "ANIO"
+    }
+  },
+
+  "formateoCelular": {
+    "EC": "099-842-9901",
+    "US": "+1 (585) 282-6037",
+    "default": "código país + número (sin separadores)"
+  },
+
+  "postRegistro": {
+    "redirect": "https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true",
+    "usuario": "primeros 10 dígitos del RUC (sin el 001 final)",
+    "credenciales": "se entregan en el correo de bienvenida + se muestran en la pantalla de éxito"
+  },
+
+  "endpointsBackend": {
+    "total": 4,
+    "lista": [
+      "POST /api/token/sms      → envía OTP por SMS",
+      "POST /api/token/email    → envía OTP por correo",
+      "POST /api/email/registro → envía correo de bienvenida con HTML pre-renderizado",
+      "POST /api/registro       → persiste el registro en BD"
+    ],
+    "NO_se_requieren": [
+      "APIs del SRI (ni scraping ni servicio premium) — la validación de identidad sale de la firma .p12 + cert PDF del usuario"
+    ]
+  },
+
+  "seguridad": {
+    "archivosUsuario": "Firma .p12 y cert PDF NO se suben al servidor. Se procesan en el navegador y se descartan.",
+    "clave": "Se envía en texto plano a /api/registro. Backend DEBE hashear con bcrypt o argon2.",
+    "tokens": "Modo actual (mock): se generan en frontend. Recomendación para producción: que el backend genere, guarde con TTL 5min y solo retorne { ok: true }.",
+    "sessionStorage": "El draft del wizard borra clave/confirmarClave/token antes de persistir.",
+    "verAuditoria": "SECURITY-AUDIT.md"
+  },
+
+  "stackFrontend": {
+    "modulos": "ES modules nativos (no bundler)",
+    "dependencias": [
+      "node-forge@1.3.1 (CDN jsdelivr) — parseo de PKCS#12",
+      "pdfjs-dist@4.0.379 (CDN jsdelivr) — extracción de texto del cert RUC",
+      "jsPDF (CDN) — generación de PDF de cotización y manual",
+      "Google Fonts: DM Sans, Inter, Lobster, Roboto Condensed"
+    ],
+    "cacheBusting": "?v=YYYYMMDDx en todos los imports — se bumpea en cada deploy"
+  },
+
+  "documentacionRelacionada": {
+    "tecnica": "HANDOVER-TICS.md",
+    "lenguajeComun": "Explicacion-TICS.docx",
+    "seguridad": "SECURITY-AUDIT.md",
+    "terminos": "Terminos-y-Condiciones.txt"
+  }
+}

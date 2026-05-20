@@ -1,0 +1,115 @@
+TÉRMINOS Y CONDICIONES DE USO — TRIBUTASOFT
+
+================================================================
+
+1. OBJETO
+
+TRIBUTASOFT S.A., en adelante "TRIBUTASOFT", pone a disposición del
+usuario (en adelante, el "USUARIO" o el "CLIENTE") una plataforma
+electrónica destinada a la emisión, registro, anulación y administración
+de comprobantes electrónicos autorizados por el Servicio de Rentas
+Internas del Ecuador (SRI), conforme a la normativa tributaria vigente.
+
+----------------------------------------------------------------
+
+2. PROMOCIÓN INICIAL
+
+TRIBUTASOFT otorga al USUARIO una promoción inicial sin costo
+correspondiente a:
+
+  1) Trescientos (300) documentos electrónicos; o
+  2) Un periodo máximo de tres (3) meses calendario,
+
+contados desde la fecha de activación de la cuenta, lo que ocurra
+primero. Cumplido cualquiera de los dos límites, el servicio quedará
+sujeto a la contratación de un plan vigente.
+
+----------------------------------------------------------------
+
+3. CÓMPUTO DE DOCUMENTOS ELECTRÓNICOS
+
+Para los efectos del cómputo previsto en la cláusula anterior y de
+cualquier plan o renovación posterior, se considerará un (1) "documento
+electrónico" todo aquel que, de manera indistinta:
+
+  1) Sea EMITIDO por el USUARIO a través de la plataforma;
+  2) Sea REGISTRADO en el sistema, aun cuando no se hubiere autorizado
+     por el SRI; o
+  3) Sea ANULADO dentro del sistema, conforme la normativa tributaria
+     aplicable.
+
+----------------------------------------------------------------
+
+4. MODIFICACIONES AL SISTEMA
+
+El USUARIO reconoce y acepta que TRIBUTASOFT podrá efectuar, en
+cualquier momento y a su entera discreción, modificaciones, mejoras,
+actualizaciones o cambios en la plataforma, sus funcionalidades,
+interfaces y procesos, atendiendo a sus propias necesidades técnicas,
+operativas, comerciales o regulatorias. Dichos cambios no requerirán
+autorización previa del USUARIO y se entenderán aceptados con el uso
+continuado del servicio.
+
+----------------------------------------------------------------
+
+5. PROTECCIÓN DE DATOS PERSONALES
+
+TRIBUTASOFT trata los datos personales del USUARIO con estricta sujeción
+a la LEY ORGÁNICA DE PROTECCIÓN DE DATOS PERSONALES DEL ECUADOR y sus
+normas reglamentarias. Los datos serán utilizados exclusivamente para
+los fines del servicio contratado, su facturación, su soporte y el
+cumplimiento de obligaciones legales o tributarias. El USUARIO podrá
+ejercer en cualquier momento sus derechos de acceso, rectificación,
+actualización, eliminación, oposición, anulación y portabilidad
+mediante comunicación dirigida a TRIBUTASOFT por los canales
+habilitados.
+
+----------------------------------------------------------------
+
+6. RESPONSABILIDAD DEL USUARIO
+
+El USUARIO es responsable de la veracidad de la información
+proporcionada al registrarse, del resguardo y uso adecuado de sus
+credenciales de acceso y del contenido de los comprobantes que emita
+a través de la plataforma. Cualquier perjuicio derivado de un uso
+indebido, negligente o fraudulento será de su exclusiva responsabilidad.
+
+----------------------------------------------------------------
+
+7. CONDICIONES DEL PAGO (RENOVACIÓN PREPAGO)
+
+El reporte del pago de planes prepago se entiende efectuado al momento
+de cargar el comprobante en la plataforma. La validación del pago será
+realizada por los operadores de TRIBUTASOFT dentro de un plazo máximo
+de DOS (2) HORAS desde el reporte.
+
+En caso de que el valor reportado no corresponda al efectivamente
+acreditado en las cuentas bancarias de TRIBUTASOFT, o de detectarse
+indicios de pago erróneo, duplicado o fraudulento, el servicio será
+SUSPENDIDO DE MANERA INMEDIATA hasta la regularización del pago o la
+baja definitiva del servicio, según corresponda. TRIBUTASOFT no asume
+responsabilidad alguna por las interrupciones derivadas de pagos no
+acreditados o inexactos.
+
+----------------------------------------------------------------
+
+8. SUSPENSIÓN Y TERMINACIÓN
+
+TRIBUTASOFT se reserva el derecho de suspender o dar por terminado el
+servicio en caso de incumplimiento de los presentes términos, uso
+indebido de la plataforma o causal legal aplicable, sin que ello genere
+responsabilidad alguna a su cargo, y sin perjuicio de las acciones
+legales que correspondan.
+
+----------------------------------------------------------------
+
+9. ACEPTACIÓN
+
+La marcación de la casilla de aceptación, una vez deslizado hasta el
+final del presente documento, constituye declaración expresa de
+conocimiento y aceptación íntegra de estos términos por parte del
+USUARIO, conforme a lo previsto en el Código de Comercio Electrónico,
+Firmas Electrónicas y Mensajes de Datos, el Código Civil y demás
+normativa aplicable de la República del Ecuador.
+
+================================================================
