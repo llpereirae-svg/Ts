@@ -99,7 +99,7 @@ function verificarJuridica(ruc) {
   return verificador === parseInt(ruc.charAt(9), 10);
 }
 
-import { findCountry } from './countries.js?v=20260520a';
+import { findCountry } from './countries.js?v=20260520b';
 
 /**
  * Normaliza y valida celular según el país seleccionado.

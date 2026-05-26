@@ -4,7 +4,7 @@
    La verificación es local mientras esté el mock; cuando el backend esté
    listo, token-service.js se encarga de hacer fetch al endpoint real. */
 
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260520a';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260520b';
 
 const REENVIAR_COOLDOWN_S = 30;
 
@@ -100,12 +100,30 @@ function wireTokenScreen(root, wizardData) {
 function wireInputs(root, prefix, onComplete) {
   const inputs = root.querySelectorAll(`input[data-prefix="${prefix}"]`);
 
+  // Bloquea un input: queda readonly + estilizado. Tab lo salta naturalmente
+  // (porque readonly NO se enfoca al tabular hacia campos editables del DOM
+  // posterior — y el siguiente input vacío sí es focusable).
+  const lock = (inp) => {
+    inp.setAttribute('readonly', '');
+    inp.classList.add('is-filled');
+  };
+  const unlock = (inp) => {
+    inp.removeAttribute('readonly');
+    inp.classList.remove('is-filled');
+  };
+
   inputs.forEach((input, idx) => {
     input.addEventListener('input', (e) => {
       // Solo dígitos
       e.target.value = e.target.value.replace(/\D/g, '').slice(0, 1);
-      if (e.target.value && idx + 1 < inputs.length) {
-        inputs[idx + 1].focus();
+      if (e.target.value) {
+        // Bloquear este input — el dígito queda "fijo" hasta que el código
+        // se verifique completo o el usuario use Backspace para corregir.
+        // Esto resuelve el bug del Tab manual que saltaba inputs.
+        lock(e.target);
+        if (idx + 1 < inputs.length) {
+          inputs[idx + 1].focus();
+        }
       }
       // Si todos están llenos, intentar verificar
       const todos = Array.from(inputs).every((inp) => inp.value);
@@ -113,9 +131,23 @@ function wireInputs(root, prefix, onComplete) {
     });
 
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
-        inputs[idx - 1].focus();
-        inputs[idx - 1].select();
+      // Backspace: corregir hacia atrás. Si el input actual está vacío,
+      // saltamos al anterior, lo desbloqueamos y lo dejamos editable.
+      if (e.key === 'Backspace') {
+        if (!e.target.value && idx > 0) {
+          e.preventDefault();
+          const prev = inputs[idx - 1];
+          unlock(prev);
+          prev.value = '';
+          prev.focus();
+        }
+        // Si el input actual tiene valor (estaba readonly), lo desbloqueamos
+        // y dejamos que el browser borre el contenido.
+        else if (e.target.value) {
+          e.preventDefault();
+          unlock(e.target);
+          e.target.value = '';
+        }
       } else if (e.key === 'ArrowLeft' && idx > 0) {
         inputs[idx - 1].focus();
       } else if (e.key === 'ArrowRight' && idx + 1 < inputs.length) {
@@ -129,13 +161,15 @@ function wireInputs(root, prefix, onComplete) {
       if (digits.length === 0) return;
       e.preventDefault();
       digits.split('').forEach((d, i) => {
-        if (inputs[i]) inputs[i].value = d;
+        if (inputs[i]) {
+          inputs[i].value = d;
+          lock(inputs[i]);
+        }
       });
-      // Focus al último input lleno
+      // Focus al último input lleno (o al siguiente si quedó cupo)
       const lastIdx = Math.min(digits.length, inputs.length) - 1;
       if (inputs[lastIdx + 1]) inputs[lastIdx + 1].focus();
       else inputs[lastIdx].focus();
-      // Si quedó completo, verificar
       const todos = Array.from(inputs).every((inp) => inp.value);
       if (todos) onComplete();
     });
@@ -262,7 +296,12 @@ function verificarSi(canal, root, wizardData) {
     setStatus(root, canal, res.reason, true);
     inputs.forEach((i) => i.classList.add('is-error'));
     setTimeout(() => {
-      inputs.forEach((i) => { i.classList.remove('is-error'); i.value = ''; });
+      inputs.forEach((i) => {
+        i.classList.remove('is-error');
+        i.classList.remove('is-filled');
+        i.removeAttribute('readonly');
+        i.value = '';
+      });
       inputs[0].focus();
     }, 1500);
   }

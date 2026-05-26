@@ -671,6 +671,14 @@ body.is-pc .wiz-loading-text {
   border-color: var(--color-cta);
   box-shadow: 0 0 0 4px rgba(239, 115, 6, .14);
 }
+/* Dígito ya ingresado y bloqueado (readonly mientras no se corrija con Backspace). */
+.token-inputs input.is-filled {
+  background: #f3f6fa;
+  border-color: #c9dee9;
+  color: #00236f;
+  font-weight: 700;
+  cursor: not-allowed;
+}
 .token-inputs input.is-ok {
   border-color: var(--color-teal-dark);
   background: var(--color-teal-light);
