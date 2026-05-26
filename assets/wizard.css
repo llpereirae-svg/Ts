@@ -879,14 +879,6 @@ body.is-pc .wiz-loading-text {
   letter-spacing: .01em;
 }
 
-/* ---------------- Ocultar legacy mientras corre el wizard ---------------- */
-/* OJO: el #hero NO se oculta — es el hook comercial principal y va siempre
-   visible arriba del wizard. */
-body.wiz-mode #ruc-card,
-body.wiz-mode .section,
-body.wiz-mode #registration-form,
-body.wiz-mode #success { display: none !important; }
-
 /* Hero compactado cuando vive arriba del wizard:
    menos padding vertical para no empujar al wizard tan abajo. */
 body.wiz-mode #hero {

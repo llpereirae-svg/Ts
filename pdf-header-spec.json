@@ -1,0 +1,311 @@
+{
+  "version": "1.0",
+  "fecha": "2026-05-20",
+  "descripcion": "Especificación reutilizable para el encabezado y pie de página de los PDFs corporativos de TributaSoft (cotización, brochure, manual, propuesta, etc.). Reproduce fielmente la tipografía corporativa (Avenida + Lobster) sin necesidad de embeberla como TTF en el PDF.",
+
+  "tecnologia": {
+    "motorPdf": "jsPDF 2.5.2 (CDN: https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js)",
+    "estrategiaHeader": "Renderizar el header en un canvas HTML off-screen usando las fuentes corporativas reales del navegador (Avenida, Lobster) y embeberlo como PNG en el PDF. Esto evita tener que cargar y subsetar Avenida/Lobster como TTF dentro del PDF (Lobster especialmente es pesada).",
+    "fuentesCuerpo": "Roboto Condensed (Regular + Bold) embebidas como TTF en el PDF para texto seleccionable",
+    "compresion": "compress: true en el constructor de jsPDF (recorta ~25% del tamaño)"
+  },
+
+  "documento": {
+    "formato": "A4",
+    "unidad": "mm",
+    "orientacion": "portrait",
+    "dimensiones": {
+      "ancho": 210,
+      "alto": 297
+    },
+    "margenes": {
+      "lateralX": 18,
+      "constructor": "new JsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true })"
+    }
+  },
+
+  "encabezado": {
+    "estrategia": "canvas-to-png embebido como imagen en jsPDF",
+    "canvasOffscreen": {
+      "anchoLogico": 794,
+      "altoLogico": 80,
+      "escalaRetina": 2,
+      "anchoFisico": 1588,
+      "altoFisico": 160,
+      "fondo": "#ffffff",
+      "comentario": "Se renderiza a 2x para que se vea nítido en pantalla y al imprimir"
+    },
+    "embedEnPDF": {
+      "anchoMM": 210,
+      "altoMM": "calculado: altoCanvas * (anchoMM / anchoCanvas) = 80 * 210 / 794 ≈ 21.16 mm",
+      "posicionX": 0,
+      "posicionY": 6,
+      "comentario": "El header ocupa el ancho COMPLETO de la página. Los márgenes laterales del header están en el canvas (50px en canvas ≈ 13.3 mm)."
+    },
+    "estructura": {
+      "comentario": "De izquierda a derecha, todo alineado a la misma baseline (44px desde top)",
+      "elementos": [
+        {
+          "orden": 1,
+          "tipo": "logo-png",
+          "archivo": "./assets/Logo TributaSoft.png",
+          "posicionX": 50,
+          "posicionY": 6,
+          "altura": 56,
+          "ancho": "proporcional (mantener aspect ratio)",
+          "gapDespues": 14
+        },
+        {
+          "orden": 2,
+          "tipo": "texto",
+          "contenido": "Tributa",
+          "fuente": "Avenida",
+          "fuenteFallback": "DM Sans, sans-serif",
+          "tamaño": "44px",
+          "color": "#c9dee9",
+          "comentario": "Color celeste pálido del wordmark del logo corporativo"
+        },
+        {
+          "orden": 3,
+          "tipo": "texto",
+          "contenido": "Soft",
+          "fuente": "Lobster",
+          "fuenteFallback": "cursive",
+          "tamaño": "44px",
+          "color": "#EF7306",
+          "comentario": "Naranja TributaSoft, sin espacio entre 'Tributa' y 'Soft'"
+        },
+        {
+          "orden": 4,
+          "tipo": "texto",
+          "contenido": "...todo bajo control",
+          "fuente": "Lobster",
+          "fuenteFallback": "cursive",
+          "tamaño": "22px",
+          "color": "#6b7280",
+          "gapAntes": 18,
+          "comentario": "Tagline corporativo, gris medio, mismo baseline que el wordmark"
+        }
+      ],
+      "baseline": 44,
+      "comentarioBaseline": "ctx.textBaseline = 'alphabetic'; todo el texto se pinta con y = 44 sobre un canvas de 80px de alto"
+    },
+    "lineaSeparadora": {
+      "tipo": "stroke horizontal",
+      "color": "#00236f",
+      "grosor": 1.6,
+      "x1": 50,
+      "x2": "anchoCanvas - 50 = 744",
+      "y": 70,
+      "comentario": "DEBAJO del texto, justo arriba del borde inferior del canvas. Da la sensación de papelería corporativa"
+    }
+  },
+
+  "footer": {
+    "estrategia": "dibujado directamente con primitivas de jsPDF (sin canvas)",
+    "posicionY": "altoPagina - 22 = 275 mm",
+    "elementos": [
+      {
+        "tipo": "linea-separadora",
+        "color": [209, 213, 219],
+        "grosor": 0.3,
+        "x1": 18,
+        "x2": 192,
+        "y": 275
+      },
+      {
+        "tipo": "nombre-documento",
+        "comentario": "AQUÍ va el nombre del PDF que se está generando — ej. 'Brochure - Facturación Electrónica', 'Cotización TributaSoft', 'Propuesta Comercial 2026'. Este texto cambia según el documento.",
+        "posicion": {
+          "x": 18,
+          "y": "y + 5.2"
+        },
+        "fuente": "RobotoCondensed",
+        "estilo": "bold",
+        "tamaño": 8.5,
+        "color": [0, 35, 111],
+        "ejemploCodigo": "doc.setFont('RobotoCondensed', 'bold'); doc.setFontSize(8.5); doc.setTextColor(0, 35, 111); doc.text(NOMBRE_DOCUMENTO, 18, footY + 5.2);"
+      },
+      {
+        "tipo": "paginacion",
+        "comentario": "Opcional: 'Página X de Y' alineado a la derecha en la misma línea del nombre del documento",
+        "posicion": {
+          "x": 192,
+          "y": "y + 5.2",
+          "align": "right"
+        },
+        "fuente": "RobotoCondensed",
+        "estilo": "normal",
+        "tamaño": 8.5,
+        "color": [107, 114, 128],
+        "formato": "Página ${pageNum} de ${totalPages}"
+      }
+    ],
+    "reglaImportante": "El footer NO debe contener datos de contacto. Esos van en el cuerpo del documento si aplican. El footer es solo: línea separadora + nombre del documento (izquierda) + paginación (derecha)."
+  },
+
+  "paleta": {
+    "comentario": "Tokens de color que deben mantenerse consistentes con la marca TributaSoft",
+    "primario": {
+      "navy": "#00236F",
+      "rgbNavy": [0, 35, 111],
+      "uso": "Texto principal de titulares, líneas separadoras del header, headers de tabla"
+    },
+    "secundario": {
+      "naranja": "#EF7306",
+      "rgbNaranja": [239, 115, 6],
+      "uso": "Wordmark 'Soft', totales destacados, CTAs"
+    },
+    "terciario": {
+      "celesteLogo": "#c9dee9",
+      "uso": "Wordmark 'Tributa' del logo (NO usar como texto del cuerpo, es muy claro)"
+    },
+    "neutros": {
+      "textoCuerpo": "#282828",
+      "rgbTextoCuerpo": [40, 40, 40],
+      "muted": "#6B7280",
+      "rgbMuted": [107, 114, 128],
+      "subtle": "#4B5563",
+      "rgbSubtle": [75, 85, 99],
+      "borde": "#D1D5DB",
+      "rgbBorde": [209, 213, 219],
+      "rowAlt": "#F8FAFC",
+      "rgbRowAlt": [248, 250, 252]
+    }
+  },
+
+  "fuentes": {
+    "header": {
+      "Avenida": {
+        "uso": "Wordmark 'Tributa'",
+        "comoSeRendera": "Cargada como @font-face en el CSS del navegador, usada en el canvas con document.fonts.load('44px Avenida')",
+        "archivoRepo": "./assets/Avenida.otf"
+      },
+      "Lobster": {
+        "uso": "Wordmark 'Soft' y tagline",
+        "comoSeRendera": "Google Fonts (importada en el HTML)",
+        "import": "https://fonts.googleapis.com/css2?family=Lobster&display=swap"
+      }
+    },
+    "cuerpo": {
+      "RobotoCondensed": {
+        "uso": "Texto del cuerpo, tablas, footer",
+        "comoSeRendera": "TTF embebido en el PDF con doc.addFileToVFS + doc.addFont",
+        "archivos": [
+          "./assets/fonts/RobotoCondensed-Regular.ttf",
+          "./assets/fonts/RobotoCondensed-Bold.ttf"
+        ],
+        "tamañoTipico": "33 KB cada uno (subset latin + latin-extended)",
+        "import": "https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap"
+      }
+    }
+  },
+
+  "secuenciaDeGeneracion": {
+    "comentario": "Orden correcto para que no falle el render. Las fuentes deben estar cargadas ANTES de pintar el canvas.",
+    "pasos": [
+      "1. await document.fonts.load para Avenida, Lobster (44px y 22px). Importante: await document.fonts.ready después.",
+      "2. Crear canvas off-screen (794×80 @ 2x scale).",
+      "3. Pintar fondo blanco.",
+      "4. Cargar y dibujar logo PNG (puede ser async con Image()).",
+      "5. Pintar wordmark 'Tributa' en Avenida, 'Soft' en Lobster, tagline en Lobster pequeña.",
+      "6. Dibujar línea separadora navy debajo del texto.",
+      "7. canvas.toDataURL('image/png') → guardar como dataUrl.",
+      "8. En paralelo: cargar RobotoCondensed Regular + Bold con fetchTTFAsBase64 → doc.addFileToVFS → doc.addFont.",
+      "9. Crear jsPDF: new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }).",
+      "10. doc.addImage(headerDataUrl, 'PNG', 0, 6, 210, 21.16) — header en posición y = 6 mm desde top.",
+      "11. Pintar contenido del cuerpo en RobotoCondensed (setFont + setFontSize + text).",
+      "12. Pintar footer en y = 275 mm: línea + nombre del documento + paginación.",
+      "13. doc.save(nombreArchivo) o doc.output('blob') para descarga."
+    ]
+  },
+
+  "ejemploUsoFooter": {
+    "comentario": "Cómo personalizar el footer para distintos documentos manteniendo el mismo header",
+    "constantesPorDocumento": {
+      "cotizacion": "Cotización - TributaSoft",
+      "brochure": "Brochure - Facturación Electrónica",
+      "manual": "Manual de Usuario - TributaSoft",
+      "propuesta": "Propuesta Comercial 2026",
+      "contrato": "Contrato de Servicio - TributaSoft"
+    },
+    "codigoEjemplo": [
+      "// Definir el nombre del documento al inicio del script",
+      "const NOMBRE_DOCUMENTO = 'Brochure - Facturación Electrónica';",
+      "",
+      "// Función reutilizable para pintar el footer en cada página",
+      "function drawFooter(doc, pageNum, totalPages, nombreDoc) {",
+      "  const PAGE_W = 210;",
+      "  const PAGE_H = 297;",
+      "  const MARGIN_X = 18;",
+      "  const RIGHT = PAGE_W - MARGIN_X;",
+      "  const footY = PAGE_H - 22;",
+      "",
+      "  // Línea separadora",
+      "  doc.setDrawColor(209, 213, 219);",
+      "  doc.setLineWidth(0.3);",
+      "  doc.line(MARGIN_X, footY, RIGHT, footY);",
+      "",
+      "  // Nombre del documento (izquierda, navy bold)",
+      "  doc.setFont('RobotoCondensed', 'bold');",
+      "  doc.setFontSize(8.5);",
+      "  doc.setTextColor(0, 35, 111);",
+      "  doc.text(nombreDoc, MARGIN_X, footY + 5.2);",
+      "",
+      "  // Paginación (derecha, gris)",
+      "  doc.setFont('RobotoCondensed', 'normal');",
+      "  doc.setTextColor(107, 114, 128);",
+      "  doc.text(`Página ${pageNum} de ${totalPages}`, RIGHT, footY + 5.2, { align: 'right' });",
+      "}",
+      "",
+      "// Loop al final, antes de doc.save()",
+      "const totalPages = doc.getNumberOfPages();",
+      "for (let i = 1; i <= totalPages; i++) {",
+      "  doc.setPage(i);",
+      "  drawFooter(doc, i, totalPages, NOMBRE_DOCUMENTO);",
+      "}",
+      "",
+      "doc.save(`${NOMBRE_DOCUMENTO}.pdf`);"
+    ]
+  },
+
+  "checklistAntesDeProducir": [
+    "Logo PNG en alta resolución cargado y accesible (./assets/Logo TributaSoft.png).",
+    "Avenida.otf disponible en el repo y declarada en @font-face del CSS.",
+    "Lobster importada desde Google Fonts en el HTML.",
+    "Roboto Condensed Regular + Bold como TTF en ./assets/fonts/.",
+    "document.fonts.ready resuelto antes de renderizar el canvas (Avenida tarda en cargar).",
+    "El canvas se pinta a SCALE 2 (1588×160 físicos) para que el header se vea nítido en pantalla.",
+    "compress: true en el constructor de jsPDF.",
+    "El nombre del documento se define como constante al inicio y se usa para el footer y para el nombre del archivo descargado (doc.save).",
+    "Verificar que el archivo final pese menos de 250 KB (referencia: cotización actual ~150-200 KB)."
+  ],
+
+  "erroresComunes": [
+    {
+      "sintoma": "El wordmark 'Tributa' sale en DM Sans en lugar de Avenida",
+      "causa": "Avenida no terminó de cargar antes de pintar el canvas",
+      "fix": "Agregar await document.fonts.load('44px Avenida') y await document.fonts.ready antes del ctx.fillText"
+    },
+    {
+      "sintoma": "El header se ve pixelado en el PDF",
+      "causa": "Canvas pintado a 1x en vez de 2x",
+      "fix": "canvas.width = W * 2; canvas.height = H * 2; ctx.scale(2, 2);"
+    },
+    {
+      "sintoma": "PDF pesa 600 KB+",
+      "causa": "Fuentes corporativas embebidas sin subset, o falta compress: true",
+      "fix": "Subset las TTF a latin + latin-extended (~33 KB cada una) y activar compress: true en el constructor"
+    },
+    {
+      "sintoma": "Texto del cuerpo no es seleccionable",
+      "causa": "Se renderizó como imagen en vez de texto nativo",
+      "fix": "Solo el header se renderiza como imagen. El cuerpo SIEMPRE con doc.text() + setFont('RobotoCondensed')"
+    },
+    {
+      "sintoma": "Los acentos salen como □ (cuadritos)",
+      "causa": "El subset de Roboto Condensed no incluye latin-extended",
+      "fix": "Usar el subset latin + latin-extended (incluye á, é, í, ó, ú, ñ, ü)"
+    }
+  ]
+}
