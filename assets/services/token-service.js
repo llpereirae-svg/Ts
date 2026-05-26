@@ -1,23 +1,47 @@
 /* token-service.js — Servicio de generación y verificación de tokens.
-
-   ESTRUCTURA: la lógica está dividida en dos capas para que el equipo
-   de backend pueda reemplazar solo la parte de "envío real" sin tocar
-   nada de la UI ni del wizard.
-
-   Capa 1 (esta capa, intercambiable):
-     - generarYEnviarToken({ canal, destino }) → { token, expiraEn, ttl }
-     - verificarToken({ canal, codigo, tokenEsperado }) → { valid, error? }
-
-   Capa 2 (mock por ahora — reemplazar con fetch al endpoint real):
-     - sendEmail(destino, token)
-     - sendSms(destino, token)
-
-   Cuando el backend esté listo, basta con cambiar las dos funciones de
-   Capa 2 para que hagan fetch a tus endpoints (POST /api/token/email,
-   POST /api/token/sms). El resto del flujo del wizard no necesita
-   cambios.
-
-   El token es numérico de 4 dígitos, expira en 5 minutos. */
+ *
+ * ⚠️ ATENCIÓN TI/TICS ⚠️
+ *
+ * Esta arquitectura es MOCK / DESARROLLO. En producción, el modelo
+ * actual es VULNERABLE al abuso porque:
+ *
+ *   1. El token se genera en el navegador del usuario.
+ *   2. El navegador lo guarda en memoria y lo compara localmente.
+ *   3. Un atacante con DevTools (F12) ve el token antes de que llegue
+ *      al SMS/correo, o reescribe verificarToken() para que siempre
+ *      retorne { valid: true }.
+ *   4. Un script automatizado puede invocar generarYEnviarToken() miles
+ *      de veces con destinos aleatorios → agota el crédito de Twilio/
+ *      SendGrid y bombardea con SMS spam a números reales.
+ *
+ * MODELO CORRECTO PARA PRODUCCIÓN (responsabilidad de TICS):
+ *
+ *   - El frontend solo manda { canal, destino } al backend (sin token).
+ *   - El backend genera el token con un RNG cripto-fuerte (no del cliente).
+ *   - Lo guarda en una tabla `tokens_verificacion` con TTL 5 min y un
+ *     contador de intentos (máx 5).
+ *   - Lo envía por el canal correspondiente.
+ *   - Devuelve solo { ok: true } al frontend (NUNCA el token).
+ *   - Para verificar: frontend → POST /api/token/verify { canal, destino, codigo }
+ *     → backend compara y responde { valid: bool, intentos_restantes: N }.
+ *
+ * Plus crítico (ver SECURITY-AUDIT.md):
+ *   - Rate limiting por IP (máx 5 SMS / 15 min / IP).
+ *   - Rate limiting por destino (máx 3 SMS / 1 hora / mismo número).
+ *   - CAPTCHA invisible (Cloudflare Turnstile) antes de POST /api/token/sms.
+ *
+ * ESTRUCTURA del archivo (DOS CAPAS):
+ *
+ *   Capa 1 — Interfaz pública (intercambiable):
+ *     - generarYEnviarToken({ canal, destino }) → { token, expiraEn, ttl }
+ *     - verificarToken({ canal, codigo, tokenEsperado }) → { valid, error? }
+ *
+ *   Capa 2 — Envío real (mock por ahora):
+ *     - sendEmail(destino, token)
+ *     - sendSms(destino, token)
+ *
+ *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
+ *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
 const TOKEN_LEN = 4;
 const TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutos

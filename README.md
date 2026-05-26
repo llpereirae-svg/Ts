@@ -109,12 +109,26 @@ Google Fonts: DM Sans (titulares), Inter (cuerpo), Lobster (logo), Roboto Conden
 
 ## Seguridad
 
-Auditoría en `SECURITY-AUDIT.md`. Resumen de lo crítico:
+Auditoría completa en `SECURITY-AUDIT.md`. Resumen de lo crítico:
 
-- La firma `.p12` y el cert PDF **NO se suben al servidor**; se leen en el navegador y se descartan.
-- La clave del usuario se envía en texto plano al endpoint `/api/registro` — el backend **DEBE** hashearla con bcrypt o argon2 antes de persistir.
-- En modo mock, los tokens OTP se loguean a consola para facilitar testing. **BORRAR esos `console.log`** al integrar el fetch real.
-- HTTPS obligatorio en producción; configurar CSP si el dominio es propio.
+### Lo que YA está implementado en frontend
+- HTTPS automático (GitHub Pages) — cero URLs HTTP hardcodeadas.
+- Headers de seguridad: `Content-Security-Policy`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`.
+- Anti-bot client-side: honeypot invisible + time-check (mínimo 25s para completar el wizard).
+- Throttle del botón "Reenviar token": cooldown progresivo (60s → 120s → 240s) + máximo 3 reenvíos por canal.
+- Cero `eval()`, `document.write`, secrets hardcodeados o uso de `Math.random()` para tokens.
+- Borrado de campos sensibles (`clave`, `confirmarClave`, `token`) antes de persistir el draft en `sessionStorage`.
+
+### Lo que falta y debe hacer TICS (backend)
+- **Tokens server-side** (el frontend actualmente los genera y verifica — vulnerable a abuso).
+- **Rate limiting** por IP y por destino en los 4 endpoints.
+- **CAPTCHA invisible** (Cloudflare Turnstile) en los endpoints sensibles.
+- **Hash de clave** con bcrypt/argon2 al persistir (NUNCA texto plano).
+- **HMAC** del payload entre frontend y backend.
+- **Validación server-side** de RUC + cert + firma (no confiar solo en frontend).
+- **HSTS** y otros headers desde el backend.
+
+La firma `.p12` y el cert PDF **NO se suben al servidor**: se leen en el navegador y se descartan. Solo viajan los datos extraídos.
 
 ---
 

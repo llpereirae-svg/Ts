@@ -298,25 +298,120 @@ Si cambia, actualicen las dos referencias.
 
 ---
 
-## 7. Nota de seguridad importante
+## 7. Seguridad y anti-abuso (LEER ENTERO)
 
-**Modo actual (mock):** el token se genera en el frontend y se envía al SMS/Email. El navegador también lo verifica localmente. Esto es **inseguro** porque alguien podría inspeccionar la consola y ver el código antes que llegue al SMS.
+Esta sección concentra todo lo crítico de seguridad. Detalles ampliados en `SECURITY-AUDIT.md`.
 
-**Recomendación para producción:** que el **backend** genere y guarde el token, y solo retorne `{ ok: true }` al frontend. La verificación también debe hacerla el backend.
+### 7.1 Tokens generados en frontend = vulnerabilidad CRÍTICA
 
-Flujo seguro:
-1. Frontend pide `POST /api/token/sms` con `{ destino }` (sin token).
-2. Backend genera el token, lo guarda en `tokens_verificacion` con TTL 5 min, lo envía por SMS.
-3. Frontend hace `POST /api/token/verify` con `{ destino, codigo }`.
-4. Backend compara y responde `{ valid: true/false }`.
+**Modo actual (mock):** el token se genera en el navegador con `crypto.getRandomValues()`, se envía al backend para que lo entregue por SMS/correo, y el navegador lo verifica localmente.
 
-Las funciones de `token-service.js` (Capa 1) **NO cambian** — solo cambia la Capa 2 (`sendSms`, `sendEmail`) y se agrega `verifyToken()` que llama al backend.
+**Problema concreto:** un atacante con DevTools (F12) puede:
+1. Ver el código en consola **antes** de que llegue al SMS.
+2. Reescribir `verificarToken()` para que siempre retorne `{ valid: true }`.
+3. Automatizar `generarYEnviarToken()` con miles de destinos para **agotar el crédito de Twilio/SendGrid** y bombardear con SMS spam a números reales.
+
+**Flujo correcto (obligatorio):**
+
+| Paso | Frontend | Backend |
+|---|---|---|
+| 1 | `POST /api/token/sms { destino }` (sin token) | — |
+| 2 | — | Genera token con RNG cripto-fuerte. Guarda en `tokens_verificacion (destino, codigo_hash, expira_en, intentos, ip)`. TTL = 5 min. |
+| 3 | — | Envía SMS vía Twilio/Movistar/etc. |
+| 4 | — | Responde `{ ok: true }` (NUNCA el token). |
+| 5 | `POST /api/token/verify { canal, destino, codigo }` | — |
+| 6 | — | Compara codigo con `codigo_hash`. Incrementa `intentos`. |
+| 7 | — | Responde `{ valid: bool, intentos_restantes: N }`. |
+
+Cuando hagan esto, en `token-service.js`:
+- **Capa 1** (`generarYEnviarToken`): cambia su firma para NO devolver `token`, solo `{ ok: true }`.
+- **Capa 1** (`verificarToken`): pasa a hacer `fetch('/api/token/verify', ...)` y devuelve `{ valid }` del backend.
+- **Capa 2** (`sendSms`, `sendEmail`): se eliminan o quedan como wrapper del fetch a la Capa 1.
+
+### 7.2 Rate limiting (anti-abuso, OBLIGATORIO)
+
+Implementar en el backend (tabla `rate_limit_log` con `ip, accion, ts`):
+
+| Endpoint | Por IP | Por destino |
+|---|---|---|
+| `POST /api/token/sms` | máx 5 / 15 min | máx 3 / 1 hora al mismo número |
+| `POST /api/token/email` | máx 5 / 15 min | máx 5 / 1 hora al mismo email |
+| `POST /api/registro` | máx 2 / día | n/a |
+
+Si se supera el límite: HTTP 429 + `Retry-After` header.
+
+### 7.3 CAPTCHA invisible (RECOMENDADO)
+
+**Cloudflare Turnstile** (gratis ilimitado) o **hCaptcha invisible**. NO interrumpe al usuario humano — solo aparece challenge si el puntaje de bot es sospechoso.
+
+Pasos:
+1. TICS agrega el script de Turnstile en el `<head>` con la sitekey pública.
+2. Frontend incluye el token de Turnstile en el body de `POST /api/token/sms` y `POST /api/registro`.
+3. Backend valida el token contra `https://challenges.cloudflare.com/turnstile/v0/siteverify` antes de procesar.
+
+### 7.4 Validación server-side de identidad
+
+El frontend parsea la firma `.p12` y el cert RUC en el navegador. Esto es cómodo para el usuario pero **un atacante puede hacer POST directo a `/api/registro` con datos arbitrarios saltándose el wizard completo**. El backend debe:
+
+- **Mínimo:** validar el algoritmo del dígito verificador del RUC del SRI.
+- **Mejor:** verificar contra una BD interna que el RUC realmente existe y no está ya registrado.
+- **Alta seguridad:** pedir el archivo `.p12` + clave al backend y volver a parsearlo server-side.
+
+### 7.5 Hash de clave del usuario
+
+La clave llega en texto plano al `POST /api/registro` (es el único campo que NO se sanitiza). El backend **DEBE** hashearla con **bcrypt (cost ≥ 12) o argon2** antes de persistir. **NUNCA** guardar en texto plano, **NUNCA** loguear.
+
+### 7.6 HMAC del payload (RECOMENDADO)
+
+Para detectar manipulación del JSON en tránsito:
+1. Frontend genera un `X-Timestamp` (epoch) + `X-Signature` (HMAC-SHA256 del body, con clave rotada diariamente).
+2. Backend valida que el timestamp esté dentro de los últimos 60s + que el HMAC coincida.
+3. Si no coincide → 401.
+
+Evita replay attacks y modificaciones MITM aunque el SSL falle.
+
+### 7.7 Headers de respuesta HTTP
+
+Configurar en NGINX/Apache/Cloudflare:
+
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+X-Content-Type-Options: nosniff
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-site
+```
+
+Y la cookie de sesión post-login:
+```
+Set-Cookie: session=...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=3600
+```
+
+### 7.8 Mejoras anti-bot ya integradas en frontend
+
+El frontend YA incluye dos capas anti-bot que filtran ~70% de bots simples (sin afectar al usuario humano):
+
+- **Honeypot** en `assets/utils/anti-bot.js` — campo invisible que solo bots llenan.
+- **Time-check** — si el flow se completa en menos de 25 segundos, se aborta.
+- **Throttle de reenvío** — cooldown progresivo (60s → 120s → 240s) + tope de 3 reenvíos por canal.
+
+Estas NO reemplazan al rate-limiting server-side (que es responsabilidad de TICS), pero suman barreras.
 
 ---
 
 ## 8. Tracking / analytics
 
-Hay un sistema de tracking interno (`track(evento, params)` en `app.js`). Por ahora solo loguea a consola. Si quieren registrar eventos de registro (`landing_view`, `manual_open`, `terms_aceptados`, etc.), conecten esa función a su Google Analytics / Mixpanel.
+Hay un sistema de tracking interno (`track(evento, params)` en `app.js`). Dispara un `CustomEvent('tributasoft:event')` al `window` y loguea a consola. Eventos disparados: `landing_view`, `manual_open`, `terms_aceptados`, `cotizador_abierto`, `cotizador_calculado`, `pago_enviado`, `clipboard_copy`, etc.
+
+Para conectar Meta Pixel o Google Analytics, agregar:
+```js
+window.addEventListener('tributasoft:event', (e) => {
+  const { name, ...detail } = e.detail;
+  // Meta Pixel
+  if (window.fbq) fbq('trackCustom', name, detail);
+  // Google Analytics 4
+  if (window.gtag) gtag('event', name, detail);
+});
+```
 
 ---
 
@@ -325,18 +420,24 @@ Hay un sistema de tracking interno (`track(evento, params)` en `app.js`). Por ah
 1. Subir un archivo `.p12` real → debe extraer titular, RUC, fecha caducidad.
 2. Subir el certificado de RUC PDF → debe extraer todos los campos.
 3. En la pantalla del token: verificar que llega un SMS real al celular.
-4. Verificar que llega el correo con la plantilla HTML completa al final.
-5. Verificar que el registro queda guardado en la BD con los datos sanitizados.
+4. Validar que pedir más de 3 reenvíos bloquea el botón permanentemente.
+5. Completar el flow en > 25s — debe pasar. En < 25s — debe abortar con mensaje genérico.
+6. Verificar que llega el correo con la plantilla HTML completa al final.
+7. Verificar que el registro queda guardado en la BD con los datos sanitizados y la clave hasheada.
+8. Intentar `curl POST /api/registro` con datos arbitrarios (sin pasar por el wizard) — debe rechazar.
+9. Intentar 6+ requests a `/api/token/sms` desde la misma IP en 1 minuto — debe responder 429 después del 5to.
 
 ---
 
 ## 10. Contacto
 
-Para dudas técnicas sobre el frontend, el repo está en `https://github.com/llpereirae-svg/Ts`. Los archivos más relevantes:
+Repo: `https://github.com/llpereirae-svg/Ts`. Archivos más relevantes:
 
-- `assets/wizard.js` — máquina de estados del wizard
-- `assets/screen-*.js` — cada pantalla del wizard
-- `assets/firma-validator.js` — parseo de .p12 (node-forge)
-- `assets/pdf-parser.js` — parseo del cert RUC (pdf.js)
-- `assets/token-service.js` — **REEMPLAZAR Capa 2**
-- `assets/email-service.js` — **REEMPLAZAR Capa 2**
+- `assets/wizard.js` — orquestador del wizard
+- `assets/screens/screen-*.js` — cada pantalla del wizard
+- `assets/parsers/firma-validator.js` — parseo de .p12 (node-forge)
+- `assets/parsers/pdf-parser.js` — parseo del cert RUC (pdf.js)
+- `assets/services/token-service.js` — **REEMPLAZAR Capa 2** (urgente — ver §7.1)
+- `assets/services/email-service.js` — **REEMPLAZAR Capa 2**
+- `assets/utils/anti-bot.js` — honeypot + time-check (no tocar)
+- `SECURITY-AUDIT.md` — auditoría completa con hallazgos detallados

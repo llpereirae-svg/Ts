@@ -11,6 +11,40 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
+  <!-- ============================================================
+       SEGURIDAD WEB — defensa en profundidad
+       ============================================================ -->
+
+  <!-- Content-Security-Policy: limita de qué orígenes se puede ejecutar
+       código, cargar estilos, fuentes e imágenes. Cualquier <script> que
+       no venga de un origen permitido es bloqueado por el navegador.
+       Esto neutraliza la mayoría de los XSS inyectados.
+       NOTA: 'unsafe-inline' en style-src es necesario porque jsPDF y los
+       wizard mocks inyectan estilos inline; lo eliminamos cuando refactoremos. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com data:;
+    img-src 'self' data: https://llpereirae-svg.github.io;
+    connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+  ">
+
+  <!-- X-Frame-Options: equivalente a frame-ancestors 'none' para navegadores
+       que no soportan CSP. Bloquea que la página se cargue dentro de un iframe
+       (defensa anti-clickjacking). -->
+  <meta http-equiv="X-Frame-Options" content="DENY">
+
+  <!-- Referrer-Policy: cuando el usuario sale de la landing (ej. al portal),
+       no enviamos info sensible de URL al destino. -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Permissions-Policy: deshabilita APIs sensibles que no usamos. -->
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()">
+
   <title>TributaSoft — 300 facturas o 3 meses GRATIS para nuevos clientes</title>
 
   <!-- Fuentes Google: DM Sans (headlines) + Inter (body). 'Avenida' se carga vía @font-face en styles.css. -->
@@ -35,8 +69,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260520b">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260520b">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260520c">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260520c">
 </head>
 <body data-state="IDLE">
 
@@ -304,7 +338,7 @@
   <!-- Cache-busting del bundle: cuando subimos cambios, bumpea APP_VER.
        Cargamos wizard.js (nuevo flujo) y app.js (modales Cotizador/Pago/Ayuda) en paralelo. -->
   <script type="module">
-    const APP_VER = '20260520b';
+    const APP_VER = '20260520c';
 
     // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
     import(`./assets/wizard.js?v=${APP_VER}`)

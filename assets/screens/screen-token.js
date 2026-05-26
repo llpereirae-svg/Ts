@@ -4,9 +4,16 @@
    La verificación es local mientras esté el mock; cuando el backend esté
    listo, token-service.js se encarga de hacer fetch al endpoint real. */
 
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260520b';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260520c';
 
-const REENVIAR_COOLDOWN_S = 30;
+// SECURITY (anti-abuso): cooldown y tope de reenvíos.
+// Cada canal permite máximo MAX_REENVIOS reenvíos manuales (incluyendo el
+// envío inicial). Cooldown progresivo entre reenvíos: 60s → 120s → 240s.
+// Si alguien intenta más, el botón queda permanentemente bloqueado y debe
+// reintentar el wizard desde cero.
+const REENVIAR_COOLDOWN_S = 60;
+const MAX_REENVIOS = 3;
+const COOLDOWN_FACTOR = 2; // cada reenvío duplica el siguiente cooldown
 
 // Estado interno de la pantalla (no se expone en wizardData.summary).
 // Se reinicia cada vez que se entra a la pantalla.
@@ -14,6 +21,7 @@ const _state = {
   emailToken: null,    // { token, expiraEn }
   smsToken: null,      // { token, expiraEn }
   enviado: false,
+  contadorEnvios: { sms: 0, email: 0 }, // anti-abuso: cuenta envíos por canal
 };
 
 export async function renderPantallaToken(body, wizardData) {
@@ -184,6 +192,7 @@ async function enviarSms(root, wizardData) {
   // Reset estado de pantalla
   _state.emailToken = null;
   _state.smsToken = null;
+  _state.contadorEnvios = { sms: 0, email: 0 };
   wizardData.tokenEmailOk = false;
   wizardData.tokenSmsOk = false;
 
@@ -192,6 +201,7 @@ async function enviarSms(root, wizardData) {
   try {
     const res = await generarYEnviarToken({ canal: 'sms', destino: wizardData.celular });
     _state.smsToken = { token: res.token, expiraEn: res.expiraEn };
+    _state.contadorEnvios.sms++;
     setStatus(root, 'sms', 'Código enviado a tu celular.');
     iniciarCooldown(root, 'sms');
     actualizarDebug(root);
@@ -209,6 +219,7 @@ async function enviarEmail(root, wizardData) {
   try {
     const res = await generarYEnviarToken({ canal: 'email', destino: wizardData.email });
     _state.emailToken = { token: res.token, expiraEn: res.expiraEn };
+    _state.contadorEnvios.email++;
     setStatus(root, 'email', 'Código enviado. Revisa tu bandeja de entrada (y spam).');
     iniciarCooldown(root, 'email');
     actualizarDebug(root);
@@ -247,13 +258,24 @@ function desbloquearEmail(root, wizardData) {
 }
 
 async function reenviar(root, wizardData, canal) {
+  // SECURITY: tope de reenvíos por canal. Si superó el máximo, bloqueamos
+  // permanentemente el botón y avisamos. La idea es que un bot no pueda
+  // hacer 1000 clics para agotar el crédito de Twilio/SendGrid.
+  if (_state.contadorEnvios[canal] >= MAX_REENVIOS) {
+    setStatus(root, canal, `Máximo de ${MAX_REENVIOS} envíos alcanzado. Reinicia el registro si no recibiste el código.`, true);
+    const btn = root.querySelector(`#t-${canal}-reenviar`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Tope alcanzado'; }
+    return;
+  }
+
   setStatus(root, canal, 'Reenviando…');
   try {
     const destino = canal === 'email' ? wizardData.email : wizardData.celular;
     const res = await generarYEnviarToken({ canal, destino });
     if (canal === 'email') _state.emailToken = { token: res.token, expiraEn: res.expiraEn };
     else _state.smsToken = { token: res.token, expiraEn: res.expiraEn };
-    setStatus(root, canal, 'Nuevo código enviado.');
+    _state.contadorEnvios[canal]++;
+    setStatus(root, canal, `Nuevo código enviado (${_state.contadorEnvios[canal]} de ${MAX_REENVIOS}).`);
     iniciarCooldown(root, canal);
     actualizarDebug(root);
   } catch (err) {
@@ -318,15 +340,25 @@ function setStatus(root, canal, msg, isError = false) {
 function iniciarCooldown(root, canal) {
   const btn = root.querySelector(`#t-${canal}-reenviar`);
   if (!btn) return;
-  let seg = REENVIAR_COOLDOWN_S;
+  // SECURITY: cooldown progresivo. Cada reenvío subsecuente duplica el tiempo
+  // de espera (60s, 120s, 240s). Esto frena el spam automatizado de bots.
+  const enviosHechos = _state.contadorEnvios[canal] || 0;
+  const segBase = REENVIAR_COOLDOWN_S * Math.pow(COOLDOWN_FACTOR, Math.max(0, enviosHechos - 1));
+  let seg = segBase;
   btn.disabled = true;
   btn.textContent = `Reenviar en ${seg}s`;
   const tick = setInterval(() => {
     seg--;
     if (seg <= 0) {
       clearInterval(tick);
-      btn.disabled = false;
-      btn.textContent = 'Reenviar';
+      // Si ya superó el tope, queda permanentemente bloqueado.
+      if (_state.contadorEnvios[canal] >= MAX_REENVIOS) {
+        btn.disabled = true;
+        btn.textContent = 'Tope alcanzado';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Reenviar';
+      }
     } else {
       btn.textContent = `Reenviar en ${seg}s`;
     }

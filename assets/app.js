@@ -14,8 +14,8 @@
 //
 // Imports mínimos: solo lo realmente usado por el código vivo.
 
-import { validarRUC } from './utils/validators.js?v=20260520b';
-import { initManual, openManual } from './manual/manual.js?v=20260520b';
+import { validarRUC } from './utils/validators.js?v=20260520c';
+import { initManual, openManual } from './manual/manual.js?v=20260520c';
 
 // =========================================================================
 //   CONSTANTES

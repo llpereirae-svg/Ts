@@ -400,6 +400,17 @@ function renderSummary() {
 
 // ---------------- Finalización ----------------
 async function finishWizard() {
+  // SECURITY (anti-bot): si el usuario llenó el honeypot o completó el wizard
+  // sospechosamente rápido (<25s), abortamos silenciosamente. NO mostramos el
+  // motivo real para no revelar la heurística — solo un mensaje genérico.
+  const { validateAntiBot, sessionElapsedSeconds } = await import('./utils/anti-bot.js?v=20260520c');
+  const ab = validateAntiBot();
+  if (!ab.ok) {
+    console.warn('[wizard] anti-bot trip:', ab.reason, 'segundos:', sessionElapsedSeconds());
+    alert('No pudimos completar tu registro en este momento. Si el problema persiste, escríbenos a soporte@tributasoft.ec.');
+    return;
+  }
+
   showLoading('Creando tu cuenta…');
   try {
     // 1) Sanitizar todos los datos para el backend (UPPERCASE, ñ→NI, sin tildes).
@@ -408,13 +419,13 @@ async function finishWizard() {
     const sanitizado = sanitizeForBackend(wizardData);
     sanitizado.clave = clavePlana;
     // SECURITY: NO loguear `sanitizado` completo — contiene RUC, email, clave, etc.
-    // Solo dejamos una traza mínima del envío.
-    console.log('[wizard] enviando registro', { ruc: sanitizado.ruc, email: sanitizado.email });
+    // Solo dejamos una traza mínima del envío + tiempo de sesión (útil para detectar abuso patrones).
+    console.log('[wizard] enviando registro', { ruc: sanitizado.ruc, email: sanitizado.email, elapsed: sessionElapsedSeconds() });
 
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520b');
+    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520c');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -579,17 +590,22 @@ export async function startWizard() {
   }
   mountWizard(root);
 
+  // Anti-bot: iniciar contador de sesión + inyectar honeypot.
+  // Si el flow se completa en <25s o el honeypot tiene valor, finishWizard aborta.
+  const { startSession } = await import('./utils/anti-bot.js?v=20260520c');
+  startSession();
+
   // Cargar e instalar las pantallas con contenido real.
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screens/screen-firma.js?v=20260520b'),
-      import('./screens/screen-datos.js?v=20260520b'),
-      import('./screens/screen-token.js?v=20260520b'),
-      import('./screens/screen-tributaria.js?v=20260520b'),
-      import('./screens/screen-facturacion.js?v=20260520b'),
-      import('./screens/screen-clave.js?v=20260520b'),
-      import('./screens/screen-logo.js?v=20260520b'),
+      import('./screens/screen-firma.js?v=20260520c'),
+      import('./screens/screen-datos.js?v=20260520c'),
+      import('./screens/screen-token.js?v=20260520c'),
+      import('./screens/screen-tributaria.js?v=20260520c'),
+      import('./screens/screen-facturacion.js?v=20260520c'),
+      import('./screens/screen-clave.js?v=20260520c'),
+      import('./screens/screen-logo.js?v=20260520c'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);
