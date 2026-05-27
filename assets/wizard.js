@@ -403,7 +403,7 @@ async function finishWizard() {
   // SECURITY (anti-bot): si el usuario llenó el honeypot o completó el wizard
   // sospechosamente rápido (<25s), abortamos silenciosamente. NO mostramos el
   // motivo real para no revelar la heurística — solo un mensaje genérico.
-  const { validateAntiBot, sessionElapsedSeconds } = await import('./utils/anti-bot.js?v=20260520c');
+  const { validateAntiBot, sessionElapsedSeconds } = await import('./utils/anti-bot.js?v=20260520d');
   const ab = validateAntiBot();
   if (!ab.ok) {
     console.warn('[wizard] anti-bot trip:', ab.reason, 'segundos:', sessionElapsedSeconds());
@@ -425,7 +425,7 @@ async function finishWizard() {
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520c');
+    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520d');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -592,20 +592,20 @@ export async function startWizard() {
 
   // Anti-bot: iniciar contador de sesión + inyectar honeypot.
   // Si el flow se completa en <25s o el honeypot tiene valor, finishWizard aborta.
-  const { startSession } = await import('./utils/anti-bot.js?v=20260520c');
+  const { startSession } = await import('./utils/anti-bot.js?v=20260520d');
   startSession();
 
   // Cargar e instalar las pantallas con contenido real.
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screens/screen-firma.js?v=20260520c'),
-      import('./screens/screen-datos.js?v=20260520c'),
-      import('./screens/screen-token.js?v=20260520c'),
-      import('./screens/screen-tributaria.js?v=20260520c'),
-      import('./screens/screen-facturacion.js?v=20260520c'),
-      import('./screens/screen-clave.js?v=20260520c'),
-      import('./screens/screen-logo.js?v=20260520c'),
+      import('./screens/screen-firma.js?v=20260520d'),
+      import('./screens/screen-datos.js?v=20260520d'),
+      import('./screens/screen-token.js?v=20260520d'),
+      import('./screens/screen-tributaria.js?v=20260520d'),
+      import('./screens/screen-facturacion.js?v=20260520d'),
+      import('./screens/screen-clave.js?v=20260520d'),
+      import('./screens/screen-logo.js?v=20260520d'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

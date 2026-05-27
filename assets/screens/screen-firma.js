@@ -3,9 +3,9 @@
    El RUC ya NO se ingresa manualmente: viene de la firma y se valida
    contra el RUC del certificado. */
 
-import { validarFirmaP12 } from '../parsers/firma-validator.js?v=20260520c';
-import { parseCertificadoRUC, validarFechaEmisionCert } from '../parsers/pdf-parser.js?v=20260520c';
-import { showLoading, hideLoading, detectDevice } from '../wizard.js?v=20260520c';
+import { validarFirmaP12 } from '../parsers/firma-validator.js?v=20260520d';
+import { parseCertificadoRUC, validarFechaEmisionCert } from '../parsers/pdf-parser.js?v=20260520d';
+import { showLoading, hideLoading, detectDevice } from '../wizard.js?v=20260520d';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 

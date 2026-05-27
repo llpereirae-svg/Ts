@@ -42,17 +42,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Smoke test (valida CSP, imports rotos, cache buster)
+        # Aborta el deploy si detecta: scripts inline bloqueados por CSP,
+        # referencias a archivos inexistentes, URLs externas no permitidas,
+        # imports JS rotos o cache buster inconsistente.
+        # Esto evita publicar versiones rotas (ej. el incidente del 2026-05-20
+        # cuando un <script> inline quedó bloqueado por CSP sin que nadie lo notara).
+        run: python .github/smoke-test.py
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
         with:
           # Si Pages aún no está activado en el repo, lo activa automáticamente.
-          # Requiere el permiso `pages: write` (declarado arriba).
           enablement: true
 
       - name: Empaquetar artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Todo el repo (root). Pages servirá index.html como entry point.
           path: '.'
 
       - name: Desplegar a Pages
