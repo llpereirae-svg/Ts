@@ -362,9 +362,27 @@ Formato sugerido: `YYYYMMDD` + letra (a, b, c, d…) por cambios en el mismo dí
 
 ---
 
-## 10. Meta Pixel + Conversions API (CAPI) — armar el backend con esto en mente
+## 10. Meta Pixel + Conversions API (CAPI) — YA INTEGRADO en el frontend
+
+> **Estado:** Frontend listo. CAPI pendiente del backend (tu trabajo). Activado solo en producción.
 
 Esta sección es para que el backend que vas a construir ya considere desde el inicio la integración con Meta Ads. Hacerlo después es 5x más costoso.
+
+### 10.0 Lo que YA está integrado en el frontend
+
+| Archivo | Qué hace |
+|---|---|
+| `assets/services/config.js` | Define `META_DATASET_ID`, `ENABLE_PIXEL` (auto-off en demo/dev, auto-on en producción) |
+| `assets/services/meta-pixel.js` | Carga fbevents.js, dispara PageView, escucha eventos internos y los mapea a Meta |
+| `assets/screens/screen-firma.js` | Dispara evento `Lead` cuando se validan firma + cert (paso 1) |
+| `assets/wizard.js → finishWizard()` | Dispara evento `CompleteRegistration` al final (paso 8) + genera `metaEventId` para CAPI |
+
+**Configuración del cliente:**
+- `DATASET_ID / PIXEL_ID`: `1476572470933060`
+- Activación: automática cuando `window.location.hostname` está en `PROD_HOSTS` de `config.js` (hoy: `www.tributasoft.com.ec`, `tributasoft.com.ec`, `app.tributasoft.ec`). **Agregá ahí el dominio real de Digital Ocean cuando deployes.**
+- En GitHub Pages y `localhost`: pixel apagado para no contaminar métricas.
+
+### 10.1 Qué es el Pixel y qué es CAPI
 
 ### 10.1 Qué es el Pixel y qué es CAPI
 

@@ -23,11 +23,11 @@
        wizard mocks inyectan estilos inline; lo eliminamos cuando refactoremos. -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://connect.facebook.net;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com data:;
-    img-src 'self' data: https://llpereirae-svg.github.io;
-    connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    img-src 'self' data: https://llpereirae-svg.github.io https://www.facebook.com;
+    connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.facebook.com;
     frame-ancestors 'none';
     base-uri 'self';
     form-action 'self';
@@ -69,8 +69,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260520d">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260520d">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260520e">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260520e">
 </head>
 <body data-state="IDLE">
 
@@ -337,6 +337,6 @@
 
   <!-- Bootstrap: carga wizard.js + app.js. NO inline (lo bloquearía nuestro CSP).
        Si se necesita bumpear cache, hacerlo en assets/bootstrap.js (APP_VER). -->
-  <script type="module" src="./assets/bootstrap.js?v=20260520d"></script>
+  <script type="module" src="./assets/bootstrap.js?v=20260520e"></script>
 </body>
 </html>

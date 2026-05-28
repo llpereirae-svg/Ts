@@ -403,7 +403,7 @@ async function finishWizard() {
   // SECURITY (anti-bot): si el usuario llenó el honeypot o completó el wizard
   // sospechosamente rápido (<25s), abortamos silenciosamente. NO mostramos el
   // motivo real para no revelar la heurística — solo un mensaje genérico.
-  const { validateAntiBot, sessionElapsedSeconds } = await import('./utils/anti-bot.js?v=20260520d');
+  const { validateAntiBot, sessionElapsedSeconds } = await import('./utils/anti-bot.js?v=20260520e');
   const ab = validateAntiBot();
   if (!ab.ok) {
     console.warn('[wizard] anti-bot trip:', ab.reason, 'segundos:', sessionElapsedSeconds());
@@ -418,14 +418,22 @@ async function finishWizard() {
     const clavePlana = wizardData.clave;
     const sanitizado = sanitizeForBackend(wizardData);
     sanitizado.clave = clavePlana;
+
+    // Meta Pixel + CAPI: event_id único para deduplicar pixel del navegador
+    // con CAPI del backend. El backend DEBE reenviarlo a Meta cuando dispare
+    // el evento server-side (ver DEV-LOCAL.md §10).
+    const metaRegistroEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `reg-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    sanitizado.metaEventId = metaRegistroEventId;
+
     // SECURITY: NO loguear `sanitizado` completo — contiene RUC, email, clave, etc.
-    // Solo dejamos una traza mínima del envío + tiempo de sesión (útil para detectar abuso patrones).
     console.log('[wizard] enviando registro', { ruc: sanitizado.ruc, email: sanitizado.email, elapsed: sessionElapsedSeconds() });
 
     // 2) Enviar email de bienvenida con el resumen + credenciales.
     //    El servicio email-service.js usa mock por ahora; reemplazar la Capa 2
     //    cuando el backend esté listo (ver comentarios del módulo).
-    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520d');
+    const { enviarEmailRegistro } = await import('./services/email-service.js?v=20260520e');
     const emailRes = await enviarEmailRegistro({
       destino: wizardData.email,
       datosRegistro: sanitizado,
@@ -433,6 +441,12 @@ async function finishWizard() {
     if (!emailRes.ok) {
       console.warn('[wizard] email no se pudo enviar', emailRes);
     }
+
+    // Meta Pixel: dispara CompleteRegistration con el event_id compartido.
+    // Si ENABLE_PIXEL=false (demo/dev), no pasa nada — el listener no carga.
+    window.dispatchEvent(new CustomEvent('tributasoft:event', {
+      detail: { name: 'registro_completado', metaEventId: metaRegistroEventId },
+    }));
 
     hideLoading();
     mostrarExito();
@@ -592,20 +606,20 @@ export async function startWizard() {
 
   // Anti-bot: iniciar contador de sesión + inyectar honeypot.
   // Si el flow se completa en <25s o el honeypot tiene valor, finishWizard aborta.
-  const { startSession } = await import('./utils/anti-bot.js?v=20260520d');
+  const { startSession } = await import('./utils/anti-bot.js?v=20260520e');
   startSession();
 
   // Cargar e instalar las pantallas con contenido real.
   // Cada bloque del rewrite agrega más imports aquí.
   try {
     const [firmaMod, datosMod, tokenMod, tribMod, factMod, claveMod, logoMod] = await Promise.all([
-      import('./screens/screen-firma.js?v=20260520d'),
-      import('./screens/screen-datos.js?v=20260520d'),
-      import('./screens/screen-token.js?v=20260520d'),
-      import('./screens/screen-tributaria.js?v=20260520d'),
-      import('./screens/screen-facturacion.js?v=20260520d'),
-      import('./screens/screen-clave.js?v=20260520d'),
-      import('./screens/screen-logo.js?v=20260520d'),
+      import('./screens/screen-firma.js?v=20260520e'),
+      import('./screens/screen-datos.js?v=20260520e'),
+      import('./screens/screen-token.js?v=20260520e'),
+      import('./screens/screen-tributaria.js?v=20260520e'),
+      import('./screens/screen-facturacion.js?v=20260520e'),
+      import('./screens/screen-clave.js?v=20260520e'),
+      import('./screens/screen-logo.js?v=20260520e'),
     ]);
     registerScreen('firma', firmaMod.renderPantallaFirma);
     setValidator('firma', firmaMod.validarPantallaFirma);

@@ -3,9 +3,9 @@
    El RUC ya NO se ingresa manualmente: viene de la firma y se valida
    contra el RUC del certificado. */
 
-import { validarFirmaP12 } from '../parsers/firma-validator.js?v=20260520d';
-import { parseCertificadoRUC, validarFechaEmisionCert } from '../parsers/pdf-parser.js?v=20260520d';
-import { showLoading, hideLoading, detectDevice } from '../wizard.js?v=20260520d';
+import { validarFirmaP12 } from '../parsers/firma-validator.js?v=20260520e';
+import { parseCertificadoRUC, validarFechaEmisionCert } from '../parsers/pdf-parser.js?v=20260520e';
+import { showLoading, hideLoading, detectDevice } from '../wizard.js?v=20260520e';
 
 const WHATSAPP_FIRMA = 'https://wa.me/593969173466?text=Hola%2C+necesito+ayuda+para+obtener+mi+firma+electr%C3%B3nica.';
 
@@ -491,5 +491,18 @@ export function validarPantallaFirma(wizardData) {
   }
   // Sincronizar rucManual con el RUC validado (lo usa el resumen final)
   wizardData.rucManual = wizardData.firma.ruc;
+
+  // Meta Pixel: dispara evento "Lead" porque el usuario ya pasó la barrera
+  // más difícil del flow (subir firma + cert + clave). Generamos un event_id
+  // único que se reutilizará en CAPI server-side para deduplicación.
+  if (!wizardData._metaLeadEventId) {
+    wizardData._metaLeadEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `lead-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    window.dispatchEvent(new CustomEvent('tributasoft:event', {
+      detail: { name: 'firma_validada', metaEventId: wizardData._metaLeadEventId },
+    }));
+  }
+
   return true;
 }
