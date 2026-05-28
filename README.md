@@ -134,9 +134,12 @@ La firma `.p12` y el cert PDF **NO se suben al servidor**: se leen en el navegad
 
 ## Documentación
 
-- **`HANDOVER-TICS.md`** — Documento técnico para el equipo de desarrollo del backend.
+- **`DEV-LOCAL.md`** — Guía de instalación local para el equipo que va a construir el backend. Cubre setup, conexión frontend↔backend, CORS, Meta Pixel + CAPI.
+- **`HANDOVER-TICS.md`** — Documento técnico con los 4 endpoints, schema BD y snippets de código.
 - **`Explicacion-TICS.docx`** — Mismo contenido en lenguaje común, para llevar a reunión con TI/TICS.
 - **`SECURITY-AUDIT.md`** — Hallazgos de la auditoría interna + pendientes para producción.
+- **`flujo-registro.json`** — Contrato del wizard paso a paso (1 a 8).
+- **`pdf-header-spec.json`** — Cómo reproducir el header corporativo de los PDFs.
 
 ---
 
