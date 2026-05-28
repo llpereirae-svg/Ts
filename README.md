@@ -79,6 +79,14 @@ tributasoft/
 
 Detalles completos (JSON, schema BD, ejemplos de fetch) en **`HANDOVER-TICS.md`**.
 
+## Meta Pixel + Conversions API (CAPI)
+
+Ya integrado en el frontend (`assets/services/config.js` + `meta-pixel.js`). **Apagado en demo (GitHub Pages) y dev (localhost), activado automáticamente en producción** cuando el hostname coincida con `PROD_HOSTS` de `config.js`.
+
+- **DATASET_ID:** `1476572470933060` (público).
+- **Eventos disparados:** `Lead` al validar firma + cert, `CompleteRegistration` al finalizar el wizard, `ViewContent` al abrir el cotizador, `PageView` automático.
+- **Para CAPI:** el backend debe reusar el `metaEventId` que viene en el body de `/api/registro` cuando dispare el evento server-side a Meta. Sin esto, no hay deduplicación y se cuentan las conversiones dos veces. Ver `HANDOVER-TICS.md §8.3`.
+
 ---
 
 ## Desarrollo local

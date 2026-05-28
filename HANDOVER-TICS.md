@@ -143,11 +143,14 @@ Backend (lo que ustedes implementan)
     "guia": "000000001"
   },
   "clave": "Pa$$w0rd",
-  "logoDataUrl": "data:image/png;base64,..."
+  "logoDataUrl": "data:image/png;base64,...",
+  "metaEventId": "a3f29b4c-1e8d-4f7a-9c12-5b6d8e3f1a2b"
 }
 ```
 
 > **Importante:** la **clave NO se sanitiza** (mantiene mayúsculas, símbolos, tildes como el usuario la escribió). El resto sí.
+
+> **CRÍTICO — `metaEventId` para CAPI:** este campo viene incluido en el body. Es un UUID generado por el frontend. **El backend DEBE reusarlo** cuando dispare el evento `CompleteRegistration` server-side a Meta Conversions API (campo `event_id` del payload de Meta). Sin esto, Meta cuenta cada conversión dos veces (una vez del Pixel del navegador, otra de CAPI). La deduplicación solo funciona si el `event_id` coincide. Ver §8 para el flujo completo.
 
 **Response esperado:**
 ```json
@@ -398,20 +401,113 @@ Estas NO reemplazan al rate-limiting server-side (que es responsabilidad de TICS
 
 ---
 
-## 8. Tracking / analytics
+## 8. Tracking + Meta Pixel + Conversions API (CAPI)
 
-Hay un sistema de tracking interno (`track(evento, params)` en `app.js`). Dispara un `CustomEvent('tributasoft:event')` al `window` y loguea a consola. Eventos disparados: `landing_view`, `manual_open`, `terms_aceptados`, `cotizador_abierto`, `cotizador_calculado`, `pago_enviado`, `clipboard_copy`, etc.
+### 8.1 Sistema de tracking interno (existente)
 
-Para conectar Meta Pixel o Google Analytics, agregar:
+Hay un sistema de tracking interno (`track(evento, params)` en `app.js`). Dispara un `CustomEvent('tributasoft:event')` al `window` y loguea a consola. Eventos: `landing_view`, `manual_open`, `terms_aceptados`, `cotizador_abierto`, `cotizador_calculado`, `pago_enviado`, `firma_validada`, `registro_completado`, `clipboard_copy`, etc.
+
+Para conectar Google Analytics 4 (cuando se quiera):
 ```js
 window.addEventListener('tributasoft:event', (e) => {
   const { name, ...detail } = e.detail;
-  // Meta Pixel
-  if (window.fbq) fbq('trackCustom', name, detail);
-  // Google Analytics 4
   if (window.gtag) gtag('event', name, detail);
 });
 ```
+
+### 8.2 Meta Pixel + CAPI — YA integrado en frontend
+
+**Estado actual:** el frontend ya tiene la integración lista, **apagada en demo (GitHub Pages) y dev (localhost), activada automáticamente en producción** (cuando el hostname coincida con `PROD_HOSTS` de `assets/services/config.js`).
+
+| Archivo | Función |
+|---|---|
+| `assets/services/config.js` | Detecta entorno + define `META_DATASET_ID = '1476572470933060'` + flag `ENABLE_PIXEL` |
+| `assets/services/meta-pixel.js` | Carga fbevents.js de Meta, escucha eventos internos y dispara `fbq('track', ...)` |
+| `assets/screens/screen-firma.js` | Dispara `firma_validada` → mapea a Meta **Lead** con `metaEventId` único |
+| `assets/wizard.js → finishWizard()` | Dispara `registro_completado` → mapea a Meta **CompleteRegistration** + **inyecta `metaEventId` en el body del POST /api/registro** |
+
+**DATASET_ID / PIXEL_ID:** `1476572470933060` (público, está en `config.js`)
+**ACCESS_TOKEN para CAPI:** el cliente te lo entrega por canal seguro (NO está en el repo).
+
+### 8.3 Lo que TICS DEBE implementar en CAPI (backend)
+
+Cuando el backend reciba `POST /api/registro` exitoso, **además de guardar en BD**, debe disparar un evento a Meta Conversions API:
+
+**Endpoint:**
+```
+POST https://graph.facebook.com/v18.0/1476572470933060/events
+?access_token={META_ACCESS_TOKEN}
+```
+
+**Body:**
+```json
+{
+  "data": [{
+    "event_name": "CompleteRegistration",
+    "event_time": 1716800000,
+    "event_id": "a3f29b4c-1e8d-4f7a-9c12-5b6d8e3f1a2b",
+    "action_source": "website",
+    "event_source_url": "https://www.tributasoft.com.ec/registro",
+    "user_data": {
+      "em":  ["sha256_del_email_en_lowercase"],
+      "ph":  ["sha256_del_celular_e164"],
+      "fn":  ["sha256_del_nombre"],
+      "ln":  ["sha256_del_apellido"],
+      "ct":  ["sha256_de_la_ciudad"],
+      "st":  ["sha256_de_la_provincia"],
+      "country": ["sha256_iso2"],
+      "external_id": ["sha256_del_ruc"],
+      "fbp": "valor del cookie _fbp",
+      "fbc": "valor del cookie _fbc",
+      "client_ip_address": "ip del request",
+      "client_user_agent": "user-agent del request"
+    },
+    "custom_data": {
+      "currency": "USD",
+      "value": 0
+    }
+  }]
+}
+```
+
+**Puntos críticos:**
+
+1. **`event_id` DEBE ser el `metaEventId` que viene en el body del POST /api/registro.** Sin esto Meta cuenta cada conversión dos veces (Pixel + CAPI no se deduplican).
+
+2. **Hashes SHA-256 en lowercase y trimmed antes de hashear.** Ejemplo Java:
+   ```java
+   private String hashForMeta(String s) {
+       if (s == null || s.isBlank()) return null;
+       return DigestUtils.sha256Hex(s.trim().toLowerCase());
+   }
+   ```
+
+3. **Cookies `_fbp` y `_fbc`** las setea el Pixel del navegador. El frontend tiene que enviarlas al backend en cada request (configurar `credentials: 'include'` en el `fetch()` cuando se haga la integración, y en el backend leer las cookies del request).
+
+4. **Telefono en formato E.164** antes de hashear: `+593998429901` (no `0998429901`).
+
+5. **El ACCESS_TOKEN va como variable de entorno**, NUNCA hardcodeado, NUNCA committeado.
+
+### 8.4 Testing del CAPI
+
+Meta Events Manager → tu Dataset → pestaña **"Test events"** → te da un código de test. Lo agregás temporalmente al payload (`"test_event_code": "TEST12345"`) y los eventos aparecen en tiempo real en el dashboard sin contaminar producción.
+
+Validar:
+- ✅ Pixel del navegador dispara `CompleteRegistration` con `event_id: X`
+- ✅ CAPI del backend dispara `CompleteRegistration` con `event_id: X` (el MISMO)
+- ✅ En Events Manager aparece UN solo evento (deduplicado), no dos.
+
+### 8.5 Eventos opcionales a futuro
+
+Si quieren expandir el tracking, mapeo sugerido frontend → Meta:
+
+| Evento interno | Meta event | Cuándo se dispara |
+|---|---|---|
+| `firma_validada` | `Lead` | Paso 1 OK (ya integrado) |
+| `registro_completado` | `CompleteRegistration` | Paso 8 OK (ya integrado) |
+| `cotizador_abierto` | `ViewContent` | Click en "Cotizar" del header (ya integrado) |
+| `pago_enviado` | `Purchase` | Renovación prepago (cuando se integre cobranza) |
+| `manual_open` | `ViewContent` | Click en "Ayuda" (opcional) |
 
 ---
 

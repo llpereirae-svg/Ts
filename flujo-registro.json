@@ -1,8 +1,8 @@
 {
   "proyecto": "TributaSoft Landing — Wizard de Registro",
-  "version": "20260518e",
-  "fecha": "2026-05-18",
-  "descripcion": "Wizard de 8 pantallas. Toda la validación de identidad se hace en el navegador a partir de la firma .p12 + certificado RUC en PDF. El backend solo expone 4 endpoints: 2 para tokens (SMS/email), 1 para correo de bienvenida y 1 para persistir el registro.",
+  "version": "20260520e",
+  "fecha": "2026-05-20",
+  "descripcion": "Wizard de 8 pantallas. Toda la validación de identidad se hace en el navegador a partir de la firma .p12 + certificado RUC en PDF. El backend solo expone 4 endpoints: 2 para tokens (SMS/email), 1 para correo de bienvenida y 1 para persistir el registro. Adicionalmente: Meta Pixel + Conversions API integrados en frontend, apagados en demo/dev, activados automáticamente en producción.",
   "orquestador": "assets/wizard.js",
   "estadoGlobal": "wizardData (objeto exportado en wizard.js)",
 
@@ -386,9 +386,11 @@
               "guia": "000000001"
             },
             "clave": "Pa$$w0rd",
-            "logoDataUrl": "data:image/png;base64,..."
+            "logoDataUrl": "data:image/png;base64,...",
+            "metaEventId": "a3f29b4c-1e8d-4f7a-9c12-5b6d8e3f1a2b"
           },
           "response": "{ ok: true, usuario: '0992703601' }",
+          "notaCriticaCAPI": "El campo metaEventId es OBLIGATORIO reusarlo en la llamada a Meta Conversions API (campo event_id del payload). Sin esto Meta cuenta cada conversión dos veces porque no deduplica con el Pixel del navegador. Ver HANDOVER-TICS.md §8.3 para el payload completo de CAPI.",
           "notas": "TODOS los campos llegan sanitizados (UPPERCASE, sin tildes, ñ → NI). EXCEPTO la clave, que va tal cual la escribió el usuario."
         }
       }
@@ -456,10 +458,31 @@
     "cacheBusting": "?v=YYYYMMDDx en todos los imports — se bumpea en cada deploy"
   },
 
+  "metaPixelCAPI": {
+    "estado": "Frontend integrado. CAPI pendiente del backend.",
+    "datasetId": "1476572470933060",
+    "activacion": "Automatica cuando window.location.hostname coincide con PROD_HOSTS de assets/services/config.js. Hoy apagado en demo (GitHub Pages) y dev (localhost).",
+    "archivosFrontend": [
+      "assets/services/config.js — entorno + ENABLE_PIXEL + META_DATASET_ID",
+      "assets/services/meta-pixel.js — snippet de fbevents.js + puente con track() interno"
+    ],
+    "eventosMeta": {
+      "Lead":                 "Disparado al validar firma + cert en paso 1 (screen-firma.js)",
+      "CompleteRegistration": "Disparado al finalizar el wizard en paso 8 (wizard.js finishWizard)",
+      "ViewContent":          "Disparado al abrir el modal Cotizar (app.js openCotizar)",
+      "PageView":             "Automatico al cargar la landing (Pixel base)"
+    },
+    "deduplicacionConCAPI": "El frontend genera un metaEventId (UUID) por evento y lo inyecta en el body del POST /api/registro. El backend DEBE reusar ese metaEventId como event_id cuando dispare el evento a CAPI server-side. Sin esto, Meta cuenta cada conversion dos veces. Ver HANDOVER-TICS.md §8.3.",
+    "accessTokenCAPI": "NO esta en el repo. El cliente lo entrega al dev del backend por canal seguro. Se configura como variable de entorno META_ACCESS_TOKEN en el servidor de produccion.",
+    "endpointCAPI": "POST https://graph.facebook.com/v18.0/1476572470933060/events?access_token={META_ACCESS_TOKEN}"
+  },
+
   "documentacionRelacionada": {
+    "instalacionLocal": "DEV-LOCAL.md",
     "tecnica": "HANDOVER-TICS.md",
     "lenguajeComun": "Explicacion-TICS.docx",
     "seguridad": "SECURITY-AUDIT.md",
-    "terminos": "Terminos-y-Condiciones.txt"
+    "terminos": "Terminos-y-Condiciones.txt",
+    "pdfHeader": "pdf-header-spec.json"
   }
 }
