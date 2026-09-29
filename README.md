@@ -1,156 +1,93 @@
-# TributaSoft — Landing de Registro
+# TributaSoft — Registro de 300 documentos gratis
 
-Landing estática (HTML + CSS + JavaScript ES modules) con un wizard de 8 pantallas para que un contribuyente se registre en TributaSoft sin necesidad de hablar con APIs externas del SRI.
+Landing estática en HTML, CSS y JavaScript ES modules con un flujo responsive de cinco pasos. No usa React, Vue, Vite, Tailwind ni un proceso de build.
 
-**Producción:** [llpereirae-svg.github.io/Ts](https://llpereirae-svg.github.io/Ts/)
-**Portal post-registro:** [tbc.tributasoft.ec](https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true)
+## Flujo actual
 
----
+1. **Firma:** lee `.p12` o `.pfx` en el navegador con `node-forge`. La clave y el archivo no se guardan ni se incluyen en el payload.
+2. **Datos:** consulta el RUC por la API propia y permite revisar datos tributarios y contacto.
+3. **Correo:** envía y verifica un código. En demo usa un mock visible; en producción delega al backend.
+4. **Facturación:** diferencia entre contribuyente nuevo y quien ya emitía comprobantes.
+5. **Revisión:** resume identidad, datos tributarios, contacto y facturación antes del alta.
 
-## Idea
+La versión demo/local prepara el registro, pero no crea una cuenta real ni envía correos reales.
 
-El usuario sube **dos archivos** y la landing extrae todo lo demás:
+## Arquitectura RUC
 
-1. **Firma electrónica `.p12`** — parseamos con `node-forge` (en el navegador) para sacar titular, RUC, fecha de caducidad.
-2. **Certificado de RUC en PDF** — parseamos con `pdf.js` para sacar razón social, dirección, provincia, cantón, régimen, tipo de contribuyente, email y celular.
-
-El resto del wizard solo confirma o ajusta lo extraído. No hay scraping del SRI, no hay llamadas a APIs externas para validar el RUC.
-
----
-
-## Estructura del repo
-
-```
-tributasoft/
-├── index.html
-├── HANDOVER-TICS.md         ← Doc técnica para el equipo TI/TICS
-├── Explicacion-TICS.docx    ← Mismo contenido en Word para reuniones
-├── SECURITY-AUDIT.md        ← Auditoría interna de seguridad
-└── assets/
-    ├── app.js               ← Legacy: maneja modales Cotizar, Pago, Términos
-    ├── wizard.js            ← Orquestador del wizard de 8 pantallas
-    ├── styles.css
-    ├── wizard.css
-    ├── screens/             ← Una pantalla por archivo
-    │   ├── screen-firma.js
-    │   ├── screen-datos.js
-    │   ├── screen-token.js
-    │   ├── screen-tributaria.js
-    │   ├── screen-facturacion.js
-    │   ├── screen-clave.js
-    │   └── screen-logo.js
-    ├── services/            ← Solo lo que necesita backend real
-    │   ├── token-service.js   (SMS + email OTP — mock hasta integrar)
-    │   └── email-service.js   (email de bienvenida — mock hasta integrar)
-    ├── parsers/             ← Lectura local de archivos del usuario
-    │   ├── firma-validator.js   (.p12 con node-forge)
-    │   └── pdf-parser.js        (cert RUC con pdf.js)
-    ├── utils/               ← Helpers reutilizables
-    │   ├── validators.js
-    │   ├── state-machine.js
-    │   ├── countries.js
-    │   └── cities.js
-    └── manual/              ← Manual interactivo (modal con tabs)
-        ├── manual.js
-        └── manual-data.js
+```text
+Frontend
+  → GET /api/ruc/:ruc
+  → backend propio
+  → SRI
 ```
 
----
+El navegador **no debe consultar directamente al SRI**. El endpoint público presenta problemas CORS; el proxy propio además concentra validación, timeout y normalización.
 
-## Qué hace la landing sola (sin backend)
+Contrato aplicado:
 
-✅ Valida la firma .p12 — clave, vigencia y RUC interno.
-✅ Lee el certificado de RUC PDF — razón social, dirección, régimen, tipo de contribuyente, fecha de emisión.
-✅ Valida que el cert no tenga más de 1 mes de emitido.
-✅ Valida que el RUC del cert coincida con el de la firma.
-✅ Genera tokens de verificación con `crypto.getRandomValues()`.
-✅ Sanitiza datos antes de enviar (UPPERCASE, sin tildes, ñ → NI).
-✅ Detecta dispositivo (PC/Tablet/Móvil) automáticamente.
-✅ Genera el banner del logo (2970×300 PNG) con la imagen del usuario o solo con su nombre comercial.
+- RUC: exactamente 13 dígitos, termina en `001` y pasa el dígito verificador.
+- `204`: RUC no encontrado y sin body; nunca se llama `response.json()` en ese caso.
+- `408` o `5xx`: indisponibilidad temporal; el formulario admite captura manual y marca `validacionSriPendiente`.
+- Respuesta malformada: error distinto; no se trata como RUC inexistente.
+- Estado: manda `estadoContribuyenteRuc`. Una fecha de cese histórica no convierte por sí sola un RUC activo en cerrado.
+- Advertencias: `contribuyenteFantasma = SI`, `transaccionesInexistente = SI` o estado `PASIVO` se muestran y se registran, sin decisión comercial irreversible desde frontend.
+- Sociedad: `representantesLegales` determina si se muestra representante; puede ser vacío o `null`.
+- Fechas: se conservan desde `informacionFechasContribuyente`.
 
-## Qué necesita el backend (4 endpoints)
+`server/ruc-proxy.js` es un adaptador Node 18+ sin dependencias. La URL real del SRI no se inventa: debe configurarse en `SRI_RUC_URL` usando `{ruc}` como marcador.
 
-| # | Endpoint | Archivo |
+## Ejecutar localmente
+
+Requiere Node.js 18 o superior.
+
+```powershell
+cd D:\proyectos\tributasoft\registro
+npm start
+```
+
+Abrir: [http://localhost:8000](http://localhost:8000)
+
+Sin `SRI_RUC_URL`, la consulta responde como servicio no configurado y el frontend activa el fallback manual seguro. Para conectar un upstream autorizado:
+
+```powershell
+$env:SRI_RUC_URL='https://URL-OFICIAL/{ruc}'
+npm start
+```
+
+No se incluye una URL productiva porque debe validarla el equipo técnico contra la fuente oficial vigente.
+
+## Endpoints backend pendientes
+
+| Endpoint | Uso | Estado |
 |---|---|---|
-| 1 | `POST /api/token/sms` | `services/token-service.js` |
-| 2 | `POST /api/token/email` | `services/token-service.js` |
-| 3 | `POST /api/email/registro` | `services/email-service.js` |
-| 4 | `POST /api/registro` | `wizard.js → finishWizard()` |
+| `GET /api/ruc/:ruc` | Proxy y normalización SRI | Adaptador incluido; upstream pendiente |
+| `POST /api/token/email` | Enviar OTP | Contrato cableado; backend real pendiente |
+| `POST /api/token/verify` | Verificar OTP | Contrato cableado; backend real pendiente |
+| `POST /api/registro` | Crear la cuenta | Contrato cableado; persistencia real pendiente |
 
-Detalles completos (JSON, schema BD, ejemplos de fetch) en **`HANDOVER-TICS.md`**.
+El backend es la autoridad final para validar RUC, identidad/firma, sanitizar, limitar solicitudes, manejar sesión y escribir en base de datos.
 
-## Meta Pixel + Conversions API (CAPI)
+## Pruebas
 
-Ya integrado en el frontend (`assets/services/config.js` + `meta-pixel.js`). **Apagado en demo (GitHub Pages) y dev (localhost), activado automáticamente en producción** cuando el hostname coincida con `PROD_HOSTS` de `config.js`.
-
-- **DATASET_ID:** `1476572470933060` (público).
-- **Eventos disparados:** `Lead` al validar firma + cert, `CompleteRegistration` al finalizar el wizard, `ViewContent` al abrir el cotizador, `PageView` automático.
-- **Para CAPI:** el backend debe reusar el `metaEventId` que viene en el body de `/api/registro` cuando dispare el evento server-side a Meta. Sin esto, no hay deduplicación y se cuentan las conversiones dos veces. Ver `HANDOVER-TICS.md §8.3`.
-
----
-
-## Desarrollo local
-
-```bash
-cd tributasoft
-python -m http.server 8000
-# abrir http://localhost:8000
+```powershell
+npm test
+python .github\smoke-test.py
 ```
 
-No hay build step. Es ES modules + CSS + assets estáticos. Edita un archivo y recarga el navegador.
+Las pruebas cubren formato y dígito verificador, persona natural/sociedad, representante presente o ausente, 204, timeout/5xx, respuesta malformada, estado activo/pasivo, fecha de cese con reinicio, estructura de cinco pasos, aceptación de términos, correo y breakpoints responsive.
 
-**Cache-busting:** todos los imports llevan `?v=YYYYMMDDx`. Al cambiar código de cualquier `.js` o `.css`, bumpea ese sufijo en TODOS los archivos para que los visitantes no vean caché vieja. Hay un patrón en commits previos (`20260518a`, `b`, `c`, `d`…).
+## Privacidad, cookies y tracking
 
----
+- `Politica-de-Privacidad.txt`: funcionamiento real y pendientes jurídicos.
+- `Politica-de-Cookies.txt`: inventario de almacenamiento y Meta Pixel.
+- Meta Pixel solo se carga en producción después de consentimiento explícito.
+- La preferencia se guarda en `localStorage` como `tributasoft_analytics_consent`.
+- Los puntos no confirmados están marcados `LEGAL_REVIEW_REQUIRED`.
 
-## Stack de dependencias externas
+## Documentación del rediseño
 
-Cargadas desde CDN (jsdelivr), versiones fijas:
+- `docs/REDESIGN-BASELINE.md`
+- `docs/REDESIGN-AUDIT.md`
+- `docs/REDESIGN-REPORT.md`
 
-- [`node-forge@1.3.1`](https://www.npmjs.com/package/node-forge) — parseo de PKCS#12.
-- [`pdfjs-dist@4.0.379`](https://www.npmjs.com/package/pdfjs-dist) — extracción de texto del cert RUC.
-- [`jsPDF`](https://github.com/parallax/jsPDF) — generación del PDF de la cotización y del manual.
-
-Google Fonts: DM Sans (titulares), Inter (cuerpo), Lobster (logo), Roboto Condensed (PDFs corporativos).
-
----
-
-## Seguridad
-
-Auditoría completa en `SECURITY-AUDIT.md`. Resumen de lo crítico:
-
-### Lo que YA está implementado en frontend
-- HTTPS automático (GitHub Pages) — cero URLs HTTP hardcodeadas.
-- Headers de seguridad: `Content-Security-Policy`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`.
-- Anti-bot client-side: honeypot invisible + time-check (mínimo 25s para completar el wizard).
-- Throttle del botón "Reenviar token": cooldown progresivo (60s → 120s → 240s) + máximo 3 reenvíos por canal.
-- Cero `eval()`, `document.write`, secrets hardcodeados o uso de `Math.random()` para tokens.
-- Borrado de campos sensibles (`clave`, `confirmarClave`, `token`) antes de persistir el draft en `sessionStorage`.
-
-### Lo que falta y debe hacer TICS (backend)
-- **Tokens server-side** (el frontend actualmente los genera y verifica — vulnerable a abuso).
-- **Rate limiting** por IP y por destino en los 4 endpoints.
-- **CAPTCHA invisible** (Cloudflare Turnstile) en los endpoints sensibles.
-- **Hash de clave** con bcrypt/argon2 al persistir (NUNCA texto plano).
-- **HMAC** del payload entre frontend y backend.
-- **Validación server-side** de RUC + cert + firma (no confiar solo en frontend).
-- **HSTS** y otros headers desde el backend.
-
-La firma `.p12` y el cert PDF **NO se suben al servidor**: se leen en el navegador y se descartan. Solo viajan los datos extraídos.
-
----
-
-## Documentación
-
-- **`DEV-LOCAL.md`** — Guía de instalación local para el equipo que va a construir el backend. Cubre setup, conexión frontend↔backend, CORS, Meta Pixel + CAPI.
-- **`HANDOVER-TICS.md`** — Documento técnico con los 4 endpoints, schema BD y snippets de código.
-- **`Explicacion-TICS.docx`** — Mismo contenido en lenguaje común, para llevar a reunión con TI/TICS.
-- **`SECURITY-AUDIT.md`** — Hallazgos de la auditoría interna + pendientes para producción.
-- **`flujo-registro.json`** — Contrato del wizard paso a paso (1 a 8).
-- **`pdf-header-spec.json`** — Cómo reproducir el header corporativo de los PDFs.
-
----
-
-## Licencia
-
-© 2026 TributaSoft S.A. — Todos los derechos reservados.
+© 2026 TributaSoft S.A.

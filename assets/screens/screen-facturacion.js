@@ -1,4 +1,4 @@
-/* screen-facturacion.js — Pantalla 5 del wizard.
+/* screen-facturacion.js — Paso 4 del wizard.
    El usuario indica si arranca desde cero o continúa con su facturación
    electrónica actual. Si continúa: pide establecimiento, punto de emisión,
    descripción y la PRÓXIMA factura a emitir.
@@ -45,12 +45,8 @@ export function renderPantallaFacturacion(body, wizardData) {
   const modo = wizardData.modoFacturacion;
 
   body.innerHTML = `
-    <p class="datos-intro">
-      Cuéntanos cómo es tu situación con la facturación electrónica.
-    </p>
-
     <div class="field">
-      <span class="field-label" style="font-weight:600;display:block;margin-bottom:.35rem;font-size:.92rem">¿Cuál es tu situación?</span>
+      <span class="field-label">¿Ya has emitido comprobantes electrónicos anteriormente?</span>
       <div class="modo-facturacion" role="radiogroup" aria-label="Modo de facturación">
         <label>
           <input type="radio" name="f-modo" value="nuevo" ${modo === 'nuevo' ? 'checked' : ''}>
@@ -62,8 +58,8 @@ export function renderPantallaFacturacion(body, wizardData) {
             </svg>
           </span>
           <div class="modo-content">
-            <span class="modo-title">Empezar desde cero</span>
-            <span class="modo-desc">Opción para contribuyentes que no hayan facturado electrónicamente anteriormente.</span>
+            <span class="modo-title">No, empezaré ahora</span>
+            <span class="modo-desc">Configuraremos el primer establecimiento y punto de emisión.</span>
           </div>
         </label>
         <label>
@@ -77,8 +73,8 @@ export function renderPantallaFacturacion(body, wizardData) {
             </svg>
           </span>
           <div class="modo-content">
-            <span class="modo-title">Continuar con mi facturación</span>
-            <span class="modo-desc">Opción para quienes ya facturan electrónicamente. Configura tu establecimiento, punto de emisión y secuencias actuales.</span>
+            <span class="modo-title">Sí, ya he emitido</span>
+            <span class="modo-desc">Indica tu establecimiento, punto de emisión y próxima secuencia.</span>
           </div>
         </label>
       </div>

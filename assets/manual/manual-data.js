@@ -21,53 +21,52 @@ export const MANUAL = {
   registro: {
     label: 'Registro',
     title: 'Cómo registrarse en TributaSoft',
-    description: 'Necesitas dos archivos: tu firma electrónica (.p12) y tu certificado de RUC (PDF reciente del SRI). Toma 4 minutos.',
+    description: 'Necesitas tu firma electrónica (.p12 o .pfx), correo y datos de contacto. El flujo tiene cinco pasos.',
     icon: 'register',
     steps: [
       // ────────────────────────────────────────────────────────────────
       {
         id: 'firma',
-        title: 'Paso 1 · Firma y certificado',
-        intro: 'Aceptas términos, subes tu firma .p12 y tu certificado de RUC en PDF.',
+        title: 'Paso 1 · Firma electrónica',
+        intro: 'Aceptas términos y privacidad, y lees tu firma localmente en el navegador.',
         rules: [
           'Marca el checkbox de términos (te abre un texto que debes bajar hasta el final).',
-          'Sube tu firma electrónica .p12 y escribe su clave.',
-          'Sube tu certificado de RUC en PDF (original del SRI, máximo 1 mes de antigüedad).',
+          'Sube tu firma electrónica .p12 o .pfx y escribe su clave.',
+          'El archivo y la clave no se guardan ni se envían.',
         ],
         errors: {
           TERMS_NO_LEIDOS: 'El botón "Acepto" no se habilita hasta que bajes hasta el final del modal.',
           FIRMA_CLAVE: 'Es la clave del archivo .p12, no la clave de tu cuenta.',
-          CERT_FECHA_VIEJA: 'Tu certificado de RUC tiene más de 1 mes — descarga uno nuevo en el portal del SRI.',
-          RUC_NO_COINCIDE: 'El RUC del certificado debe ser el mismo que el de la firma.',
+          FIRMA_CADUCADA: 'La firma debe estar vigente para continuar.',
         },
-        tip: 'Si no tienes firma, toca "No tengo firma electrónica" — te abrimos WhatsApp con el contacto del proveedor.',
+        tip: 'La clave se limpia de la memoria al terminar la lectura.',
         animKey: 'firma',
       },
       // ────────────────────────────────────────────────────────────────
       {
         id: 'datos',
         title: 'Paso 2 · Tus datos',
-        intro: 'Llenamos casi todo. Solo escribes tu dirección, revisas correo y celular.',
+        intro: 'Consultamos el RUC mediante el servidor de TributaSoft y completas contacto.',
         rules: [
-          'Razón social, Nombre comercial, Provincia y Ciudad: bloqueados (vienen del certificado).',
-          'Dirección, Correo electrónico y Celular: los puedes editar.',
+          'Un RUC no encontrado y una caída temporal del SRI se muestran como estados distintos.',
+          'Si el SRI está temporalmente indisponible, puedes completar datos manualmente; quedan pendientes de validación.',
+          'Correo electrónico y celular son obligatorios.',
         ],
         errors: {
           EMAIL_INVALIDO: 'Revisa que tenga @ y dominio.',
           CELULAR_INVALIDO: 'Para Ecuador son 10 dígitos empezando en 09.',
         },
-        tip: 'Si algo bloqueado está mal, regresa al Paso 1 y sube un certificado de RUC actualizado.',
+        tip: 'El estado principal es estadoContribuyenteRuc; una fecha de cese histórica no decide el cierre.',
         animKey: 'datos',
       },
       // ────────────────────────────────────────────────────────────────
       {
         id: 'token',
-        title: 'Paso 3 · Verifica tu identidad',
-        intro: 'Primero validas el código que te llega por SMS. Después se desbloquea el campo del correo.',
+        title: 'Paso 3 · Verifica tu correo',
+        intro: 'Escribe el código de cuatro dígitos enviado al correo confirmado.',
         rules: [
-          '1) Escribe los 4 dígitos del SMS que llegó a tu celular.',
-          '2) Cuando se valide, te enviamos un código por correo y se desbloquea el campo.',
-          '3) Escribe los 4 dígitos del correo. Listo, puedes continuar.',
+          'Escribe los 4 dígitos del correo.',
+          'Puedes cambiar el correo regresando al paso de datos.',
         ],
         errors: {
           TOKEN_INCORRECTO: 'Revisa cuál es el último código enviado.',
@@ -78,23 +77,8 @@ export const MANUAL = {
       },
       // ────────────────────────────────────────────────────────────────
       {
-        id: 'tributaria',
-        title: 'Paso 4 · Información tributaria',
-        intro: 'Detectamos tu régimen y tipo de contribuyente desde el certificado.',
-        rules: [
-          'Si NO eres Agente de Retención ni Contribuyente Especial: la pantalla salta sola.',
-          'Si eres Agente de Retención o Contribuyente Especial: te pedimos el No. de Resolución del SRI.',
-        ],
-        errors: {
-          RESOLUCION_FALTA: 'Ingresa el No. de Resolución del SRI que te designó.',
-        },
-        tip: 'Si el certificado dice Contribuyente Especial pero también eres Gran Contribuyente, puedes cambiarlo en el menú.',
-        animKey: 'tributaria',
-      },
-      // ────────────────────────────────────────────────────────────────
-      {
         id: 'facturacion',
-        title: 'Paso 5 · Situación de facturación',
+        title: 'Paso 4 · Situación de facturación',
         intro: 'Elige si arrancas desde cero o si ya venías facturando electrónicamente.',
         rules: [
           'Empezar desde cero: se asigna Establecimiento 001 y Punto 001 automáticamente.',
@@ -106,36 +90,15 @@ export const MANUAL = {
         tip: 'Si tu última factura fue la 26, ingresa 000000027 (la siguiente que vas a emitir).',
         animKey: 'facturacion',
       },
-      // ────────────────────────────────────────────────────────────────
       {
-        id: 'clave',
-        title: 'Paso 6 · Crea tu clave',
-        intro: 'Esta clave es para ingresar al portal. Mínimo 4 caracteres.',
-        rules: [
-          'Escribe tu clave (la barra te muestra qué tan segura es).',
-          'Escríbela otra vez para confirmar — deben coincidir exactamente.',
-        ],
-        errors: {
-          CLAVE_NO_COINCIDE: 'Revisa que escribiste lo mismo en los dos campos.',
-        },
-        tip: 'El icono del ojo te deja ver lo que estás escribiendo.',
-        animKey: 'clave',
-      },
-      // ────────────────────────────────────────────────────────────────
-      {
-        id: 'logo',
-        title: 'Paso 7 · Tu logo (opcional)',
-        intro: 'Sube tu logo o generamos uno con tu nombre. Puedes omitir este paso.',
-        rules: [
-          'Subir mi logo: PNG o JPG, máximo 4 MB. Si no encaja en 2970×300 px, lo ajustamos manteniendo tu imagen tal cual (sin agregarle texto).',
-          'Generar uno: hacemos un banner solo con tu nombre comercial.',
-          'Omitir: dale Continuar sin subir nada.',
-        ],
+        id: 'resumen',
+        title: 'Paso 5 · Revisión y creación',
+        intro: 'Revisa identidad, tributación, contacto y facturación antes de crear la cuenta.',
+        rules: ['Usa Editar para regresar a cualquier sección.', 'El alta real solo ocurre cuando el backend productivo está conectado.'],
         errors: {},
-        tip: 'Lo puedes configurar después desde el portal de TributaSoft.',
-        animKey: 'logo',
+        tip: 'Una validación SRI pendiente aparece destacada antes de confirmar.',
+        animKey: 'resumen',
       },
-      // NOTA: pantalla 8 (Resumen + Confirmar) no figura como paso del manual.
     ],
   },
 

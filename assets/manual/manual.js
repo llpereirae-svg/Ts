@@ -5,8 +5,8 @@
 // - Popup contextual de ayuda al cursor sobre errores.
 // - Generación del manual estático en PDF (Roboto Condensed embebida).
 
-import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260520e';
-import { detectDevice } from '../wizard.js?v=20260520e';
+import { MANUAL, ERROR_TO_MANUAL, FIELD_TO_MANUAL } from './manual-data.js?v=20260929a';
+import { detectDevice } from '../wizard.js?v=20260929a';
 
 // =========================================================================
 // Helpers DOM y animación

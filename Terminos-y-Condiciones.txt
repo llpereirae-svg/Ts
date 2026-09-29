@@ -1,5 +1,6 @@
 TÉRMINOS Y CONDICIONES DE USO — TRIBUTASOFT
 
+LEGAL_REVIEW_REQUIRED: revisar identidad contractual, promoción vigente, responsabilidades, jurisdicción, tratamiento de datos y coherencia con la Política de Privacidad antes de publicar esta versión.
 ================================================================
 
 1. OBJETO

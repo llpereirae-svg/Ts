@@ -1,5 +1,7 @@
 # Guía de instalación local — TributaSoft Landing
 
+> **Documento legado del baseline.** Para el flujo vigente de cinco pasos y el comando actual use `README.md` y `docs/REDESIGN-REPORT.md`. Las referencias a certificado PDF, SMS, clave y logo describen la versión anterior.
+
 Para devs que van a construir el backend desde cero o que necesitan tocar el frontend en su máquina antes de pushear.
 
 **Lectura mínima:** secciones 0, 1, 2, 5, 6 y 10.

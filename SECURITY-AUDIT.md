@@ -1,5 +1,7 @@
 # Auditoría interna de seguridad — TributaSoft Landing
 
+> **Auditoría histórica del baseline.** Los cambios y pendientes actuales están en `docs/REDESIGN-AUDIT.md` y `docs/REDESIGN-REPORT.md`.
+
 Última revisión: 2026-05-20
 Alcance: todos los `.js`, `.html` y `.css` del repo.
 Estado: **OK con hallazgos críticos delegados a TICS (backend) + 7 mejoras de frontend ya aplicadas**.

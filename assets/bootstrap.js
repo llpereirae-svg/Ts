@@ -19,7 +19,7 @@
  * bumpearlo aquí en APP_VER.
  */
 
-const APP_VER = '20260520e';
+const APP_VER = '20260929a';
 
 // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
 import(`./wizard.js?v=${APP_VER}`)

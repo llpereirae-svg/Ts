@@ -1,0 +1,15 @@
+POLÍTICA DE COOKIES Y TECNOLOGÍAS SIMILARES — TRIBUTASOFT
+Versión de trabajo para revisión jurídica
+
+Mecanismos necesarios
+- localStorage: guarda únicamente la preferencia de consentimiento de analítica bajo la clave tributasoft_analytics_consent.
+- sessionStorage: el código existente puede utilizarlo para borradores no sensibles; nunca debe persistir la clave de la firma ni códigos de verificación.
+
+Analítica opcional
+- Meta Pixel se carga solo en el dominio configurado como producción y únicamente después de aceptar la analítica.
+- Si se rechaza, Meta Pixel no se carga y el registro sigue disponible.
+- Meta puede establecer identificadores como _fbp o _fbc una vez otorgado el consentimiento.
+
+No se han detectado otros píxeles o trackers activos en esta landing.
+
+LEGAL_REVIEW_REQUIRED: duración de las cookies de Meta, detalle de destinatarios, transferencias internacionales y mecanismo definitivo para retirar o modificar el consentimiento.

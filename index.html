@@ -69,8 +69,8 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260520e">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260520e">
+  <link rel="stylesheet" href="./assets/styles.css?v=20260929a">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20260929a">
 </head>
 <body data-state="IDLE">
 
@@ -114,8 +114,7 @@
       </h1>
     </section>
 
-    <!-- WIZARD TurboTax-style — punto de montaje del flujo de registro.
-         El JS de wizard.js inyecta aquí el progreso + 8 pantallas + nav + loading. -->
+    <!-- Punto de montaje del flujo de registro de cinco pasos. -->
     <div id="wizard-root"></div>
 
     <!-- ============================================================
@@ -337,6 +336,6 @@
 
   <!-- Bootstrap: carga wizard.js + app.js. NO inline (lo bloquearía nuestro CSP).
        Si se necesita bumpear cache, hacerlo en assets/bootstrap.js (APP_VER). -->
-  <script type="module" src="./assets/bootstrap.js?v=20260520e"></script>
+  <script type="module" src="./assets/bootstrap.js?v=20260929a"></script>
 </body>
 </html>

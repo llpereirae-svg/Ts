@@ -43,6 +43,8 @@
  *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
  *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
+import { BACKEND_URL, USE_MOCKS } from './config.js?v=20260929a';
+
 const TOKEN_LEN = 4;
 const TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
@@ -137,6 +139,17 @@ export async function generarYEnviarToken({ canal, destino }) {
   if (!destino) throw new Error('Falta el destino del token');
   if (canal !== 'email' && canal !== 'sms') throw new Error(`Canal inválido: ${canal}`);
 
+  if (!USE_MOCKS) {
+    const response = await fetch(`${BACKEND_URL}/api/token/${canal}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ destino }),
+    });
+    if (!response.ok) throw new Error('No se pudo enviar el código');
+    return { token: null, expiraEn: new Date(Date.now() + TOKEN_TTL_MS), ttl: TOKEN_TTL_MS, ok: true };
+  }
+
   const token = generarCodigo();
   const expiraEn = new Date(Date.now() + TOKEN_TTL_MS);
 
@@ -161,12 +174,27 @@ export async function generarYEnviarToken({ canal, destino }) {
  * @param {{ canal: string, codigo: string, tokenEsperado: string, expiraEn: Date }} opts
  * @returns {{ valid: boolean, error?: string, reason?: string }}
  */
-export function verificarToken({ canal, codigo, tokenEsperado, expiraEn }) {
+export async function verificarToken({ canal, destino, codigo, tokenEsperado, expiraEn }) {
   if (!codigo || codigo.length !== TOKEN_LEN || !/^\d+$/.test(codigo)) {
     return { valid: false, error: 'FORMATO', reason: `El código debe tener ${TOKEN_LEN} dígitos.` };
   }
   if (expiraEn && new Date() > new Date(expiraEn)) {
     return { valid: false, error: 'EXPIRADO', reason: 'El código expiró. Pide uno nuevo.' };
+  }
+  if (!USE_MOCKS) {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/token/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ canal, destino, codigo }),
+      });
+      if (!response.ok) return { valid: false, error: 'SERVICIO', reason: 'No pudimos verificar el código.' };
+      const result = await response.json();
+      return result.valid ? { valid: true } : { valid: false, error: 'INCORRECTO', reason: 'El código no coincide.' };
+    } catch {
+      return { valid: false, error: 'SERVICIO', reason: 'No pudimos conectar con el servicio de verificación.' };
+    }
   }
   if (codigo !== tokenEsperado) {
     return { valid: false, error: 'INCORRECTO', reason: `El código de ${canal === 'email' ? 'correo' : 'celular'} no coincide.` };

@@ -1,0 +1,14 @@
+POLÍTICA DE PRIVACIDAD — TRIBUTASOFT
+Versión de trabajo para revisión jurídica
+
+Esta landing procesa el archivo de firma electrónica y su clave dentro del navegador. El archivo y la clave no se incluyen en el payload de registro ni se guardan en localStorage o sessionStorage.
+
+Los metadatos extraídos de la firma, los datos tributarios, los medios de contacto y la información de facturación se preparan para crear la cuenta cuando el backend productivo esté conectado. En la versión demostrativa/local no se crea una cuenta real.
+
+La consulta del RUC sigue esta ruta: navegador → API propia de TributaSoft → SRI. El navegador no consulta directamente al SRI.
+
+En producción, Meta Pixel solo se carga después de que la persona acepte la analítica. La preferencia de consentimiento se guarda localmente en el navegador.
+
+No se incluyen aquí plazos de conservación, destinatarios, base legal ni identidad completa del responsable porque deben confirmarse con el funcionamiento y la organización definitivos.
+
+LEGAL_REVIEW_REQUIRED: responsable del tratamiento, base jurídica, finalidades definitivas, destinatarios, transferencias internacionales, plazos de conservación, derechos y canal formal de ejercicio.

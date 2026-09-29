@@ -1,5 +1,7 @@
 # HANDOVER · Equipo TICS — TributaSoft Landing
 
+> **Documento legado del baseline.** El contrato vigente del rediseño está en `README.md` y `docs/REDESIGN-REPORT.md`. Las referencias a ocho pasos, certificado PDF, SMS, clave y logo no describen el flujo nuevo.
+
 Documento técnico para integrar la landing del wizard de registro con el backend de TributaSoft.
 
 ---

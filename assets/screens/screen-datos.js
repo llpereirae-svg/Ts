@@ -1,271 +1,145 @@
-/* screen-datos.js — Pantalla 2 del wizard.
-   Datos personales pre-llenados desde firma + Certificado RUC.
+import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20260929a';
+import { validarEmail, validarCelular } from '../utils/validators.js?v=20260929a';
 
-   Campos BLOQUEADOS (auto-fill, readonly): razón social, nombre comercial,
-   provincia, ciudad. Vienen de la firma y/o del cert PDF.
-
-   Campos EDITABLES (con auto-fill cuando hay dato): email, celular, dirección.
-   Canal preferido siempre manual. */
-
-import { COUNTRIES } from '../utils/countries.js?v=20260520e';
-import { citiesFor } from '../utils/cities.js?v=20260520e';
-import { validarEmail, validarCelular } from '../utils/validators.js?v=20260520e';
-
-const PROVINCIAS = [
-  'AZUAY','BOLIVAR','CANAR','CARCHI','CHIMBORAZO','COTOPAXI','EL ORO','ESMERALDAS','GALAPAGOS',
-  'GUAYAS','IMBABURA','LOJA','LOS RIOS','MANABI','MORONA SANTIAGO','NAPO','ORELLANA','PASTAZA',
-  'PICHINCHA','SANTA ELENA','SANTO DOMINGO','SUCUMBIOS','TUNGURAHUA','ZAMORA CHINCHIPE'
-];
-
-const PROVINCIAS_LOOKUP = (() => {
-  const m = {};
-  PROVINCIAS.forEach((p) => {
-    m[p] = p;
-    m[stripAccents(p)] = p;
-  });
-  m['CAÑAR'] = 'CANAR';
-  m['LOS RÍOS'] = 'LOS RIOS';
-  m['MANABÍ'] = 'MANABI';
-  m['SUCUMBÍOS'] = 'SUCUMBIOS';
-  m['GALÁPAGOS'] = 'GALAPAGOS';
-  return m;
-})();
-
-function stripAccents(s) {
-  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-}
-
-function normalizeProvincia(p) {
-  if (!p) return '';
-  const up = stripAccents(p);
-  return PROVINCIAS_LOOKUP[up] || PROVINCIAS_LOOKUP[p.toUpperCase()] || '';
-}
-
-function normalizeCiudad(provincia, ciudadRaw) {
-  if (!provincia || !ciudadRaw) return '';
-  const list = citiesFor(provincia);
-  const target = stripAccents(ciudadRaw);
-  return list.find((c) => stripAccents(c) === target) || '';
-}
-
-export function renderPantallaDatos(body, wizardData) {
-  preFillFromSources(wizardData);
-
-  const paisOptions = COUNTRIES.map((c) =>
-    `<option value="${c.code}" data-dial="${c.dial}" ${wizardData.celularPais === c.code ? 'selected' : ''}>${c.code} +${c.dial}</option>`
-  ).join('');
-
+export function renderPantallaDatos(body, data) {
+  prefillFromSignature(data);
   body.innerHTML = `
-    <p class="datos-intro">
-      Lo que extrajimos de tu firma y tu Certificado de RUC ya está pre-llenado.
-      Los campos marcados con candado vienen de tus documentos. Revisa tu correo y celular y corrige si hace falta.
-    </p>
-
-    <div class="field field-locked">
-      <label for="d-razon">
-        Razón social / Nombre
-      </label>
-      <input id="d-razon" type="text" value="${escapeAttr(wizardData.razonSocial)}" readonly>
-    </div>
-
-    <div class="field field-locked">
-      <label for="d-comercial">
-        Nombre comercial
-      </label>
-      <input id="d-comercial" type="text" value="${escapeAttr(wizardData.nombreComercial || 'No aplica')}" readonly>
-    </div>
-
-    <div class="field-row">
-      <div class="field field-locked">
-        <label for="d-provincia">
-            Provincia
-        </label>
-        <input id="d-provincia" type="text" value="${escapeAttr(titleCase(wizardData.provincia))}" readonly>
+    <div id="ruc-status" class="status-callout" role="status" aria-live="polite"><span class="status-spinner" aria-hidden="true"></span><div><strong>Consultando el SRI</strong><span>Esto puede tardar unos segundos.</span></div></div>
+    <div id="ruc-warnings"></div>
+    <div class="form-section">
+      <div class="section-heading"><div><p class="section-kicker">Información tributaria</p><h3>Datos del contribuyente</h3></div><span class="source-badge">Fuente: SRI</span></div>
+      <div class="form-grid form-grid--2">
+        ${field('ruc', 'RUC', data.rucManual, { readonly: true, inputmode: 'numeric' })}
+        ${field('estado', 'Estado del contribuyente', data.estadoContribuyenteRuc, { readonly: true })}
+        ${field('razon', 'Razón social', data.razonSocial, { required: true, span: true })}
+        ${field('nombre', 'Nombre comercial', data.nombreComercial)}
+        ${field('regimen', 'Régimen', data.regimen)}
+        ${field('actividad', 'Actividad económica principal', data.actividadEconomica, { span: true })}
       </div>
-      <div class="field field-locked">
-        <label for="d-ciudad">
-            Ciudad
-        </label>
-        <input id="d-ciudad" type="text" value="${escapeAttr(wizardData.ciudad)}" readonly>
+      <div id="representante-block" class="representative-block" ${data.representanteLegal ? '' : 'hidden'}></div>
+    </div>
+    <div class="form-section">
+      <div class="section-heading"><div><p class="section-kicker">Contacto</p><h3>¿Dónde te contactamos?</h3></div></div>
+      <div class="form-grid form-grid--2">
+        ${field('email', 'Correo electrónico', data.email, { required: true, type: 'email', autocomplete: 'email' })}
+        ${field('celular', 'Celular', data.celular, { required: true, type: 'tel', inputmode: 'tel', autocomplete: 'tel' })}
       </div>
-    </div>
+    </div>`;
 
-    <div class="field">
-      <label for="d-direccion">Dirección</label>
-      <input id="d-direccion" type="text" autocomplete="street-address" placeholder="Av., calles, número, referencia" value="${escapeAttr(wizardData.direccion)}">
-      <div id="d-direccion-error" class="error" role="alert" aria-live="polite"></div>
-    </div>
-
-    <div class="field">
-      <label for="d-email">
-        Correo electrónico
-        ${wizardData._auto?.email ? '<span class="auto-badge">✓ Pre-llenado</span>' : ''}
-      </label>
-      <input id="d-email" type="email" autocomplete="email" inputmode="email" placeholder="tu@empresa.com" value="${escapeAttr(wizardData.email)}">
-      <div id="d-email-error" class="error" role="alert" aria-live="polite"></div>
-    </div>
-
-    <div class="field">
-      <label for="d-celular">
-        Celular
-        ${wizardData._auto?.celular ? '<span class="auto-badge">✓ Pre-llenado</span>' : ''}
-      </label>
-      <div class="field-phone">
-        <select id="d-celular-pais" class="celular-pais" aria-label="País del celular">${paisOptions}</select>
-        <input id="d-celular" type="tel" autocomplete="tel" inputmode="tel" placeholder="09XXXXXXXX" maxlength="20" value="${escapeAttr(wizardData.celular)}">
-      </div>
-      <p class="hint">Formato Ecuador: 09XXXXXXXX (10 dígitos).</p>
-      <div id="d-celular-error" class="error" role="alert" aria-live="polite"></div>
-    </div>
-  `;
-
-  wireDatosScreen(body, wizardData);
-}
-
-function preFillFromSources(wd) {
-  if (!wd._auto) wd._auto = {};
-
-  const firma = wd.firma || {};
-  const cert = wd.certificadoRuc || {};
-  const extra = firma.datosExtra || {};
-
-  // Razón social / nombre: del cert (jurídica o natural) o de la firma
-  if (cert.razonSocial) wd.razonSocial = cert.razonSocial;
-  else if (firma.razonSocial) wd.razonSocial = firma.razonSocial;
-  else if (firma.titular) wd.razonSocial = firma.titular;
-
-  // Nombre comercial: solo del cert (si no viene, dejamos vacío → UI muestra "No aplica")
-  wd.nombreComercial = cert.nombreComercial || '';
-  wd.nombreComercialNA = !wd.nombreComercial;
-
-  // Provincia y ciudad: normalizadas
-  const prov = normalizeProvincia(cert.provincia || extra.ciudad || '');
-  if (prov) wd.provincia = prov;
-  const ciudad = normalizeCiudad(wd.provincia, cert.canton || extra.ciudad || '');
-  if (ciudad) wd.ciudad = ciudad;
-
-  // Email: del cert (editable)
-  if (!wd.email && cert.email) {
-    wd.email = cert.email;
-    wd._auto.email = 'cert';
-  }
-
-  // Celular: de firma o cert (editable)
-  if (!wd.celular) {
-    if (extra.celular) {
-      const limpio = String(extra.celular).replace(/\D/g, '');
-      if (limpio) { wd.celular = limpio; wd._auto.celular = 'firma'; }
-    } else if (cert.celular) {
-      const limpio = String(cert.celular).replace(/\D/g, '');
-      if (limpio) { wd.celular = limpio; wd._auto.celular = 'cert'; }
-    }
-  }
-
-  if (!wd.celularPais) wd.celularPais = 'EC';
-}
-
-function wireDatosScreen(root, wd) {
-  // Razón social, nombre comercial, provincia, ciudad → readonly, no se wire-an
-  // Solo wire-amos los campos editables con validación inline:
-
-  // --- Dirección ---
-  const dirInput = root.querySelector('#d-direccion');
-  const dirError = root.querySelector('#d-direccion-error');
-  const validarDir = () => {
-    wd.direccion = dirInput.value.trim();
-    if (!wd.direccion) {
-      dirInput.setAttribute('aria-invalid', 'true');
-      dirError.textContent = 'Ingresa tu dirección.';
-    } else {
-      dirInput.removeAttribute('aria-invalid');
-      dirError.textContent = '';
-    }
+  const bindings = {
+    razon: 'razonSocial', nombre: 'nombreComercial', regimen: 'regimen', actividad: 'actividadEconomica', email: 'email', celular: 'celular',
   };
-  dirInput.addEventListener('input', () => { wd.direccion = dirInput.value; if (dirInput.hasAttribute('aria-invalid')) validarDir(); });
-  dirInput.addEventListener('blur', validarDir);
-
-  // --- Email ---
-  const emailInput = root.querySelector('#d-email');
-  const emailError = root.querySelector('#d-email-error');
-  const validarEmailField = () => {
-    const v = emailInput.value.trim();
-    wd.email = v;
-    wd._auto.email = null;
-    if (!v) {
-      emailInput.setAttribute('aria-invalid', 'true');
-      emailError.textContent = 'Ingresa tu correo.';
-      return;
-    }
-    const r = validarEmail(v);
-    if (!r.valid) {
-      emailInput.setAttribute('aria-invalid', 'true');
-      emailError.textContent = r.reason || 'Correo inválido.';
-    } else {
-      emailInput.removeAttribute('aria-invalid');
-      emailError.textContent = '';
-    }
-  };
-  emailInput.addEventListener('input', () => { wd.email = emailInput.value.trim(); if (emailInput.hasAttribute('aria-invalid')) validarEmailField(); });
-  emailInput.addEventListener('blur', validarEmailField);
-
-  // --- Celular ---
-  const celSel = root.querySelector('#d-celular-pais');
-  const celInput = root.querySelector('#d-celular');
-  const celError = root.querySelector('#d-celular-error');
-  const validarCelField = () => {
-    if (!wd.celular) {
-      celInput.setAttribute('aria-invalid', 'true');
-      celError.textContent = 'Ingresa tu celular.';
-      return;
-    }
-    const r = validarCelular(wd.celular, wd.celularPais);
-    if (!r.valid) {
-      celInput.setAttribute('aria-invalid', 'true');
-      celError.textContent = r.reason || 'Celular inválido.';
-    } else {
-      celInput.removeAttribute('aria-invalid');
-      celError.textContent = '';
-    }
-  };
-  celSel.addEventListener('change', () => {
-    wd.celularPais = celSel.value;
-    if (celInput.hasAttribute('aria-invalid')) validarCelField();
+  Object.entries(bindings).forEach(([id, key]) => {
+    body.querySelector(`#${id}`).addEventListener('input', (event) => { data[key] = key === 'email' ? event.target.value.trim().toLowerCase() : event.target.value; });
   });
-  celInput.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^\d ]/g, '');
-    wd.celular = e.target.value.replace(/\s/g, '');
-    wd._auto.celular = null;
-    if (celInput.hasAttribute('aria-invalid')) validarCelField();
-  });
-  celInput.addEventListener('blur', validarCelField);
+  paintRepresentative(body, data.representanteLegal);
+  paintStatus(body, data);
+  if (data.sriStatus === 'PENDING') runLookup(body, data);
 }
 
-function escapeAttr(s) {
-  if (s == null) return '';
-  return String(s).replace(/"/g, '&quot;');
-}
-
-function titleCase(s) {
-  if (!s) return '';
-  return s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase());
-}
-
-export function validarPantallaDatos(wd) {
-  const errors = [];
-  // Los campos bloqueados ya vienen validados (de firma/cert), solo verificamos los editables
-  if (!wd.direccion?.trim()) errors.push('Dirección');
-  if (!wd.email?.trim() || !validarEmail(wd.email).valid) errors.push('Correo electrónico válido');
-  const celValid = validarCelular(wd.celular, wd.celularPais);
-  if (!wd.celular?.trim() || !celValid.valid) errors.push('Celular válido');
-
-  // Y que los bloqueados sí estén llenos (si por algún caso raro no se llenaron)
-  if (!wd.razonSocial?.trim()) errors.push('Razón social (no detectada en la firma ni en el certificado de RUC)');
-  if (!wd.provincia) errors.push('Provincia (no detectada en el certificado de RUC)');
-  if (!wd.ciudad) errors.push('Ciudad (no detectada en el certificado de RUC)');
-
-  if (errors.length > 0) {
-    alert('Antes de continuar, revisa:\n• ' + errors.join('\n• '));
-    return false;
+async function runLookup(body, data) {
+  data.sriStatus = 'LOADING';
+  paintStatus(body, data);
+  const result = await consultarRuc(data.rucManual);
+  data.sriStatus = result.status;
+  if (result.status === RUC_RESULT.OK) {
+    const sri = result.data;
+    data.sriValidacionPendiente = false;
+    data.razonSocial = sri.razonSocial || data.razonSocial;
+    data.nombreComercial = sri.nombreComercial || data.nombreComercial;
+    data.actividadEconomica = sri.actividadEconomicaPrincipal || data.actividadEconomica;
+    data.estadoContribuyenteRuc = sri.estadoContribuyenteRuc;
+    data.regimen = sri.regimen || data.regimen;
+    data.tipoContribuyente = sri.tipoContribuyente || data.tipoContribuyente;
+    data.representanteLegal = sri.representanteLegal;
+    data.sriAdvertencias = sri.advertencias;
+    syncFields(body, data);
+  } else if (result.status === RUC_RESULT.UNAVAILABLE) {
+    data.sriValidacionPendiente = true;
+    data.sriAdvertencias = [];
+  } else {
+    data.sriValidacionPendiente = false;
   }
+  data.sriReason = result.reason || '';
+  paintStatus(body, data);
+  paintWarnings(body, data.sriAdvertencias);
+}
+
+function paintStatus(body, data) {
+  const target = body.querySelector('#ruc-status');
+  if (!target) return;
+  const states = {
+    PENDING: ['Consultando el SRI', 'Preparando la consulta segura…', ''],
+    LOADING: ['Consultando el SRI', 'Esto puede tardar unos segundos.', ''],
+    OK: ['Datos tributarios confirmados', 'Revisa la información antes de continuar.', 'status-callout--success'],
+    NOT_FOUND: ['RUC no encontrado', 'El SRI respondió 204. Verifica el RUC contenido en la firma.', 'status-callout--error'],
+    UNAVAILABLE: ['SRI temporalmente no disponible', 'Puedes completar los datos manualmente. Quedarán marcados para validación posterior.', 'status-callout--warning'],
+    MALFORMED: ['Respuesta no válida', 'No pudimos interpretar la respuesta. Intenta nuevamente.', 'status-callout--error'],
+    INVALID: ['RUC inválido', data.sriReason || 'Revisa el RUC de la firma.', 'status-callout--error'],
+  };
+  const [title, message, className] = states[data.sriStatus] || states.PENDING;
+  target.className = `status-callout ${className}`;
+  target.innerHTML = `${data.sriStatus === 'LOADING' || data.sriStatus === 'PENDING' ? '<span class="status-spinner" aria-hidden="true"></span>' : '<span class="status-dot" aria-hidden="true"></span>'}<div><strong>${title}</strong><span>${message}</span></div>${['UNAVAILABLE', 'MALFORMED'].includes(data.sriStatus) ? '<button type="button" class="btn btn--text" id="retry-ruc">Reintentar</button>' : ''}`;
+  target.querySelector('#retry-ruc')?.addEventListener('click', () => runLookup(body, data));
+}
+
+function paintWarnings(body, warnings = []) {
+  body.querySelector('#ruc-warnings').innerHTML = warnings.map((warning) => `<div class="status-callout status-callout--warning"><strong>Revisión requerida</strong><span>${escapeHtml(warning)}</span></div>`).join('');
+}
+
+function paintRepresentative(body, representative) {
+  const target = body.querySelector('#representante-block');
+  if (!target) return;
+  if (!representative) { target.hidden = true; target.textContent = ''; return; }
+  const name = representative.nombre || representative.nombreCompleto || representative.razonSocial || 'No informado';
+  target.hidden = false;
+  target.innerHTML = `<span>Representante legal</span><strong>${escapeHtml(name)}</strong>`;
+}
+
+function syncFields(body, data) {
+  const values = { estado: data.estadoContribuyenteRuc, razon: data.razonSocial, nombre: data.nombreComercial, regimen: data.regimen, actividad: data.actividadEconomica };
+  Object.entries(values).forEach(([id, value]) => { const input = body.querySelector(`#${id}`); if (input) input.value = value || ''; });
+  paintRepresentative(body, data.representanteLegal);
+}
+
+function prefillFromSignature(data) {
+  const signature = data.firma;
+  if (!signature) return;
+  data.rucManual ||= signature.ruc || '';
+  data.razonSocial ||= signature.razonSocial || signature.titular || '';
+  data.representanteLegal ||= signature.repLegal || null;
+  data.direccion ||= signature.datosExtra?.direccion || '';
+  data.ciudad ||= signature.datosExtra?.ciudad || '';
+  data.celular ||= signature.datosExtra?.celular || '';
+}
+
+export function validarPantallaDatos(data) {
+  const body = document.querySelector('[data-body="datos"]');
+  if ([RUC_RESULT.NOT_FOUND, RUC_RESULT.MALFORMED, RUC_RESULT.INVALID].includes(data.sriStatus)) {
+    focusStatus(body); return false;
+  }
+  if (!data.razonSocial.trim()) return invalidate(body, 'razon', 'Completa la razón social.');
+  const email = validarEmail(data.email);
+  if (!email.valid) return invalidate(body, 'email', email.reason);
+  data.email = email.normalizado;
+  const phone = validarCelular(data.celular, data.celularPais);
+  if (!phone.valid) return invalidate(body, 'celular', phone.reason);
+  data.celular = phone.normalizado;
   return true;
 }
+
+function invalidate(body, id, message) {
+  const input = body?.querySelector(`#${id}`);
+  input?.setAttribute('aria-invalid', 'true'); input?.focus();
+  let error = body?.querySelector(`#${id}-error`);
+  if (error) error.textContent = message;
+  return false;
+}
+function focusStatus(body) { body?.querySelector('#ruc-status')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+
+function field(id, label, value, options = {}) {
+  const attrs = [options.readonly ? 'readonly' : '', options.required ? 'required' : '', options.type ? `type="${options.type}"` : 'type="text"', options.inputmode ? `inputmode="${options.inputmode}"` : '', options.autocomplete ? `autocomplete="${options.autocomplete}"` : ''].filter(Boolean).join(' ');
+  return `<div class="field-group ${options.span ? 'field-group--span' : ''}"><label for="${id}">${label}${options.required ? '<span aria-hidden="true"> *</span>' : ''}</label><input id="${id}" ${attrs} value="${escapeAttr(value)}"><span class="field-error" id="${id}-error" role="alert"></span></div>`;
+}
+function escapeAttr(value) { return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }

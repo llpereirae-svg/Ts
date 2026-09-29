@@ -23,12 +23,35 @@
  *   Meta NO deduplica y cuenta cada conversión dos veces.
  */
 
-import { ENABLE_PIXEL, META_DATASET_ID, nuevoEventId } from './config.js?v=20260520e';
+import { ENABLE_PIXEL, META_DATASET_ID, nuevoEventId } from './config.js?v=20260929a';
+
+const CONSENT_KEY = 'tributasoft_analytics_consent';
 
 if (ENABLE_PIXEL) {
-  inicializarPixel();
+  const consent = localStorage.getItem(CONSENT_KEY);
+  if (consent === 'accepted') inicializarPixel();
+  else if (consent !== 'rejected') mostrarConsentimiento();
 } else {
   console.log('[meta-pixel] desactivado (ENABLE_PIXEL=false) — no se carga fbevents.js');
+}
+
+function mostrarConsentimiento() {
+  const banner = document.createElement('section');
+  banner.className = 'cookie-consent';
+  banner.setAttribute('role', 'dialog');
+  banner.setAttribute('aria-label', 'Preferencias de analítica');
+  banner.innerHTML = `
+    <div><strong>Tu privacidad, sin letra pequeña</strong><p>Usamos analítica de Meta solo con tu permiso. Las funciones necesarias del registro seguirán disponibles si rechazas.</p><a href="./Politica-de-Cookies.txt" target="_blank" rel="noopener">Ver política de cookies</a></div>
+    <div class="cookie-consent__actions"><button type="button" class="btn btn--ghost" data-consent="rejected">Rechazar</button><button type="button" class="btn btn--primary" data-consent="accepted">Aceptar analítica</button></div>`;
+  document.body.appendChild(banner);
+  banner.querySelectorAll('[data-consent]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.consent;
+      localStorage.setItem(CONSENT_KEY, value);
+      banner.remove();
+      if (value === 'accepted') inicializarPixel();
+    });
+  });
 }
 
 function inicializarPixel() {
@@ -78,7 +101,7 @@ const MAPA_EVENTOS_META = {
   // Cuando se valida firma + cert en pantalla 1 del wizard
   'firma_validada':       ['Lead',                 { content_name: 'Firma electrónica validada' }],
 
-  // Cuando se completa el registro entero (pantalla 8)
+  // Cuando se completa el registro entero (paso 5)
   'registro_completado':  ['CompleteRegistration', { content_name: 'Wizard de registro', currency: 'USD', value: 0 }],
 
   // Cuando se abre el modal Cotizar
