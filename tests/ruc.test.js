@@ -19,6 +19,8 @@ const sociedad = findValid('juridica');
 
 test('rechaza formato, ausencia de 001 y dígito verificador incorrecto', () => {
   assert.equal(validarRUC('abc').valid, false);
+  assert.equal(validarRUC(` ${natural}`).valid, false);
+  assert.equal(validarRUC(`${natural} `).valid, false);
   assert.equal(validarRUC(`${natural.slice(0, 10)}002`).valid, false);
   const changed = `${natural.slice(0, 9)}${natural[9] === '9' ? '0' : Number(natural[9]) + 1}001`;
   assert.equal(validarRUC(changed).valid, false);
@@ -80,8 +82,33 @@ test('proxy valida RUC y preserva 204 sin body', async () => {
 });
 
 test('proxy traduce 5xx y respuesta malformada del SRI', async () => {
-  const unavailable = createRucProxy({ upstreamUrl: 'https://sri.invalid/{ruc}', fetchImpl: async () => ({ status: 500, ok: false }) });
+  let calls = 0;
+  const unavailable = createRucProxy({ upstreamUrl: 'https://sri.invalid/{ruc}', fetchImpl: async () => { calls++; return { status: 500, ok: false }; }, sleep: async () => {}, random: () => 0 });
   const malformed = createRucProxy({ upstreamUrl: 'https://sri.invalid/{ruc}', fetchImpl: async () => ({ status: 200, ok: true, text: async () => '<html>' }) });
-  assert.equal((await unavailable(natural)).status, 503);
+  const unavailableResult = await unavailable(natural);
+  assert.equal(unavailableResult.status, 503);
+  assert.equal(JSON.parse(unavailableResult.body).attempts, 3);
+  assert.equal(calls, 3);
   assert.equal((await malformed(natural)).status, 502);
+});
+
+test('proxy reintenta solo fallos transitorios y puede recuperarse en el tercer intento', async () => {
+  let calls = 0;
+  const proxy = createRucProxy({
+    upstreamUrl: 'https://sri.invalid/{ruc}', sleep: async () => {}, random: () => 0,
+    fetchImpl: async () => {
+      calls++;
+      if (calls < 3) return { status: 503, ok: false };
+      return { status: 200, ok: true, text: async () => JSON.stringify({ numeroRuc: natural }) };
+    },
+  });
+  assert.equal((await proxy(natural)).status, 200);
+  assert.equal(calls, 3);
+
+  for (const status of [204, 400, 404]) {
+    let singleCalls = 0;
+    const single = createRucProxy({ upstreamUrl: 'https://sri.invalid/{ruc}', fetchImpl: async () => { singleCalls++; return { status, ok: status === 204, text: async () => '' }; }, sleep: async () => {} });
+    await single(natural);
+    assert.equal(singleCalls, 1, `HTTP ${status}`);
+  }
 });

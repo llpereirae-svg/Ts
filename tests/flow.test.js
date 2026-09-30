@@ -4,14 +4,20 @@ import { readFile } from 'node:fs/promises';
 import { SCREENS } from '../assets/wizard.js';
 import { validarEmail } from '../assets/utils/validators.js';
 
-test('wizard conserva exactamente cinco pasos y orden de negocio', () => {
-  assert.deepEqual(SCREENS.map((screen) => screen.id), ['firma', 'datos', 'token', 'facturacion', 'resumen']);
-  assert.equal(new Set(SCREENS.map((screen) => screen.id)).size, 5);
+test('wizard tiene cuatro pasos y correo no es una pantalla independiente', () => {
+  assert.deepEqual(SCREENS.map((screen) => screen.id), ['firma', 'datos', 'facturacion', 'resumen']);
+  assert.equal(new Set(SCREENS.map((screen) => screen.id)).size, 4);
 });
 
 test('validación de correo acepta formato normal y rechaza incompleto', () => {
   assert.equal(validarEmail('persona@example.com').valid, true);
   assert.equal(validarEmail('persona@').valid, false);
+});
+test('razón social es readonly con SRI y editable solo en fallback manual declarado', async () => {
+  const source = await readFile(new URL('../assets/screens/screen-datos.js', import.meta.url), 'utf8');
+  assert.match(source, /const manual = esModoManualSri\(data\)/);
+  assert.match(source, /field\('razon', 'Razón social', data\.razonSocial, \{ readonly: !manual, required: manual \}\)/);
+  assert.match(source, /razon: 'razonSocial'/);
 });
 
 test('la aceptación de términos y privacidad permanece obligatoria', async () => {
