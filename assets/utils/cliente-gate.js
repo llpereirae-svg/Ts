@@ -1,5 +1,5 @@
-import { CLIENTE_ESTADO, CLIENTE_ERROR, consultarCliente } from '../services/cliente-service.js?v=20260929a';
-import { validarRUC } from './ruc-validation.js?v=20260929a';
+import { CLIENTE_ESTADO, CLIENTE_ERROR, consultarCliente } from '../services/cliente-service.js?v=20260930c';
+import { validarRUC } from './ruc-validation.js?v=20260930c';
 
 // Solo memoria de la sesión: una consulta por firma validada, errores reintentables.
 export function crearGateCliente(lookup = consultarCliente) {
@@ -21,7 +21,7 @@ export function crearGateCliente(lookup = consultarCliente) {
       publish({ status: CLIENTE_ESTADO.CHECKING });
       entry.pending = (async () => {
         let result;
-        try { result = await lookup(entry.ruc); } catch { result = null; }
+        try { result = await lookup(entry.ruc, { registrationId: data.registrationId }); } catch { result = null; }
         if (!vigente(data, entry) || sessions.get(data) !== entry) return { status: CLIENTE_ESTADO.IDLE };
         if (![CLIENTE_ESTADO.NEW_CLIENT, CLIENTE_ESTADO.EXISTING_CLIENT].includes(result?.status)) result = { status: CLIENTE_ESTADO.ERROR, message: CLIENTE_ERROR };
         entry.result = result;

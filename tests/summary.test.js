@@ -38,8 +38,11 @@ test('campos condicionales ausentes no reservan filas', () => {
 test('CTA final y alta real conservan contrato y redirigen al portal configurado', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
   assert.match(source, /\? 'Crear cuenta' : 'Continuar'/);
-  assert.match(source, /crearRegistro\(buildRegistrationPayload\(\)\)/);
+  assert.match(source, /const registration = await completarDraft\(wizardData\.registrationId, wizardData\.idempotencyKey\)/);
+  assert.match(source, /await guardarLogo\(/);
   assert.match(source, /<h2>Bienvenido a TributaSoft<\/h2>/);
+  assert.match(source, /PENDING_SRI_RECONCILIATION/);
+  assert.match(source, /la emisión electrónica estará bloqueada/);
   assert.match(source, /window\.setTimeout\(\(\) => window\.location\.assign\(TRIBUTASOFT_LOGIN_URL\), 1600\)/);
   assert.match(source, /export async function goBack\(\) \{ if \(currentIdx > 0\) await transitionTo\(currentIdx - 1\); \}/);
 });

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { request } from 'node:http';
 import { validarRUC } from '../assets/utils/ruc-validation.js';
+import { LEGAL_DOCUMENT_HASHES, LEGAL_DOCUMENT_ID, LEGAL_DOCUMENT_VERSION, SIGNATURE_ALGORITHM } from '../assets/services/registration-contract.js';
 
 const syntheticRuc = Array.from({ length: 1000 }, (_, n) => `010${String(n).padStart(7, '0')}001`).find(value => validarRUC(value).valid);
 
@@ -47,6 +48,20 @@ test('servidor HTTP aplica allowlist y conserva endpoints autorizados', async t 
     method: 'POST', headers, body: JSON.stringify({ ruc: syntheticRuc, firma: { ruc: syntheticRuc }, facturacion: { documentos: [{ tipo_documento: 'factura' }] } }),
   })).status, 201);
   assert.equal((await call(port, `/api/ruc/${syntheticRuc}`)).status, 503);
+
+  const draft = await call(port, '/api/registro/drafts', {
+    method: 'POST', headers, body: JSON.stringify({
+      contractVersion: 'v2', rucClaim: syntheticRuc,
+      consent: { accepted: true, legalDocumentVersion: LEGAL_DOCUMENT_VERSION, legalDocumentId: LEGAL_DOCUMENT_ID, documentHashes: LEGAL_DOCUMENT_HASHES },
+    }),
+  });
+  assert.equal(draft.status, 201);
+  const created = JSON.parse(draft.body);
+  const cookie = String(draft.headers['set-cookie']?.[0] || '').split(';')[0];
+  assert.match(cookie, /^ts_registration_session_dev=/);
+  const challengePath = `/api/registro/drafts/${created.registrationId}/signature-challenges`;
+  assert.equal((await call(port, challengePath, { method: 'POST', headers: { ...headers, Cookie: cookie }, body: JSON.stringify({ algorithm: SIGNATURE_ALGORITHM }) })).status, 403);
+  assert.equal((await call(port, challengePath, { method: 'POST', headers: { ...headers, Cookie: cookie, 'X-CSRF-Token': created.csrfToken }, body: JSON.stringify({ algorithm: SIGNATURE_ALGORITHM }) })).status, 201);
   assert.equal(child.exitCode, null);
 });
 
@@ -69,7 +84,7 @@ function call(port, path, { method = 'GET', headers = {}, body = '' } = {}) {
     const req = request({ hostname: '127.0.0.1', port, path, method, headers }, res => {
       const chunks = [];
       res.on('data', chunk => chunks.push(chunk));
-      res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString('utf8') }));
     });
     req.on('error', reject);
     if (body) req.write(body);

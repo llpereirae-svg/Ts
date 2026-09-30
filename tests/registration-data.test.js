@@ -32,7 +32,7 @@ test('bloquea todo estado no ACTIVO y toda consulta no confirmada o de otro RUC'
 test('fallback manual queda identificado y solo permite continuar con datos mínimos completos', () => {
   const data = { rucManual: 'ruc-sintetico', firma: { esJuridica: true }, razonSocial: '', actividadEconomica: '', regimen: '', tipoContribuyente: '', obligadoLlevarContabilidad: '' };
   activarCapturaSriManual(data, { attempts: 3, errorCode: 'SRI_UNAVAILABLE', attemptedAt: '2026-09-30T00:00:00.000Z' });
-  assert.equal(data.sriSource, 'MANUAL');
+  assert.equal(data.sriSource, 'MANUAL_ENTRY');
   assert.equal(data.sriStatus, 'MANUAL_PENDING');
   assert.equal(data.sriTechnicalStatus, 'UNAVAILABLE');
   assert.equal(data.sriAttempts, 3);
@@ -44,7 +44,7 @@ test('fallback manual queda identificado y solo permite continuar con datos mín
 });
 
 test('respuesta posterior del SRI reemplaza la fuente manual sin conservar representante declarado', () => {
-  const data = { rucManual: 'ruc-sintetico', representanteLegalDeclarado: 'PERSONA DECLARADA', sriSource: 'MANUAL', sriStatus: 'MANUAL_PENDING' };
+  const data = { rucManual: 'ruc-sintetico', representanteLegalDeclarado: 'PERSONA DECLARADA', sriSource: 'MANUAL_ENTRY', sriStatus: 'MANUAL_PENDING' };
   aplicarDatosSri(data, { estadoContribuyenteRuc: 'ACTIVO', razonSocial: 'OFICIAL', regimen: 'GENERAL', obligadoLlevarContabilidad: 'SI' }, data.rucManual);
   assert.equal(data.sriSource, 'SRI');
   assert.equal(data.sriTechnicalStatus, 'OK');

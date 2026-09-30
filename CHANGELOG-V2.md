@@ -8,14 +8,13 @@ Versión candidata propuesta: `v2.0.0`. Este documento no crea tag, release, mer
 - Lectura local de firma `.p12`/`.pfx`, extracción del RUC y gate previo de cliente existente.
 - Consulta SRI mediante API propia, RUC ACTIVO como condición de avance y datos de contacto con verificación de correo integrada.
 - Facturación inicial por tipo de documento, con Factura obligatoria y cinco tipos adicionales.
-- Resumen final editable, alta mediante `POST /api/registro`, personalización de logo posterior y redirección al portal configurado.
+- Resumen final editable, alta mediante `POST /api/registro/drafts/{id}/complete`, personalización de logo persistente y redirección al portal configurado.
 - Mocks locales explícitos, sin persistencia, protegidos por entorno y allowlist exacta para Dev Tunnels.
 - Cobertura automatizada del flujo, validaciones, mocks, compatibilidad de facturación y componentes auxiliares.
 
 ## Correcciones de cierre
 
-- El archivo de firma deja de conservarse en memoria tras extraer los metadatos necesarios.
-- El input y la referencia del archivo de firma se limpian tras extraer los metadatos necesarios.
+- El archivo, input y contraseña de firma se limpian después de challenge verificado y upload temporal confirmado; no se borran antes de completar esas operaciones.
 - La CSP permite el dominio de API ya configurado para producción y la vista previa local `blob:` del logo.
 - La verificación OTP exige un booleano estricto; el mock de cliente exige `NODE_ENV=development`.
 - Una URI malformada devuelve 400 en el servidor local en lugar de finalizar el proceso.
@@ -23,8 +22,12 @@ Versión candidata propuesta: `v2.0.0`. Este documento no crea tag, release, mer
 - `node-forge` 1.3.1 se sirve como asset local con checksum verificado; ya no se ejecuta desde CDN.
 - Las firmas identificadas únicamente con cédula se bloquean. El RUC se valida estrictamente antes de cualquier request y el mock backend repite validación y coincidencia firma/draft.
 - La consulta SRI reintenta tres veces solo fallos transitorios y habilita captura manual explícitamente `MANUAL_PENDING` si persiste la indisponibilidad.
+- Se cerró la política `MANUAL_PENDING_POLICY=RESTRICTED_ACCOUNT`: el alta y el login se permiten, la cuenta queda en `PENDING_SRI_RECONCILIATION`, se bloquean emisión y funciones tributarias dependientes, y las funciones no tributarias siguen disponibles hasta reconciliar con SRI.
+- El frontend V2 quedó cableado a un draft server-side con challenge criptográfico single-use, custodia temporal del PKCS#12, OTP/SRI/facturación ligados al `registrationId`, alta idempotente y persistencia post-creación del logo.
 - `noResolucion` se incorporó al payload y se valida también en el mock de alta.
 - El OTP de correo pasó a seis dígitos y el generador local exige `crypto.getRandomValues`.
+- Se cerraron sesión HttpOnly/CSRF, state machine, trust policy, custodia PKCS#12, rate limits, reconciliación SRI, matriz de errores y comparación V1→V2.
+- El provisional definitivo quedó fijado en 2,970 × 300, Roboto Condensed Light y razón social únicamente.
 
 ## Pendiente antes de etiqueta productiva
 

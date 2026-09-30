@@ -1,4 +1,4 @@
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260929a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260930c';
 
 export const LOGO_SPEC = Object.freeze({
   width: 2970,
@@ -71,18 +71,13 @@ export async function validateLogoFile(file) {
   }
 }
 
-export function buildProvisionalLogoMarkup({ razonSocial = '', email = '', celular = '' } = {}) {
-  const contacts = [
-    email ? `<span class="post-logo-provisional-contact-item">${contactIcon('email')}<span class="post-logo-provisional-value">${escapeHtml(email)}</span></span>` : '',
-    celular ? `<span class="post-logo-provisional-contact-item">${contactIcon('phone')}<span class="post-logo-provisional-value">${escapeHtml(celular)}</span></span>` : '',
-  ].filter(Boolean).join('');
+export function buildProvisionalLogoMarkup({ razonSocial = '' } = {}) {
   return `<span class="post-logo-provisional">
     <strong class="post-logo-provisional-name">${escapeHtml(razonSocial || 'Tu razón social')}</strong>
-    ${contacts ? `<span class="post-logo-provisional-contact">${contacts}</span>` : ''}
   </span>`;
 }
 
-export function mostrarPersonalizacionLogo({ razonSocial = '', email = '', celular = '' } = {}) {
+export function mostrarPersonalizacionLogo({ razonSocial = '' } = {}) {
   const dialog = document.createElement('dialog');
   dialog.className = 'post-create-logo';
   dialog.setAttribute('aria-labelledby', 'post-logo-title');
@@ -125,7 +120,7 @@ export function mostrarPersonalizacionLogo({ razonSocial = '', email = '', celul
     selectedFile = null;
     provisional = true;
     preview.hidden = false;
-    banner.innerHTML = buildProvisionalLogoMarkup({ razonSocial, email, celular });
+    banner.innerHTML = buildProvisionalLogoMarkup({ razonSocial });
     metadata.textContent = 'Logo provisional';
     status.textContent = message;
     proceed.textContent = 'Continuar con este logo';
@@ -136,7 +131,7 @@ export function mostrarPersonalizacionLogo({ razonSocial = '', email = '', celul
     const finish = () => {
       const result = selectedFile
         ? { kind: 'file', file: selectedFile, specification: LOGO_SPEC }
-        : { kind: 'provisional', razonSocial, email, celular, specification: LOGO_SPEC };
+        : { kind: 'provisional', razonSocial, specification: LOGO_SPEC };
       clearObjectUrl();
       dialog.close();
       dialog.remove();
@@ -171,13 +166,6 @@ export function mostrarPersonalizacionLogo({ razonSocial = '', email = '', celul
     dialog.addEventListener('cancel', event => { event.preventDefault(); showFallback(); });
     try { dialog.showModal(); } catch { showFallback(); finish(); }
   });
-}
-
-function contactIcon(type) {
-  if (type === 'email') {
-    return '<svg class="post-logo-provisional-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zM4 7l8 6 8-6"/></svg>';
-  }
-  return '<svg class="post-logo-provisional-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h3l1 5-2 1a15 15 0 0 0 6 6l1-2 5 1v3c0 2-2 4-4 4C9 20 4 15 3 7c0-2 2-4 4-4Z"/></svg>';
 }
 
 function escapeHtml(value) {

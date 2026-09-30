@@ -4,38 +4,37 @@ Landing estática en HTML, CSS y JavaScript ES modules con un flujo responsive d
 
 ## Flujo de registro
 
-1. **Firma:** lee `.p12` o `.pfx` en el navegador con `node-forge`. La clave y el archivo no se guardan ni se incluyen en el payload.
-2. **Gate de cliente:** después de validar firma/RUC, POST a `/api/registro/verificar-cliente`. Si ya es cliente, sale del onboarding promocional hacia «Ya eres cliente de TributaSoft», con «Iniciar sesión» y «Volver» en una fila cuando hay espacio. Si es nuevo, se permite renderizar Datos. Ante fallo técnico se bloquea, con Reintentar/Volver; no se confunde con cliente existente.
-3. **Datos:** solo para cliente nuevo, consulta el RUC por la API propia, exige estado ACTIVO, muestra datos tributarios y contacto. Al continuar, verifica el correo dentro de un modal/bottom sheet; no existe una pantalla de correo independiente.
+1. **Firma:** lee `.p12` o `.pfx` localmente con `node-forge`, valida el RUC, crea un draft, firma un challenge y entrega el paquete al backend para custodia temporal. La clave privada nunca sale del navegador; archivo y contraseña se eliminan de memoria después del upload confirmado.
+2. **Gate de cliente:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, consulta SRI; un fallo persistente tras tres intentos habilita `MANUAL_ENTRY` y cuenta restringida.
+3. **Datos:** muestra snapshot SRI o captura manual identificada, contacto y OTP de correo ligados al draft.
 4. **Facturación:** configuración por documento, Factura obligatoria y adicionales opcionales. Véase `docs/PASO3-FACTURACION.md`.
 5. **Revisión:** resume identidad, datos tributarios, contacto y facturación antes del alta. Son cuatro pasos visibles; el gate no es un quinto paso.
 
 ```text
-Firma válida
+Firma local válida
   ↓
-RUC válido
+Draft + sesión/CSRF
   ↓
-POST /api/registro/verificar-cliente
+Challenge backend + verificación criptográfica
   ├─ cliente existente → pantalla específica → Portal TributaSoft (clic)
-  ├─ error → Reintentar / Volver (sin SRI ni Paso 2)
   └─ nuevo cliente
         ↓
-      GET /api/ruc/:ruc
+      POST /api/registro/drafts/{id}/sri/lookup
+        ├─ SRI verificado
+        └─ 3 fallos transitorios → MANUAL_ENTRY / cuenta restringida
         ↓
-      backend/proxy → SRI
-        ↓
-      Paso 2: RUC ACTIVO → Facturación → Revisión
+      Datos + OTP → Facturación → Revisión → complete idempotente
 ```
 
 Ser cliente de TributaSoft y tener RUC ACTIVO en SRI son controles distintos, en ese orden. Un cliente existente nunca necesita consultar el SRI dentro de esta promoción.
 
-### Contrato propuesto de cliente existente
+### Cliente existente
 
-`assets/services/cliente-service.js` encapsula toda la llamada. Endpoint propio del mismo origen: `POST /api/registro/verificar-cliente`, JSON `{ "ruc": "<13 dígitos válidos>" }`. Solo se envía el RUC, nunca archivo/clave de firma. El backend puede cambiar nombres después: modificar el adaptador, no repartir fetch entre pantallas.
+El wizard V2 usa `POST /api/registro/drafts/{id}/client-check` con body vacío; el backend toma el RUC verificado del draft. `assets/services/cliente-service.js` y `POST /api/registro/verificar-cliente` se conservan únicamente para V1.
 
-Respuesta HTTP 200 JSON mínima: `{ "esCliente": false }` o `{ "esCliente": true, "estado": "ACTIVO", "redirectUrl": "<login oficial>" }`. El booleano es estricto; estado y redirectUrl son opcionales y deben ser strings. Un existente sigue siendo existente aunque el estado no sea ACTIVO: no se confunde con el estado SRI. Errores HTTP, 204, timeout de 8 segundos, JSON inválido o esquema inesperado → ERROR cerrado y mensaje público único, sin detalles técnicos.
+Respuesta V2 mínima: `{ "esCliente": false }` o `{ "esCliente": true }`. No revela razón social, estado ni otros datos. Un existente no consulta SRI dentro de la promoción.
 
-Estados: IDLE → CHECKING → NEW_CLIENT / EXISTING_CLIENT / ERROR. Durante CHECKING: «Estamos verificando tu información...». Se deduplican consultas concurrentes; un resultado exitoso se reutiliza por la misma firma durante la sesión. Cambiar de firma invalida el resultado. ERROR permite consulta nueva al Reintentar. No se consulta en cada edición, ni se persiste RUC/resultado en almacenamiento del navegador.
+La asociación `registrationId + sesión + RUC` y el rate limiting están definidos en `docs/V2-BACKEND-HANDOFF.md`. Cambiar la firma obliga a un draft nuevo.
 
 `assets/services/portal-config.js` centraliza `TRIBUTASOFT_LOGIN_URL`, reutilizada del correo histórico: `https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true`. Un cliente existente llega al portal mediante el CTA «Iniciar sesión». Un alta confirmada muestra brevemente la bienvenida y redirige automáticamente al mismo destino. Solo se admite el destino HTTPS fijo del archivo; los parámetros recibidos del backend no lo sustituyen.
 
@@ -103,26 +102,34 @@ $env:SRI_RUC_URL='https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-int
 npm start
 ```
 
-Esta configuración es de proceso local; el equipo backend debe confirmar su configuración productiva. SRI 204 significa RUC no encontrado, sin body: comprobar status ANTES de response.json(). No confundirlo con timeout, 5xx ni JSON malformado.
+Esta variable es solo de proceso local. En producción el backend configura el upstream SRI como secreto/configuración operativa y aplica el contrato del handoff. SRI 204 significa RUC no encontrado, sin body: comprobar status ANTES de response.json(). No confundirlo con timeout, 5xx ni JSON malformado.
 
-## Endpoints backend pendientes
+## Contrato backend V2
 
-| Endpoint | Uso | Estado |
+| Endpoint | Uso | Estado frontend/mock |
 |---|---|---|
-| `POST /api/registro/verificar-cliente` | Gate comercial | Adaptador listo; mock local explícito, backend real pendiente |
-| `GET /api/ruc/:ruc` | Proxy y normalización SRI | Adaptador incluido; upstream pendiente |
-| `POST /api/token/email` | Enviar OTP | Contrato cableado; backend real pendiente |
-| `POST /api/token/verify` | Verificar OTP | Contrato cableado; backend real pendiente |
-| `POST /api/registro` | Crear la cuenta | Contrato cableado; persistencia real pendiente |
+| `POST /api/registro/drafts` | Crear draft, sesión, CSRF y consentimiento | Cableado y mock contractual |
+| `/api/registro/drafts/{id}/signature-challenges...` | Challenge y prueba de posesión | Cableado; PKI real es backend-required |
+| `POST /api/registro/drafts/{id}/certificate-package` | Custodia temporal | Cableado; cifrado/KMS real es backend-required |
+| `POST /api/registro/drafts/{id}/client-check` | Gate comercial | Cableado y mock contractual |
+| `POST /api/registro/drafts/{id}/sri/lookup` | Proxy SRI | Cableado con tres intentos/fallback |
+| `PUT /api/registro/drafts/{id}/tax-data` | `MANUAL_ENTRY` o `SRI_CONFIRMATION` | Cableado y mock contractual |
+| `.../contact`, `.../otp/email/*`, `.../billing` | Contacto, OTP y facturación | Cableado y mock contractual |
+| `POST /api/registro/drafts/{id}/complete` | Alta idempotente | Cableado; transacción real pendiente |
+| `PUT /api/registro/accounts/{accountId}/logo` | Logo persistente post-creación | Cableado y mock contractual |
+
+Las rutas V1 `POST /api/registro`, `/api/registro/verificar-cliente`, `/api/token/*` y `GET /api/ruc/:ruc` permanecen solo para consumidores legacy. No son autoridad del wizard V2. El contrato ejecutable completo está en `docs/V2-BACKEND-HANDOFF.md`.
 
 El backend es la autoridad final para validar RUC, identidad/firma, sanitizar, limitar solicitudes, manejar sesión y escribir en base de datos.
-En localhost y en el Dev Tunnel autorizado, `Crear cuenta` usa el mismo origen y `POST /api/registro`. El servidor solo responde con el mock no persistente cuando `NODE_ENV=development`, `DEV_REGISTRATION_MOCK=1` y el origen supera la allowlist local/túnel. Después de una respuesta exitosa, el frontend muestra brevemente «Bienvenido a TributaSoft» y redirige a `TRIBUTASOFT_LOGIN_URL`. En producción el mock falla cerrado: solo una respuesta exitosa del backend real permite esa bienvenida y redirección. El equipo backend debe implementar la persistencia y devolver éxito únicamente después de completar el alta real; un error HTTP mantiene al usuario en Revisión.
+En localhost y en el Dev Tunnel autorizado, `Crear cuenta` usa el mismo origen y `POST /api/registro/drafts/{id}/complete` con `Idempotency-Key`. El servidor solo responde con el mock no persistente cuando `NODE_ENV=development`, `DEV_REGISTRATION_MOCK=1` y el origen supera la allowlist local/túnel. En producción el mock falla cerrado: solo el backend real puede confirmar el alta.
 
-### Personalización post-creación — contrato pendiente
+Política cerrada para indisponibilidad persistente del SRI: después de tres intentos transitorios fallidos, el usuario puede completar el alta con datos declarados. La cuenta permite login y funciones no tributarias, pero nace con `ACCOUNT_TAX_DATA_STATUS=PENDING_SRI_RECONCILIATION`; emisión/autorización electrónica y las funciones tributarias que requieren datos verificados permanecen bloqueadas. El backend reconcilia posteriormente con SRI y solo cambia a `VERIFIED` cuando la comprobación es satisfactoria.
 
-Después de un alta confirmada, el frontend permite previsualizar un logo o un provisional con la razón social. No guarda archivos en almacenamiento local ni inventa una llamada de red. El legacy esperaba un banner PNG de 2,970 × 300 px (9.9:1) dentro del payload inicial; el flujo nuevo ocurre después de crear la cuenta y todavía no tiene endpoint.
+### Personalización post-creación
 
-El equipo backend debe confirmar la ruta y autenticación del contrato post-creación. Requisitos ya cerrados: archivo JPG/JPEG o PNG, MIME verificado por firma binaria, máximo 500 KB, imagen decodificable y proporción 9.9:1 con tolerancia ±10%. Cuando exista el endpoint, deberá asociar el logo antes de mostrar la bienvenida. Si no hay archivo válido, el backend debe generar un banner 2,970 × 300 con la razón social en Roboto Condensed Bold y, debajo, correo y celular con iconos lineales. Hasta que exista este contrato, la pantalla es preview frontend y no afirma persistencia del logo.
+Después de un alta confirmada, el frontend llama `PUT /api/registro/accounts/{accountId}/logo` con el bearer post-creación de 10 minutos. El upload acepta JPG/JPEG o PNG, máximo 500 KB, y el backend valida/re-encodea antes de persistir en storage privado.
+
+Si no se carga una imagen, el backend genera y persiste un provisional de 2,970 × 300, fondo blanco, razón social únicamente, color negro y Roboto Condensed Light. No incluye email, celular ni iconos.
 
 ## Responsabilidades de arquitectura
 
@@ -132,14 +139,14 @@ UX, validación local de firma y formato/dígito de RUC, consumo de endpoints pr
 
 ### Backend TributaSoft — entrega requerida al equipo backend
 
-1. Implementar POST /api/registro/verificar-cliente y confirmar contrato/nombres con el adaptador.
-2. Exigir RUC `string` de 13 dígitos, sufijo `001` y dígito verificador; consultar DB con prepared statements/queries parametrizadas. La validación de formato no evita SQL injection. Devolver solo esCliente y, si aplica, estado/URL oficial.
-3. Definir/confirmar URL de login/renovación; HTTPS y destino confiable coordinado con TRIBUTASOFT_LOGIN_URL.
-4. Rate limiting, protección contra enumeración/abuso, sanitización, autenticación/autorización y CSRF según sesión aplicable. Logs seguros sin RUC crudo/credenciales.
-5. Revalidar elegibilidad final de la promoción en POST /api/registro, de forma atómica antes del alta: no confiar en el booleano del navegador ni en el gate previo.
-6. Configurar ruta/reverse proxy del mismo origen, TLS, Cache-Control: no-store, timeouts y errores controlados; desactivar/omitir DEV_CLIENT_LOOKUP_MOCK en producción.
-7. Integrar el contrato de facturación por documento y los endpoints pendientes de correo/alta; el mock no prueba creación real de cuenta.
-8. Verificar criptográficamente que el certificado corresponde al mismo RUC del draft; bloquear CI-only y no aceptar metadatos del navegador como `IDENTITY_VERIFIED`.
+1. Implementar el contrato normativo de `docs/V2-BACKEND-HANDOFF.md` sin usar las rutas V1 como autoridad.
+2. Persistir draft/sesión/CSRF, aplicar TTL, cancelación, cleanup y rate limits cerrados.
+3. Verificar criptográficamente certificado, trust store, revocación y RUC antes de `IDENTITY_VERIFIED`.
+4. Custodiar PKCS#12 y contraseña mediante envelope encryption y KMS/Vault.
+5. Implementar lookup cliente y SRI con queries parametrizadas, anti-enumeración y reconciliación.
+6. Implementar OTP server-side, complete transaccional/idempotente y secuencias atómicas.
+7. Persistir logo subido o generar el provisional definitivo.
+8. Mantener mocks y excepciones de Dev Tunnel fuera de producción.
 
 ### Proxy SRI
 

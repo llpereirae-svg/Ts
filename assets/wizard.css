@@ -1824,18 +1824,8 @@ dialog.email-verification::backdrop { background: rgba(21,32,51,.4); backdrop-fi
 }
 .post-logo-provisional-name {
   display: block; max-width: 100%; overflow: hidden; font-size: clamp(.82rem, 2.5vw, 1.18rem);
-  color: var(--text-primary); font-weight: 700; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
+  color: #111827; font-weight: 300; line-height: 1; text-overflow: ellipsis; white-space: nowrap;
 }
-.post-logo-provisional-contact {
-  display: flex; max-width: 100%; min-width: 0; align-items: center; justify-content: center; gap: .75rem;
-  color: var(--text-secondary); font-size: clamp(.52rem, 1.45vw, .68rem); line-height: 1;
-}
-.post-logo-provisional-contact-item { display: flex; min-width: 0; align-items: center; gap: .22rem; }
-.post-logo-provisional-icon {
-  width: .78em; height: .78em; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round;
-  stroke-linejoin: round; stroke-width: 1.75;
-}
-.post-logo-provisional-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .post-logo-file-meta { margin: .45rem 0 0; color: var(--text-secondary); font-size: .76rem; overflow-wrap: anywhere; }
 .post-logo-status { min-height: 1.25rem; margin: .65rem 0; color: var(--text-secondary); font-size: .79rem; line-height: 1.45; }
 .post-logo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }

@@ -43,7 +43,8 @@
  *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
  *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
-import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20260929a';
+import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20260930c';
+import { enviarOtpEmail, verificarOtpEmail } from './draft-service.js?v=20260930c';
 
 const usaMock = canal => USE_MOCKS || (canal === 'email' && DEV_EMAIL_TOKEN_MOCK);
 
@@ -115,7 +116,6 @@ async function sendSms(destino, token) {
   // ver el código sin tener gateway SMS configurado. Al reemplazar esta función
   // por el fetch real, BORRAR esta línea — un token de verificación NUNCA
   // debe quedar en logs/consola en producción.
-  console.log(`[token-service MOCK] SMS a ${destino}: código ${token}`);
   await new Promise((r) => setTimeout(r, 250));
   return { ok: true };
 }
@@ -136,9 +136,14 @@ async function sendSms(destino, token) {
  * @param {{ canal: 'email'|'sms', destino: string }} opts
  * @returns {Promise<{ token: string, expiraEn: Date, ttl: number, ok: boolean }>}
  */
-export async function generarYEnviarToken({ canal, destino }) {
+export async function generarYEnviarToken({ canal, destino, registrationId = '' }) {
   if (!destino) throw new Error('Falta el destino del token');
   if (canal !== 'email' && canal !== 'sms') throw new Error(`Canal inválido: ${canal}`);
+  if (registrationId) {
+    if (canal !== 'email') throw new Error('Canal no soportado por el draft.');
+    const result = await enviarOtpEmail(registrationId);
+    return { token: result.devCode || null, expiraEn: new Date(result.expiresAt), ttl: TOKEN_TTL_MS, ok: true };
+  }
 
   if (!usaMock(canal)) {
     const response = await fetch(`${BACKEND_URL}/api/token/${canal}`, {
@@ -175,12 +180,20 @@ export async function generarYEnviarToken({ canal, destino }) {
  * @param {{ canal: string, codigo: string, tokenEsperado: string, expiraEn: Date }} opts
  * @returns {{ valid: boolean, error?: string, reason?: string }}
  */
-export async function verificarToken({ canal, destino, codigo, tokenEsperado, expiraEn }) {
+export async function verificarToken({ canal, destino, codigo, tokenEsperado, expiraEn, registrationId = '' }) {
   if (!codigo || codigo.length !== TOKEN_LEN || !/^\d+$/.test(codigo)) {
     return { valid: false, error: 'FORMATO', reason: `El código debe tener ${TOKEN_LEN} dígitos.` };
   }
   if (expiraEn && new Date() > new Date(expiraEn)) {
     return { valid: false, error: 'EXPIRADO', reason: 'El código expiró. Pide uno nuevo.' };
+  }
+  if (registrationId) {
+    try {
+      const result = await verificarOtpEmail(registrationId, codigo);
+      return result.valid === true ? { valid: true } : { valid: false, error: 'INCORRECTO', reason: 'El código no coincide.' };
+    } catch (error) {
+      return { valid: false, error: error?.code || 'SERVICIO', reason: error?.code === 'OTP_INVALID' ? 'El código no coincide.' : 'No pudimos verificar el código.' };
+    }
   }
   if (!usaMock(canal)) {
     try {

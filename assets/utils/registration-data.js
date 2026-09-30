@@ -66,12 +66,12 @@ export function aplicarDatosSri(data, sri, rucConsultado) {
 }
 
 export function estadoSriPermiteContinuar(data) {
-  if (data.sriStatus === 'MANUAL_PENDING' && data.sriSource === 'MANUAL') return datosSriManualesCompletos(data);
+  if (data.sriStatus === 'MANUAL_PENDING' && data.sriSource === 'MANUAL_ENTRY') return datosSriManualesCompletos(data);
   return data.sriStatus === 'OK' && data._sriRuc === data.rucManual && normalize(data.estadoContribuyenteRuc) === 'ACTIVO';
 }
 
 export function esModoManualSri(data) {
-  return data?.sriStatus === 'MANUAL_PENDING' && data?.sriSource === 'MANUAL';
+  return data?.sriStatus === 'MANUAL_PENDING' && data?.sriSource === 'MANUAL_ENTRY';
 }
 
 export function datosSriManualesCompletos(data) {
@@ -86,7 +86,7 @@ export function datosSriManualesCompletos(data) {
 export function activarCapturaSriManual(data, { attempts = 3, errorCode = 'SRI_UNAVAILABLE', attemptedAt = new Date().toISOString() } = {}) {
   Object.assign(data, {
     sriStatus: 'MANUAL_PENDING',
-    sriSource: 'MANUAL',
+    sriSource: 'MANUAL_ENTRY',
     sriTechnicalStatus: 'UNAVAILABLE',
     sriAttempts: attempts,
     sriLastAttemptAt: attemptedAt,

@@ -1,5 +1,6 @@
-import { validarRUC } from '../utils/ruc-validation.js?v=20260929a';
-import { TRIBUTASOFT_LOGIN_URL } from './portal-config.js?v=20260929a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
+import { TRIBUTASOFT_LOGIN_URL } from './portal-config.js?v=20260930c';
+import { draftSecurityHeaders } from './draft-service.js?v=20260930c';
 
 export const CLIENTE_ESTADO = Object.freeze({ IDLE: 'IDLE', CHECKING: 'CHECKING', NEW_CLIENT: 'NEW_CLIENT', EXISTING_CLIENT: 'EXISTING_CLIENT', ERROR: 'ERROR' });
 export const CLIENTE_ERROR = 'No pudimos verificar tu registro en este momento.';
@@ -27,14 +28,17 @@ export function normalizarCliente(raw, loginUrl = TRIBUTASOFT_LOGIN_URL) {
   return { status: CLIENTE_ESTADO.EXISTING_CLIENT, loginUrl: url, configRequired: !url };
 }
 
-export async function consultarCliente(ruc, { fetchImpl = globalThis.fetch, timeoutMs = 8000, loginUrl = TRIBUTASOFT_LOGIN_URL } = {}) {
+export async function consultarCliente(ruc, { fetchImpl = globalThis.fetch, timeoutMs = 8000, loginUrl = TRIBUTASOFT_LOGIN_URL, registrationId = '' } = {}) {
   if (typeof ruc !== 'string' || !validarRUC(ruc).valid || typeof fetchImpl !== 'function') return error();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl('/api/registro/verificar-cliente', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ ruc }), credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+    const endpoint = registrationId
+      ? `/api/registro/drafts/${encodeURIComponent(registrationId)}/client-check`
+      : '/api/registro/verificar-cliente';
+    const response = await fetchImpl(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(registrationId ? draftSecurityHeaders(registrationId) : {}) },
+      body: JSON.stringify(registrationId ? {} : { ruc }), credentials: 'same-origin', cache: 'no-store', signal: controller.signal
     });
     if (!response.ok || response.status === 204) return error();
     return normalizarCliente(await response.json(), loginUrl);

@@ -1,4 +1,5 @@
-import { validarRUC } from '../utils/ruc-validation.js?v=20260929a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
+import { draftSecurityHeaders } from './draft-service.js?v=20260930c';
 
 export const RUC_RESULT = Object.freeze({
   OK: 'OK',
@@ -52,7 +53,7 @@ export function normalizarRespuestaRuc(raw) {
   };
 }
 
-export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutMs = 8_000 } = {}) {
+export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutMs = 8_000, registrationId = '' } = {}) {
   const validacion = validarRUC(ruc);
   if (!validacion.valid) return { status: RUC_RESULT.INVALID, reason: validacion.reason };
   if (typeof fetchImpl !== 'function') return { status: RUC_RESULT.UNAVAILABLE, reason: 'Servicio no disponible.' };
@@ -60,8 +61,14 @@ export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutM
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(`/api/ruc/${encodeURIComponent(ruc)}`, {
-      headers: { Accept: 'application/json' },
+    const endpoint = registrationId
+      ? `/api/registro/drafts/${encodeURIComponent(registrationId)}/sri/lookup`
+      : `/api/ruc/${encodeURIComponent(ruc)}`;
+    const response = await fetchImpl(endpoint, {
+      method: registrationId ? 'POST' : 'GET',
+      headers: { Accept: 'application/json', ...(registrationId ? { 'Content-Type': 'application/json', ...draftSecurityHeaders(registrationId) } : {}) },
+      credentials: 'same-origin', cache: 'no-store',
+      ...(registrationId ? { body: '{}' } : {}),
       signal: controller.signal,
     });
     if (response.status === 204) {
@@ -85,7 +92,7 @@ export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutM
     } catch {
       return { status: RUC_RESULT.MALFORMED, reason: 'El servicio devolvió una respuesta no válida.' };
     }
-    const data = normalizarRespuestaRuc(raw);
+    const data = normalizarRespuestaRuc(registrationId && raw?.data ? raw.data : raw);
     if (!data) return { status: RUC_RESULT.MALFORMED, reason: 'La respuesta no contiene datos de contribuyente.' };
     if (data.ruc !== String(ruc)) return { status: RUC_RESULT.MALFORMED, reason: 'El RUC de la respuesta no coincide con el consultado.' };
     return { status: RUC_RESULT.OK, data };

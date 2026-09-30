@@ -47,7 +47,7 @@ test('rechaza el sobre antes de intentar decodificar una imagen grande', async (
     else globalThis.createImageBitmap = previous;
   }
 });
-test('logo provisional muestra razón social, correo y celular con contenido seguro', () => {
+test('logo provisional muestra únicamente la razón social con contenido seguro', () => {
   const markup = buildProvisionalLogoMarkup({
     razonSocial: 'Empresa & Asociados',
     email: 'contacto@ejemplo.com',
@@ -55,13 +55,13 @@ test('logo provisional muestra razón social, correo y celular con contenido seg
   });
   assert.match(markup, /post-logo-provisional-name/);
   assert.match(markup, /Empresa &amp; Asociados/);
-  assert.match(markup, /contacto@ejemplo\.com/);
-  assert.match(markup, /099-999-9999/);
-  assert.equal((markup.match(/<svg/g) || []).length, 2);
+  assert.doesNotMatch(markup, /contacto@ejemplo\.com/);
+  assert.doesNotMatch(markup, /099-999-9999/);
+  assert.equal((markup.match(/<svg/g) || []).length, 0);
 });
 test('personalización ocurre después del alta y antes de la redirección', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
-  const create = source.indexOf('crearRegistro(buildRegistrationPayload())');
+  const create = source.indexOf('completarDraft(wizardData.registrationId, wizardData.idempotencyKey)');
   const personalize = source.indexOf('await mostrarPersonalizacionLogo({');
   const redirect = source.indexOf('window.setTimeout(() => window.location.assign(TRIBUTASOFT_LOGIN_URL), 1600)');
   assert.ok(create >= 0 && personalize > create && redirect > personalize);

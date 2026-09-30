@@ -1,7 +1,8 @@
-import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20260929a';
-import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20260929a';
-import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260929a';
-import { solicitarVerificacionCorreo } from './email-verification.js?v=20260929a';
+import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20260930c';
+import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20260930c';
+import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260930c';
+import { solicitarVerificacionCorreo } from './email-verification.js?v=20260930c';
+import { confirmarDatosTributariosSri, guardarContacto, guardarDatosTributariosManuales } from '../services/draft-service.js?v=20260930c';
 
 let sectionListeners;
 
@@ -137,7 +138,7 @@ async function runLookup(body, data) {
   paintStatus(body, data);
   const requestedRuc = data.rucManual;
   const requestId = data._rucRequestId = (data._rucRequestId || 0) + 1;
-  const result = await consultarRuc(requestedRuc);
+  const result = await consultarRuc(requestedRuc, { registrationId: data.registrationId });
   if (data.rucManual !== requestedRuc || data._rucRequestId !== requestId) return;
   data.sriAttempts = result.attempts || (result.status === RUC_RESULT.OK || result.status === RUC_RESULT.NOT_FOUND ? 1 : 0);
   data.sriLastAttemptAt = new Date().toISOString();
@@ -238,6 +239,25 @@ export async function validarPantallaDatos(data) {
   const phone = validarCelular(data.celular, data.celularPais);
   if (!phone.valid) return invalidate(body, 'celular', phone.reason);
   data.celular = phone.normalizado;
+  if (!data.registrationId) return invalidate(body, 'email', 'La sesión de registro expiró. Vuelve a validar la firma.');
+  try {
+    if (esModoManualSri(data)) {
+      await guardarDatosTributariosManuales(data.registrationId, {
+        razonSocial: data.razonSocial, nombreComercial: data.nombreComercial || null,
+        regimen: data.regimen, tipoContribuyente: data.tipoContribuyente,
+        obligadoLlevarContabilidad: data.obligadoLlevarContabilidad,
+        actividadEconomicaPrincipal: data.actividadEconomica,
+        agenteRetencion: data.tipoContribuyente === 'AGENTE_RETENCION',
+        contribuyenteEspecial: data.tipoContribuyente === 'CONTRIBUYENTE_ESPECIAL',
+        granContribuyente: data.tipoContribuyente === 'GRAN_CONTRIBUYENTE',
+      }, data.noResolucion || '');
+    } else {
+      await confirmarDatosTributariosSri(data.registrationId, { noResolucion: data.noResolucion || '', nombreComercial: data.nombreComercial || '' });
+    }
+    await guardarContacto(data.registrationId, { email: data.email, celular: data.celular });
+  } catch {
+    return invalidate(body, 'email', 'No pudimos guardar los datos del registro. Intenta nuevamente.');
+  }
   if (correoVerificado(data)) return true;
   const verified = await solicitarVerificacionCorreo(data, { onChangeEmail: () => {
     body.querySelector('#datos-contacto').open = true;

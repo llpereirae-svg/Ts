@@ -1,407 +1,355 @@
-# TributaSoft Registro V2 — handoff backend y cierre técnico
+# TributaSoft Registro V2 — contrato definitivo para backend
 
-Estado del documento: auditoría del frontend real en la rama de trabajo. No representa despliegue, tag ni aprobación productiva.
+Estado: **READY FOR BACKEND IMPLEMENTATION**. Audiencia: equipo backend. Fecha contractual: 2026-09-30.
 
-## 1. Baseline auditado
+Este documento es la fuente normativa del Registro V2. El código frontend y el mock de desarrollo deben coincidir con él. Las rutas legacy permanecen únicamente para consumidores V1 y no son autoridad del flujo V2.
 
-- Rama: `redesign/registro-300-v2`.
-- HEAD inicial de esta auditoría: `1f9bda34843c058e6eb7847334fd9cc7c9434199`.
-- Stack: HTML, CSS y módulos ES nativos; servidor Node 18+ sin dependencias NPM.
-- Flujo visible: cuatro pasos (`firma`, `datos`, `facturacion`, `resumen`).
-- Suite inicial: 89 pruebas aprobadas; smoke test con 0 errores y 0 advertencias.
-- Árbol inicial: cambios V2 locales sin commit, incluidos archivos modificados y nuevos. Esta auditoría no los descartó ni sobrescribió.
-- No se ejecutaron push, merge, tag, release ni deploy.
+## 1. Flujo y autoridad
 
-## 2. Arquitectura vigente
+1. El navegador valida y abre localmente `.p12`/`.pfx`, obtiene un RUC candidato y bloquea CI-only o RUC inválido.
+2. Crea un draft server-side con consentimiento versionado.
+3. Prueba posesión de la clave privada firmando un challenge backend.
+4. Backend verifica certificado, identidad y RUC; solo entonces produce `IDENTITY_VERIFIED`.
+5. El navegador sube PKCS#12 y contraseña para custodia temporal cifrada.
+6. Backend verifica cliente existente y consulta SRI.
+7. Contacto, OTP, datos tributarios y facturación quedan asociados al draft.
+8. `complete` crea la cuenta de forma transaccional e idempotente.
+9. El logo se persiste después de crear la cuenta; si no se carga uno, backend genera el provisional definitivo.
+
+El frontend nunca es autoridad sobre identidad, SRI, OTP, secuencias, consentimiento, elegibilidad ni creación de cuenta.
+
+## 2. Sesión y CSRF
+
+### 2.1 Cookie de sesión
+
+- Nombre productivo: `__Host-ts_registration_session`.
+- Valor: identificador opaco aleatorio de al menos 256 bits; nunca `registrationId`.
+- Atributos obligatorios: `HttpOnly; Secure; SameSite=Lax; Path=/` y sin `Domain`.
+- Se emite al crear el primer draft. En desarrollo HTTP local el mock usa `ts_registration_session_dev`, sin `Secure`; esa excepción no existe en producción.
+- Cada draft guarda asociación inmutable `registrationId + sessionId + RUC`.
+- `registrationId` por sí solo no autentica ni permite recuperar un draft.
+
+### 2.2 CSRF
+
+- `POST /drafts` acepta una sesión nueva y exige Origin/Fetch Metadata same-origin.
+- La respuesta de creación entrega `csrfToken` aleatorio de 256 bits. Backend almacena solo su hash.
+- Toda mutación posterior del draft exige cookie válida y `X-CSRF-Token` exacto.
+- El token se conserva únicamente en memoria del frontend. No va en URL, logs, analytics ni localStorage.
+- El endpoint de logo usa bearer post-creación y no depende de autenticación ambiental por cookie.
+
+### 2.3 Renovación y navegación
+
+- Una petición autenticada y aceptada renueva la inactividad del draft, nunca su límite absoluto.
+- No se rota el session ID durante el draft para no romper pestañas concurrentes. Se revoca la asociación específica al completar, cancelar o expirar.
+- Varias pestañas del mismo navegador pueden tener drafts distintos y sus respectivos CSRF tokens.
+- Un segundo dispositivo, aun con `registrationId`, recibe `SESSION_REQUIRED`/`SESSION_MISMATCH`.
+- Si se pierde cookie o token CSRF, el draft no se recupera con datos personales: se descarta y el usuario reinicia el registro.
+- TTL de inactividad: 30 minutos. TTL absoluto: 2 horas. Cleanup: cada 5 minutos.
+
+## 3. State machine
+
+Estados:
 
 ```text
-Navegador
-  ├─ Paso 1: procesa PKCS#12 localmente
-  │    └─ POST /api/registro/verificar-cliente
-  ├─ Paso 2: GET /api/ruc/:ruc
-  │    └─ backend/proxy → SRI
-  ├─ Paso 2: POST /api/token/email y /api/token/verify (producción)
-  ├─ Paso 3: construye facturación por documento
-  └─ Paso 4: POST /api/registro
-        ├─ personalización de logo solo en memoria (contrato backend pendiente)
-        └─ bienvenida → portal de login configurado
+PENDING
+  -> IDENTITY_VERIFIED
+  -> SRI_PENDING
+  -> CONTACT_VERIFIED
+  -> READY_TO_CREATE
+  -> CREATING
+  -> COMPLETED
+
+Cualquier estado no terminal -> CANCELLED
+Cualquier estado no terminal vencido -> EXPIRED
 ```
 
-El navegador es una capa de experiencia y prevalidación. El backend debe ser autoridad de identidad, elegibilidad, OTP, reglas tributarias, secuencias, persistencia y auditoría.
+Las operaciones pueden completarse en distinto orden después de `IDENTITY_VERIFIED`; `refreshReadiness` conserva `SRI_PENDING` mientras no exista snapshot SRI ni declaración manual admitida. `READY_TO_CREATE` requiere identidad, paquete de certificado, cliente nuevo, datos tributarios, email verificado, facturación y consentimiento.
 
-## 3. Entornos y separación de mocks
+Estados terminales: `COMPLETED`, `EXPIRED`, `CANCELLED`. No son reutilizables.
 
-### Desarrollo directo
+`DELETE /api/registro/drafts/{registrationId}` produce `CANCELLED`, invalida challenges/OTP, elimina el paquete temporal y conserva únicamente evidencia técnica mínima sin secretos. Repetir la cancelación es idempotente. No se permite cancelar `COMPLETED` ni `EXPIRED`.
 
-- Host frontend: `localhost`, `127.0.0.1` o `0.0.0.0`.
-- `POST /api/registro/verificar-cliente` y `POST /api/registro` usan mismo origen en el servidor del puerto 8000.
-- El mock de cliente exige `NODE_ENV=development`, `DEV_CLIENT_LOOKUP_MOCK=1`, conexión loopback y configuración válida.
-- El mock de alta exige `NODE_ENV=development`, `DEV_REGISTRATION_MOCK=1`, conexión loopback y origen autorizado.
-- El correo usa código de prueba visible; no envía un correo real.
-- El proxy SRI exige `SRI_RUC_URL` y nunca debe llamar al SRI desde el navegador.
+## 4. API pública V2
 
-### Dev Tunnel
+| Método | Ruta | Request | Success |
+|---|---|---|---|
+| POST | `/api/registro/drafts` | `contractVersion`, `rucClaim`, `consent` | 201 `registrationId`, `csrfToken`, expiraciones |
+| DELETE | `/api/registro/drafts/{id}` | Headers sesión/CSRF | 200 `CANCELLED` |
+| POST | `/api/registro/drafts/{id}/signature-challenges` | `algorithm` | 201 challenge canónico |
+| POST | `/api/registro/drafts/{id}/signature-challenges/{challengeId}/verify` | firma, certificado DER, algoritmo, RUC | 200 `IDENTITY_VERIFIED` |
+| POST | `/api/registro/drafts/{id}/certificate-package` | multipart PKCS#12, password, metadata | 201 custodia temporal |
+| POST | `/api/registro/drafts/{id}/client-check` | `{}` | 200 `esCliente` |
+| POST | `/api/registro/drafts/{id}/sri/lookup` | `{}` | 200 snapshot o 503 tras tres intentos |
+| PUT | `/api/registro/drafts/{id}/tax-data` | `MANUAL_ENTRY` o `SRI_CONFIRMATION` | 200 fuente/estado |
+| PUT | `/api/registro/drafts/{id}/contact` | email, celular | 200 |
+| POST | `/api/registro/drafts/{id}/otp/email/send` | `{}` | 200 expiración/cooldown |
+| POST | `/api/registro/drafts/{id}/otp/email/verify` | código de 6 dígitos | 200 verificado |
+| PUT | `/api/registro/drafts/{id}/billing` | modo y documentos | 200 |
+| POST | `/api/registro/drafts/{id}/complete` | `{}` + `Idempotency-Key` | 201 cuenta/token post-creación |
+| PUT | `/api/registro/accounts/{accountId}/logo` | bearer + multipart o provisional JSON | 200 persistido |
 
-- Se publica únicamente el puerto 8000.
-- `DEV_ALLOWED_ORIGIN` debe contener un único origin HTTPS exacto, sin ruta, credenciales ni wildcard.
-- El servidor acepta el túnel solo en desarrollo, desde loopback, con Host/Origin locales coherentes y un único `X-Forwarded-Proto=https` y `X-Forwarded-Host` que reconstruyan exactamente el origin autorizado.
-- Producción ignora esta excepción y falla cerrado.
+Todos los endpoints responden JSON, `Cache-Control: no-store` y correlation ID. Los 429 incluyen `Retry-After` en segundos.
 
-### Demo estática
+## 5. Consentimiento
 
-- Un host no reconocido se clasifica como `demo`.
-- No existe backend real; token y alta se simulan en navegador.
-- El gate de cliente y la consulta SRI no tienen fallback estático; por ello el wizard completo no termina en un hosting estático sin API/reverse proxy.
-- Sirve para componentes aislados, no para comprobar el flujo completo, persistencia, envío de correo ni creación de cuenta.
-
-### Producción
-
-- Hosts reconocidos: `www.tributasoft.com.ec`, `tributasoft.com.ec`, `app.tributasoft.ec`.
-- API configurada: `https://api.tributasoft.ec`.
-- OTP y alta apuntan a esa API. Gate de cliente y SRI conservan rutas relativas, por lo que cada host frontend productivo necesita reverse proxy para `/api/registro/verificar-cliente` y `/api/ruc/:ruc`, o una decisión explícita de adaptador.
-- No se habilitan mocks de servidor ni correo.
-- Solo un 2xx del backend real permite pasar a personalización, bienvenida y redirección.
-
-## 4. Flujo real de punta a punta
-
-1. El usuario selecciona `.p12`/`.pfx`, ingresa la clave y acepta términos.
-2. El navegador comprueba extensión, tamaño, estructura PKCS#12, clave, certificado, fecha de caducidad y RUC extraído. El RUC debe ser un `string` de 13 dígitos, terminar en `001` y superar el dígito verificador ecuatoriano; una firma identificada únicamente con CI se bloquea y no dispara llamadas. No comprueba `notBefore`, cadena de confianza, revocación ni posesión de la clave privada. La clave se limpia y el control de archivo se resetea tras la lectura; solo quedan metadatos.
-3. Se envía únicamente el RUC a `POST /api/registro/verificar-cliente`.
-4. Si el RUC ya existe, se muestra el estado específico y el CTA de login. Si el gate falla, el flujo se bloquea. Solo un cliente nuevo continúa.
-5. `GET /api/ruc/:ruc` consulta el proxy propio. El proxy realiza hasta tres intentos totales solo ante timeout, red o HTTP 5xx, con backoff y jitter; 204 y 4xx no se reintentan. Si persiste la indisponibilidad, el formulario habilita ingreso manual identificado como `MANUAL_PENDING`, nunca como verificación oficial.
-6. Se muestran razón social/RUC como lectura, los datos tributarios mapeados y los campos editables de contacto. `N.º de resolución` aparece solo para tipos configurados.
-7. El correo se verifica en modal/bottom sheet. El avance queda vinculado al email exacto verificado.
-8. Facturación pide elegir `continuar` o `nuevo` y construye el objeto por documento.
-9. Revisión muestra los datos esenciales y permite volver a Datos o Facturación.
-10. `Crear cuenta` ejecuta anti-bot local y `POST /api/registro`. La excepción es el host `demo`: el adaptador devuelve un éxito simulado sin petición; ese modo no prueba un alta.
-11. Tras un 2xx, el usuario puede previsualizar un logo o provisional. Hoy ese resultado no se envía ni persiste.
-12. Se muestra la bienvenida y, tras 1,600 ms, se redirige a `TRIBUTASOFT_LOGIN_URL`.
-
-## 5. Contratos de endpoints
-
-### 5.1 `POST /api/registro/verificar-cliente`
-
-Request actual:
-
-```json
-{ "ruc": "<13 dígitos>" }
-```
-
-Respuesta 200 aceptada:
-
-```json
-{ "esCliente": false }
-```
-
-o:
-
-```json
-{ "esCliente": true, "estado": "ACTIVO", "redirectUrl": "https://destino-confiable.example/login" }
-```
-
-- `esCliente` debe ser booleano estricto.
-- `estado` y `redirectUrl` son opcionales y deben ser strings si existen.
-- El frontend no usa un redirect arbitrario: lo valida contra el destino fijo confiable.
-- Timeout frontend: 8 segundos.
-- HTTP no exitoso, 204, JSON inválido o esquema inesperado: gate cerrado.
-- Backend: validar RUC, consulta parametrizada/prepared statement, mínimo dato de respuesta, `Cache-Control: no-store`, rate limiting y protección contra enumeración. La validación del RUC no sustituye la parametrización SQL.
-
-### 5.2 `GET /api/ruc/:ruc`
-
-- Parámetro: RUC de 13 dígitos que supera validación ecuatoriana y termina en `001`.
-- 200: JSON SRI; el frontend normaliza y comprueba que la respuesta pertenezca al RUC consultado.
-- 204: no encontrado, sin body.
-- 400: RUC inválido.
-- 408: timeout del upstream.
-- 502: respuesta SRI malformada.
-- 503: upstream no configurado o no disponible. Una indisponibilidad persistente confirmada tras tres intentos devuelve `SRI_UNAVAILABLE` y el número de intentos.
-- Backend productivo recomendado: devolver solo los campos requeridos por el registro, no retransmitir el documento SRI completo.
-- No reintentar 204, RUC inválido ni 4xx de datos/request. Registrar en el draft intentos, timestamp del último intento, estado, fuente y error técnico normalizado, sin datos personales.
-
-### 5.3 `POST /api/token/email`
-
-Request actual:
-
-```json
-{ "destino": "usuario@example.com" }
-```
-
-- Producción no debe devolver el código.
-- El frontend solo requiere HTTP 2xx para continuar con el ingreso del OTP.
-- Backend: código de seis dígitos, TTL de 5 minutos, hash en reposo, máximo de intentos, cooldown, rate limit por IP/destino y respuesta no enumerable.
-
-### 5.4 `POST /api/token/verify`
-
-Request actual:
-
-```json
-{ "canal": "email", "destino": "usuario@example.com", "codigo": "123456" }
-```
-
-Respuesta consumida:
-
-```json
-{ "valid": true }
-```
-
-- El backend debe vincular el desafío a destino, sesión, propósito y TTL; consumirlo al validar y limitar intentos.
-- El frontend no debe recibir el token esperado ni ser autoridad de verificación.
-
-### 5.5 `POST /api/registro`
-
-El frontend envía hoy:
+Request obligatorio al crear draft:
 
 ```json
 {
-  "ruc": "<ruc>",
-  "razonSocial": "Empresa de ejemplo",
-  "nombreComercial": "Nombre opcional",
-  "estadoContribuyenteRuc": "ACTIVO",
-  "actividadEconomica": "Actividad normalizada",
-  "regimen": "GENERAL",
-  "tipoContribuyente": "AGENTE_RETENCION",
-  "noResolucion": "NAC-EJEMPLO-00000001",
-  "email": "usuario@example.com",
-  "celular": "0990000000",
-  "facturacion": {
-    "modo": "continuar",
-    "documentos": [
-      { "tipo_documento": "factura", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000027" }
-    ]
-  },
-  "firma": {
-    "titular": "Titular de ejemplo",
-    "ruc": "<ruc>",
-    "caducidad": "<fecha>",
-    "esJuridica": true
-  },
-  "sri": {
-    "source": "SRI",
-    "status": "OK",
-    "attempts": 1,
-    "lastAttemptAt": "<timestamp>",
-    "errorCode": null,
-    "declared": null
-  },
-  "terminosAceptados": true,
-  "validacionSriPendiente": false
+  "accepted": true,
+  "legalDocumentVersion": "REGISTRATION_V2_2026-09-30",
+  "legalDocumentId": "TRIBUTASOFT_REGISTRATION_TERMS_PRIVACY_V2",
+  "documentHashes": {
+    "termsSha256": "1b2a36395a997b6daa6ac516b077fcb001084d4fc836d50703a263b3913ba1a6",
+    "privacySha256": "d0482a2c9bd659d30ed5e739a5f1ed0c777818d590f1b489e3f1b22b3bfd5dde"
+  }
 }
 ```
 
-Contrato de respuesta actual: cualquier HTTP 2xx se considera alta confirmada; JSON es opcional. Cualquier no-2xx o error de red mantiene al usuario en Revisión y no redirige.
+Backend agrega `acceptedAt`, `registrationId`, session/correlation ID y, al completar, `accountId`. IP y User-Agent se conservan como evidencia de seguridad/legal con acceso restringido; no se exponen al frontend. Retención: la evidencia de una cuenta creada sigue la política documental/legal de la cuenta; drafts cancelados o expirados conservan solo evento, versión/hash y timestamps durante 90 días para auditoría antiabuso, sin RUC crudo, PKCS#12, contraseña ni OTP. Acceso: rol de auditoría autorizado, trazabilidad append-only y motivo de consulta.
 
-`noResolucion` ya forma parte del contrato de alta y es obligatorio para agente de retención, contribuyente especial y gran contribuyente. El backend debe repetir formato, longitud, obligatoriedad condicional y nulabilidad para los demás tipos.
+## 6. Challenge y trust policy
 
-Obligaciones backend:
+Payload canónico UTF-8:
 
-- Revalidar esquema, longitudes, enumeraciones y coherencia entre campos.
-- No confiar en `estadoContribuyenteRuc`, `tipoContribuyente`, `firma`, `tokenEmailOk` ni elegibilidad calculados por cliente.
-- Reconsultar/validar SRI y cliente existente según política, dentro de la operación de alta.
-- Verificar criptográficamente el certificado y exigir un RUC válido de 13 dígitos terminado en `001`; bloquear CI-only y comprobar que el RUC certificado coincide con el RUC del draft. Solo entonces marcar `IDENTITY_VERIFIED`. Los metadatos del navegador no son prueba.
-- Cuando `sri.source=MANUAL`, validar de nuevo todos los campos declarados, conservar `MANUAL_PENDING` y programar reconciliación sin presentarlos como datos oficiales.
-- Crear cuenta, configuración de documentos y secuencias en una transacción idempotente.
-- Resolver concurrencia de secuencias y promoción sin condiciones de carrera.
-- Responder éxito solo después de persistencia completa.
-- No registrar firma, clave, OTP ni payload completo con datos personales.
+```text
+TRIBUTASOFT-REGISTRATION-V2
+registrationId={uuid}
+challengeId={uuid}
+ruc={13 dígitos}
+nonce={base64url 32 bytes}
+issuedAt={ISO-8601 UTC}
+expiresAt={ISO-8601 UTC}
+```
 
-### 5.6 Logo post-creación
+- Algoritmo permitido V2: `RSASSA-PKCS1-v1_5-SHA256`.
+- TTL: 2 minutos; nonce CSPRNG; single-use incluso ante firma fallida; ligado a draft, sesión y RUC.
+- Trust store: bundle versionado y administrado por Seguridad con certificados/fingerprints de las entidades de certificación de firma electrónica acreditadas y vigentes en Ecuador según el registro oficial de ARCOTEL. No se acepta un emisor solo por nombre.
+- El leaf debe construir cadena válida hasta un trust anchor del bundle. CA desconocida, cadena rota o certificado revocado: fail closed.
+- RUC: extraer de atributos/identificadores definidos por el perfil del emisor, normalizar a string de 13 dígitos, validar dígito ecuatoriano y sufijo `001`; debe coincidir con draft y cuenta.
+- Vigencia: evaluar `notBefore <= now <= notAfter` en UTC.
+- Revocación: OCSP del certificado; si no está disponible, CRL vigente del emisor. Respuesta revocada produce `CERTIFICATE_REVOKED`.
+- Si OCSP y CRL están temporalmente indisponibles, no se produce `IDENTITY_VERIFIED`; se devuelve `CERTIFICATE_STATUS_UNAVAILABLE` 503, se conserva el draft para reintento y no se crea cuenta restringida. Este es fail-retryable, no bypass.
+- Certificado no confiable, revocado, vencido o RUC distinto es fail closed definitivo para esa firma.
 
-No existe endpoint ni payload aprobado. El frontend valida/previsualiza y luego descarta el resultado. Backend debe acordar antes de integrar:
+La clave privada y la contraseña no salen del navegador durante el challenge.
 
-- ruta, método, autenticación y asociación con la cuenta recién creada;
-- `multipart/form-data`, carga firmada u otro transporte;
-- respuesta de confirmación y comportamiento de reintento;
-- si la redirección espera la persistencia del logo;
-- generación del provisional en backend.
+## 7. Custodia PKCS#12
 
-No se debe inventar este endpoint desde frontend.
+- Transporte: TLS; multipart; nunca query params.
+- Tamaño máximo: 8 MB. Extensiones: `.p12`/`.pfx`; backend valida estructura PKCS#12 y correspondencia con el certificado verificado.
+- Cifrado: envelope encryption con `AES-256-GCM`; nonce único CSPRNG y AAD con `registrationId`, RUC hash y versión de contrato.
+- DEK: 256 bits aleatorios por credencial. El blob, nonce, tag y DEK envuelta pueden persistirse juntos.
+- KEK: externa a DB y filesystem de aplicación, en KMS/Vault/HSM. La versión/key ID sí se guarda; la KEK nunca.
+- La contraseña recuperable se cifra con DEK separada o como parte del payload AEAD; no se hashea.
+- Temporal: vence con el draft, máximo 2 horas. Cleanup al cancelar, expirar o fallar terminalmente.
+- Complete: dentro de la transacción lógica, promover/re-encriptar a storage definitivo antes de marcar `COMPLETED`; si falla, rollback y no crear cuenta parcialmente utilizable.
+- Rotación: nueva KEK reenvuelve DEKs sin descifrar el PKCS#12; nueva política/cipher genera job de re-encriptado controlado.
+- Prohibido registrar archivo, contraseña, DEK, KEK, contenido ASN.1, nombres originales o metadatos sensibles. Logs solo usan IDs opacos, tamaños y códigos.
 
-## 6. Matriz de validaciones y autoridad
+## 8. Cliente existente
 
-| Dato | Frontend vigente | Backend obligatorio |
-|---|---|---|
-| Archivo firma | `.p12`/`.pfx`, máximo 8 MB | Límite de body, tipo real y estrategia de verificación de identidad |
-| Clave firma | requerida; se limpia tras lectura | No recibirla ni registrarla salvo arquitectura aprobada distinta |
-| Certificado | parseable, descifrable, con certificado, no caducado; CI-only bloqueada | Verificar criptografía/cadena/revocación según política y que el certificado corresponda al mismo RUC del draft |
-| RUC | `string` exacto de 13 dígitos, provincia 01–24, tipo permitido, dígito verificador y sufijo `001` | Repetir exactamente; usar prepared statements. La validación no es una defensa SQLi |
-| Cliente existente | gate por RUC | Autoridad DB, rate limit, respuesta mínima y control de enumeración |
-| Estado SRI | mismo RUC y `ACTIVO`; tras tres fallos transitorios permite datos manuales marcados | Revalidar con fuente confiable; mantener `MANUAL_PENDING`, auditoría de intentos y reconciliación |
-| Razón social | obligatoria, solo lectura tras SRI | Normalizar y tomar la fuente autorizada |
-| Nombre comercial | opcional, solo si existe | Longitud/sanitización y nulabilidad |
-| Régimen | enum `GENERAL`, `RIMPE - EMPRENDEDOR`, `RIMPE - NEGOCIO POPULAR` | Enum y coherencia con SRI |
-| Tipo | enum funcional de cinco valores | Enum y coherencia con SRI |
-| N.º resolución | condicional; caracteres `A-Z`, `0-9`, `- . / _` y espacios; 8–30 alfanuméricos | Condicional, normalización y decisión contractual pendiente |
-| Email | regex básica, minúsculas y OTP vinculado al valor exacto | Normalización robusta, OTP de servidor, unicidad/política comercial |
-| Celular | regla por país; Ecuador se normaliza a `09XXXXXXXX` | Validación y formato canónico de persistencia |
-| Modo facturación | `nuevo` o `continuar` | Enum y reglas de negocio |
-| Establecimiento/punto | exactamente 3 dígitos y distinto de `000` | Repetir y validar autorización/coherencia tributaria |
-| Secuencia | 1–9 dígitos al editar; payload normalizado a 9 | Repetir; incremento atómico según semántica vigente |
-| Términos | checkbox requerido | Registrar versión, fecha, evidencia y sesión; no confiar solo en booleano |
-| Logo | JPG/PNG por magic bytes, ≤500 KB, decodificable, proporción 9.9:1 ±10% | Repetir validación, limitar píxeles, redecodificar/reencodar y almacenar fuera del webroot |
+Solo se consulta después de `IDENTITY_VERIFIED` y custodia temporal. Request vacío: el backend usa el RUC autoritativo del draft. Response mínima: `{ "esCliente": true|false }`. No devuelve razón social ni estado de cuenta. Queries parametrizadas obligatorias. `true` detiene el registro y muestra el estado específico aprobado; no consulta SRI.
 
-## 7. PASO 3 — contrato exacto
+## 9. SRI y `/tax-data`
 
-Tipos: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`.
+### 9.1 Lookup
 
-- Factura siempre existe y no puede eliminarse.
-- En `continuar`, se envía Factura más los documentos adicionales seleccionados.
-- Al desmarcar un adicional se borra su estado y deja de enviarse.
-- Al cambiar de ruta se eliminan adicionales residuales.
-- El usuario introduce la última secuencia utilizada; el frontend acepta 1–9 dígitos y la normaliza a nueve con ceros a la izquierda. El backend debe emitir la siguiente secuencia de forma atómica.
-- En `nuevo`, Factura aparece como acordeón colapsado y puede abrirse/editarse. Sus valores actuales llegan al payload; los otros cinco tipos, no visibles, se incluyen con defaults `001`/`001`/`000000001`.
-- Se mantiene una proyección legacy interna de Factura (`codEstablecimiento`, `codPunto`, `secuencias`) para consumidores antiguos; el contrato nuevo es `facturacion.documentos[]`.
-- No hay multipunto dentro de un mismo tipo de documento.
+Frontend nunca llama directamente al SRI. Backend realiza hasta 3 intentos totales con timeout de 8 s e intervalos base 250 ms y 500 ms más jitter 0–150 ms. Reintenta red, timeout y 5xx. No reintenta RUC inválido, 204 ni 4xx atribuible al request.
 
-## 8. Creación, idempotencia y redirección
+Al iniciar: draft `SRI_PENDING`. En éxito: snapshot `source=SRI`, `status=VERIFIED`. Tras tres fallos transitorios: 503 `SRI_UNAVAILABLE`, `attempts=3`, `lastAttemptAt`, error normalizado y draft permanece `SRI_PENDING` hasta `MANUAL_ENTRY` o nuevo lookup exitoso.
 
-- El frontend no genera idempotency key. El backend debe definir una estrategia estable por intento/sesión para impedir altas duplicadas por doble clic, timeout o reintento.
-- La verificación de cliente previa no reemplaza la comprobación atómica durante el alta.
-- El backend debe reservar/configurar secuencias dentro de la misma transacción o con control equivalente.
-- El frontend redirige únicamente tras HTTP 2xx de `POST /api/registro` y cierre del paso de logo.
-- Destino actual: constante fija en `assets/services/portal-config.js`.
-- Si el alta falla, no hay bienvenida ni redirección.
+Snapshot canónico: RUC, razón social, nombre comercial, estado, régimen, tipo, obligado a llevar contabilidad, actividad económica principal, agente de retención, contribuyente especial, gran contribuyente y representantes legales. Backend guarda respuesta normalizada y hash de evidencia; el frontend no es autoridad.
 
-## 9. Contrato requerido para logo provisional
+### 9.2 MANUAL_ENTRY
 
-Requisitos cerrados de frontend:
+Admitido solo si el draft registra indisponibilidad persistente después de 3 intentos. Request:
 
-- JPG/JPEG o PNG; magic bytes coherentes con MIME.
-- Máximo 500 KB.
-- Imagen decodificable.
-- Recomendado 2,970 × 300 px; proporción 9.9:1, tolerancia ±10%.
-- Provisional: razón social en negro y negrita; debajo, correo y celular con iconos lineales.
+```json
+{
+  "source": "MANUAL_ENTRY",
+  "status": "MANUAL_PENDING",
+  "declared": {
+    "razonSocial": "...",
+    "nombreComercial": "...",
+    "regimen": "...",
+    "tipoContribuyente": "...",
+    "obligadoLlevarContabilidad": "SI|NO",
+    "actividadEconomicaPrincipal": "...",
+    "agenteRetencion": false,
+    "contribuyenteEspecial": false,
+    "granContribuyente": false,
+    "representantesLegales": []
+  },
+  "noResolucion": "..."
+}
+```
 
-Requisitos backend mínimos:
+Razón social, régimen, tipo, obligado y actividad son obligatorios. Nombre comercial y banderas son opcionales pero tipados. `representantesLegales` es opcional y el wizard actual no lo captura manualmente; su ausencia no bloquea el alta y se completa en reconciliación. `noResolucion` es obligatorio para agente de retención, contribuyente especial o gran contribuyente y usa la validación V2 vigente. Backend normaliza strings, limita longitudes y marca todo como declarado por usuario. No acepta este modo si existe snapshot SRI válido.
 
-- Repetir MIME/magic bytes/tamaño/dimensiones y añadir límite de píxeles para evitar bombas de descompresión.
-- Reencodar la imagen con una biblioteca segura y eliminar metadatos.
-- Nombre de almacenamiento generado por servidor; nunca usar el nombre del usuario como ruta.
-- Acceso autenticado y autorización sobre la cuenta creada.
-- Generar el provisional del lado servidor cuando no haya logo.
-- Definir retención, reemplazo, CDN/cache y eliminación.
+### 9.3 SRI_CONFIRMATION
 
-## 10. Auditoría de seguridad propia
+Admitido únicamente después de snapshot `SRI/VERIFIED`. Solo acepta `nombreComercial` y `noResolucion`; no permite alterar RUC, razón social, régimen, tipo, obligado, actividad ni banderas oficiales. Conserva `source=SRI`, `status=VERIFIED`. `noResolucion` se normaliza en mayúsculas y se valida condicionalmente.
 
-### Alta — S-01: autoridad criptográfica pendiente en backend
+### 9.4 Reconciliación MANUAL_PENDING
 
-- Lugar: `assets/parsers/firma-validator.js`, `assets/screens/screen-firma.js`, `assets/wizard.js`.
-- Causa: la firma se procesa solo en el navegador y el alta envía metadatos modificables, no prueba criptográfica ni certificado autenticado.
-- Mitigación frontend aplicada: CI-only bloqueada y RUC `string` estricto, 13 dígitos, sufijo `001` y dígito verificador antes de toda llamada.
-- Riesgo residual: un cliente manipulado puede fabricar metadatos. La solución obligatoria es desafío firmado o validación segura de certificado/posesión en backend, con coincidencia exacta contra el RUC del draft, cadena de confianza, vigencia y política de revocación aprobadas.
+La cuenta nace `ACTIVE_RESTRICTED`, `PENDING_SRI_RECONCILIATION`; login y funciones no tributarias habilitados, emisión y funciones tributarias dependientes bloqueadas.
 
-### Cerrada — S-02: dependencia ejecutable de firma desde CDN
+Jerarquía de resultados:
 
-- Lugar: `assets/parsers/firma-validator.js:18-35`.
-- Corrección: `node-forge@1.3.1` se sirve desde `/assets/node-forge-1.3.1.min.js`; prueba automatizada fija SHA-256 `dc67fd132427ad96c9666c844b39565413c40ddb1f2d063c53512fbf6d387dfd`. No hay request remoto de forge.
+1. RUC no activo: `REJECTED_INACTIVE`; mantener restricción, bloquear emisión y escalar a soporte tributario.
+2. Snapshot incompleto, RUC distinto o clasificación incoherente: `REQUIRES_MANUAL_REVIEW`; mantener restricción.
+3. Cambios en régimen, tipo, obligado a contabilidad, contribuyente especial, agente de retención, gran contribuyente o resolución: `REQUIRES_USER_CONFIRMATION`; mostrar diferencias en portal y mantener restricción hasta confirmación/revisión.
+4. Diferencias únicamente en razón social, nombre comercial, actividad o representantes: `AUTO_RECONCILED`; SRI prevalece, se conserva auditoría y no se pide confirmación.
+5. Coincidencia: `AUTO_RECONCILED`.
 
-### Cerrada — S-03: resolución en el payload
+Solo `AUTO_RECONCILED` o una confirmación/revisión resuelta satisfactoriamente cambia a `VERIFIED` y habilita emisión. La reconciliación la ejecuta un worker/backend interno; no es endpoint público del wizard.
 
-- Lugar: `assets/wizard.js:219-228`.
-- Corrección: `noResolucion` se incluye y el mock repite obligatoriedad y formato condicional. El backend productivo debe implementar la misma regla.
+## 10. Contacto y OTP
 
-### Media — S-04: enumeración del estado de cliente
+- Email normalizado en minúsculas; celular validado por formato, no por OTP.
+- OTP: 6 dígitos, CSPRNG, hash con secreto/pepper server-side, TTL 5 minutos, single-use.
+- Máximo 5 intentos de verificación; cambiar email invalida OTP y estado verificado.
+- Cooldown 60 segundos; máximo 3 envíos/hora por draft+email.
+- Respuestas no revelan existencia de email. OTP y hash nunca se registran.
 
-- Lugar: `POST /api/registro/verificar-cliente`.
-- Impacto: automatización sobre RUC válidos puede inferir relación comercial.
-- Solución backend: rate limit, detección de abuso, respuesta mínima, auditoría segura y, si el negocio lo admite, vincular la consulta a una prueba de firma/sesión.
+## 11. Facturación
 
-### Media — S-05: proxy SRI devuelve respuesta cruda
+Cada documento envía `tipo_documento`, `establecimiento`, `punto_emision`, `secuencia`. Tipos: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`. Factura es obligatoria.
 
-- Lugar: `server/ruc-proxy.js`.
-- Impacto: el navegador recibe más campos de los necesarios y el túnel de desarrollo puede convertirse en proxy de consulta si se publica sin controles adicionales.
-- Solución backend: normalizar/filtrar en servidor, aplicar rate limit y autenticar/proteger el entorno de desarrollo.
+- Establecimiento y punto: exactamente 3 dígitos, distintos de `000`.
+- Secuencia UX: 1–9 dígitos; contrato persistido: 9 dígitos con ceros a la izquierda.
+- Para cliente previo, representa la última secuencia emitida; backend calcula la siguiente de forma atómica.
+- Para nuevo, defaults `001-001-000000001` según la configuración aprobada.
+- Solo se envían opcionales seleccionados; quitar uno elimina estado residual.
 
-### Media — S-06: controles anti-clickjacking solo en meta
+## 12. Complete e idempotencia
 
-- Lugar: `index.html`.
-- Impacto: `frame-ancestors` no se aplica de forma fiable desde meta y `X-Frame-Options` requiere cabecera HTTP.
-- Solución: configurar CSP, X-Frame-Options/ancestors, HSTS, nosniff, Referrer-Policy y Permissions-Policy como cabeceras del servidor/CDN productivo.
+`POST /drafts/{id}/complete` exige `Idempotency-Key` opaca, 1–128 caracteres. El body no reenvía identidad/SRI/contacto/facturación como autoridad.
 
-### Media — S-07: logo sin límite de píxeles
+Transacción productiva: bloquear draft/RUC, verificar `READY_TO_CREATE`, prevenir cuenta duplicada, reservar secuencias, crear cuenta/usuario/permisos, promover credencial cifrada, persistir consentimiento y estado tributario, emitir token post-creación y marcar `COMPLETED`. Cualquier error hace rollback. Repetir misma clave devuelve la misma respuesta; otra clave después de completar devuelve `IDEMPOTENCY_CONFLICT`.
 
-- Lugar: `assets/screens/post-create-logo.js`.
-- Impacto: una imagen comprimida pequeña con dimensiones enormes puede consumir memoria al decodificar.
-- Corrección local: tamaño, extensión, MIME y magic bytes se validan antes de decodificar. Sigue pendiente un límite de ancho/alto/píxeles y su repetición estricta en backend.
+## 13. Logo post-creación
 
-### Media — S-08: OTP productivo pendiente
+- Endpoint definitivo: `PUT /api/registro/accounts/{accountId}/logo`.
+- Autenticación: bearer post-creación aleatorio, TTL 10 minutos, scope exclusivo logo y single-account.
+- Upload: JPG/JPEG/PNG, máximo 500 KB, magic bytes, MIME real, decode, dimensiones/pixel limit, protección image bomb, re-encode y storage privado con nombre generado.
+- Provisional: backend genera y persiste PNG 2,970 × 300, fondo blanco, razón social únicamente, tipografía **Roboto Condensed Light**, color negro. No Bold, email, celular ni iconos.
+- Error de logo no revierte una cuenta creada; permite reintentar dentro del TTL o continuar con provisional.
 
-- Lugar: `assets/services/token-service.js`.
-- Impacto: sin backend no hay prueba de posesión del correo; el mock es manipulable por definición.
-- Solución: endpoints productivos con TTL, hash, intentos, cooldown, rate limit, sesión y consumo único.
+## 14. Rate limits base
 
-Corrección local incorporada: la respuesta de verificación solo se acepta si `valid` existe y es booleano estricto; `"false"`, objetos incompletos, listas y `null` fallan cerrado.
+| Operación | Límite | Claves mínimas |
+|---|---:|---|
+| Crear draft | 5/15 min y 3/h por RUC | IP, RUC |
+| Client check | 5/10 min | draft, RUC; además control IP global |
+| SRI lookup | 4/15 min | draft, RUC, IP |
+| Challenge create | 5/10 min | draft, IP |
+| Challenge verify | 5/10 min | draft, IP |
+| Certificate upload | 3/30 min | draft, IP |
+| OTP send | 3/h + cooldown 60 s | draft, email, IP global |
+| OTP verify | 5/15 min | draft, IP |
+| Billing | 20/h | draft |
+| Complete | 5/30 min | draft, RUC, IP |
+| Logo | 10/h | account, IP |
 
-### Baja — S-09: retención del archivo de firma
+Los contadores se aplican además de límites globales de infraestructura, request size, timeout y concurrencia. Superar límite devuelve 429, `RATE_LIMITED` u `OTP_RATE_LIMITED` y `Retry-After`. Cookie nunca es la única clave. El store debe poder migrar a Redis sin cambiar el contrato.
 
-- Lugar: `assets/screens/screen-firma.js`.
-- Corrección local: la referencia al `File` y el valor del input se limpian después de extraer metadatos válidos; la clave ya se limpiaba.
+## 15. Error matrix
 
-### Baja — S-10: CSP no permitía la API configurada
+| CODE | HTTP | ENDPOINT | CONDITION | FRONTEND ACTION |
+|---|---:|---|---|---|
+| INVALID_REQUEST | 400 | cualquiera | JSON/esquema inválido | Mantener paso y corregir |
+| INVALID_RUC | 400 | drafts | RUC inválido | Volver a firma |
+| CI_ONLY_CERTIFICATE | 422 | challenge verify | certificado solo CI | Bloquear registro |
+| CERTIFICATE_RUC_MISMATCH | 422 | challenge verify | RUC cert != draft | Bloquear y cambiar firma |
+| UNSUPPORTED_SIGNATURE_ALGORITHM | 422 | challenge | algoritmo no permitido | Bloquear; no fallback |
+| INVALID_SIGNATURE | 422 | challenge verify | prueba criptográfica inválida | Reintentar con firma/clave |
+| CERTIFICATE_EXPIRED | 422 | challenge verify/upload | fuera de vigencia | Cambiar firma |
+| CERTIFICATE_NOT_TRUSTED | 422 | challenge verify | cadena/emisor no confiable | Cambiar firma/contactar soporte |
+| CERTIFICATE_REVOKED | 422 | challenge verify | OCSP/CRL revocado | Bloquear registro |
+| CERTIFICATE_STATUS_UNAVAILABLE | 503 | challenge verify | OCSP y CRL no disponibles | Reintentar; no avanzar |
+| CHALLENGE_EXPIRED | 410 | challenge verify | TTL agotado | Crear challenge nuevo |
+| CHALLENGE_ALREADY_USED | 409 | challenge verify | replay | Crear challenge nuevo |
+| CERTIFICATE_PACKAGE_REQUIRED | 409 | complete | falta custodia | Volver a firma |
+| CLIENT_CHECK_REQUIRED | 409 | SRI/complete | gate no ejecutado | Ejecutar client-check |
+| SRI_DATA_REQUIRED | 409 | complete | sin snapshot/declaración | Volver a Datos |
+| CONTACT_NOT_VERIFIED | 409 | complete | OTP pendiente | Abrir verificación |
+| BILLING_REQUIRED | 409 | complete | facturación pendiente | Volver a Facturación |
+| CONSENT_REQUIRED | 409 | drafts/complete | evidencia inválida | Volver a Firma |
+| DRAFT_NOT_FOUND | 404 | draft endpoints | ID inexistente/limpiado | Reiniciar |
+| DRAFT_EXPIRED | 410 | draft endpoints | TTL vencido | Reiniciar |
+| DRAFT_CANCELLED | 409 | draft endpoints | draft cancelado | Reiniciar |
+| INVALID_DRAFT_STATE | 409 | draft endpoints | transición no permitida | Sincronizar/reiniciar |
+| SESSION_REQUIRED | 401 | draft endpoints | falta cookie | Reiniciar |
+| SESSION_MISMATCH | 403 | draft endpoints | sesión ajena | Bloquear y reiniciar |
+| CSRF_INVALID | 403 | mutaciones draft | token ausente/distinto | Bloquear y reiniciar |
+| SRI_UNAVAILABLE | 503 | SRI lookup | 3 fallos transitorios | Habilitar MANUAL_ENTRY |
+| SRI_RECONCILIATION_REQUIRED | 409 | funciones tributarias | falta confirmación | Mostrar estado restringido |
+| SRI_MANUAL_REVIEW_REQUIRED | 409 | funciones tributarias | revisión humana | Mostrar soporte/revisión |
+| RUC_INACTIVE | 422 | SRI/reconciliation | RUC no activo | Bloquear funciones tributarias |
+| SERVICE_UNAVAILABLE | 503 | cualquiera | dependencia caída | Reintento controlado |
+| OTP_INVALID | 422 | OTP verify | código incorrecto/formato | Mostrar error inline |
+| OTP_EXPIRED | 410 | OTP verify | TTL/uso agotado | Reenviar |
+| OTP_ATTEMPTS_EXCEEDED | 429 | OTP verify | 5 intentos | Esperar/reiniciar OTP |
+| OTP_RATE_LIMITED | 429 | OTP send | cooldown/cuota | Esperar Retry-After |
+| RATE_LIMITED | 429 | cualquiera | cuota superada | Esperar Retry-After |
+| IDEMPOTENCY_KEY_REQUIRED | 400 | complete | header ausente/inválido | Generar clave y reintentar |
+| IDEMPOTENCY_CONFLICT | 409 | complete | clave distinta tras complete | Usar resultado previo |
+| ACCOUNT_ALREADY_EXISTS | 409 | complete | carrera/duplicado | Estado cliente existente |
+| TAX_DATA_RECONCILIATION_PENDING | 423 | emisión/función tributaria | cuenta restringida | Informar pendiente SRI |
+| INVALID_LOGO | 422 | logo | imagen/modo inválido | Corregir o provisional |
+| POST_CREATE_TOKEN_INVALID | 401 | logo | token ausente/vencido | Provisional/backend o login |
+| BACKEND_CONFIG_REQUIRED | 503 | mocks dev | mock fuera de entorno | No simular éxito |
 
-- Lugar: `index.html` y `assets/services/config.js`.
-- Corrección local: se añadió `https://api.tributasoft.ec` a `connect-src`; el origen ya era la configuración productiva existente.
+Errores nunca incluyen stack, SQL, filesystem, secretos, PKCS#12, OTP ni respuesta SRI cruda.
 
-No se encontraron credenciales, claves privadas ni tokens secretos versionados. El identificador de Meta es público. El wizard no persiste RUC, firma, clave, OTP ni datos del formulario en `localStorage`/`sessionStorage`; solo se guarda consentimiento analítico y progreso del manual separado.
+## 16. V1 → V2
 
-### Alta — S-11: servidor de desarrollo expone el repositorio
+| Área | V1 | V2 | Acción backend |
+|---|---|---|---|
+| Estado | payload navegador | draft server-side | Persistir lifecycle/TTL |
+| Firma | metadatos cliente | challenge + PKI backend | Implementar trust/revocación |
+| PKCS#12 | payload monolítico | custodia temporal | Envelope encryption/KMS |
+| Cliente | endpoint temprano suelto | gate ligado al draft | Consulta parametrizada/antiabuso |
+| SRI | consulta puntual | snapshot + fallback/reconciliación | Persistir fuente/estado |
+| OTP | mock/flujo separado | OTP ligado al draft | Servicio server-side |
+| Facturación | establecimiento compartido | configuración por documento | Persistencia y secuencia atómica |
+| Alta | `POST /api/registro` | `/drafts/{id}/complete` | Transacción/idempotencia |
+| Logo | payload/preview sin persistencia | endpoint post-creación | Storage/provisional backend |
+| Consentimiento | implícito/final | evidencia al crear draft | Registro versionado/auditable |
+| Errores | heterogéneos | catálogo V2 | Respuestas uniformes |
 
-- Lugar: `server/dev-server.js`.
-- Evidencia independiente: `GET /.git/HEAD` respondió 200 con el servidor publicado.
-- Impacto: un visitante del host/túnel puede descargar archivos internos del repositorio y cualquier material local que aparezca bajo la raíz.
-- Corrección aprobada por el owner: allowlist explícita de archivos raíz y extensiones dentro de `assets/`, rechazo de traversal/codificación repetida/separadores alternativos, comprobación de ruta real, bloqueo de symlinks/junctions y bind loopback por defecto. Verificado por localhost y Dev Tunnel real: `/.git/HEAD`, archivos internos y rutas fuera de la superficie ya no son accesibles.
+## 17. Matriz frontend, mock y backend
 
-### Media — S-12: URI malformada derribaba el servidor de desarrollo
+| Área | Frontend | Mock dev | Backend productivo |
+|---|---|---|---|
+| Sesión/CSRF | cookie same-origin + header | sesión/csrf/rate limit | cookie Secure, store persistente |
+| Draft | usa registrationId | memoria + TTL | DB/cache + cleanup |
+| Challenge | firma local | verifica public key | PKI/trust/revocación |
+| PKCS#12 | upload y limpieza local | solo metadatos | cifrado/KMS/storage |
+| Cliente | consume draft endpoint | lista dev | DB parametrizada |
+| SRI | consume backend | proxy real/dev | proxy/cache/snapshot |
+| Tax data | dos modos | valida ambos | autoridad y auditoría |
+| OTP | UI ligada a draft | hash/cooldown/cuotas base | proveedor + store/rate limits |
+| Billing | contrato por documento | validación | DB/locks/secuencias |
+| Complete | Idempotency-Key | resultado en memoria | transacción persistente |
+| Logo | upload/provisional | persistencia simulada | imagen segura/storage |
+| Consentimiento | versión/id/hash | evidencia mock | evidencia durable |
+| Errores | consume `code`/Retry-After | catálogo V2 | misma matriz |
 
-- Lugar: `server/dev-server.js`.
-- Corrección local: parseo/decodificación protegidos; una URI inválida devuelve 400 sin finalizar el proceso.
+## 18. Separación dev/producción y controles obligatorios
 
-### Revisión independiente Astra
+Los mocks solo se activan con `NODE_ENV=development`, flags explícitos, conexión loopback y Origin permitido. Producción nunca usa `devCode`, RUC fixture, almacenamiento en memoria, `encryptedAtRest=false` ni cookie sin Secure.
 
-Una revisión independiente contrastó este documento contra el código y ejecutó reproducciones focalizadas. Los hallazgos corregibles en frontend quedaron cubiertos con pruebas. La autoridad criptográfica de identidad y la persistencia del logo siguen siendo contratos de backend.
+Backend productivo debe añadir prepared statements, transacciones, correlation IDs, métricas sin PII, rate-limit store distribuible, request size, timeouts, CSP/cabeceras, storage privado y jobs de cleanup/reconciliación. No requiere Kafka, Kubernetes ni microservicios para el volumen inicial.
 
-## 11. Controles backend obligatorios
+## 19. Criterios de aceptación del handoff
 
-- TLS, CORS exacto por entorno y CSRF cuando se usen cookies/credenciales.
-- Límites de tamaño antes de parsear JSON/archivos; timeouts y cancelación de upstreams.
-- Validación de esquema allowlist; rechazar campos inesperados cuando corresponda.
-- Queries parametrizadas y cuenta DB de privilegio mínimo.
-- Secretos solo en gestor/variables del entorno, nunca en frontend o repositorio.
-- Logs estructurados con correlation ID, sin RUC completo, email completo, celular, firma, clave, OTP ni payload integral.
-- Rate limiting por IP/sesión/identificador, protección contra enumeración y alertas.
-- Idempotencia y transacciones para alta, promoción y secuencias.
-- Respuestas públicas estables sin stack traces ni detalles de infraestructura.
-- Dependencias fijadas, escaneo de vulnerabilidades y parches documentados.
-
-## 12. Observabilidad mínima
-
-Registrar: endpoint, timestamp, correlation ID, latencia, status, clase de error, upstream y resultado agregado. Enmascarar identificadores. No registrar cuerpos sensibles. Métricas mínimas: tasa de 2xx/4xx/5xx, latencias p50/p95/p99, timeouts SRI, envíos/verificaciones OTP, conflictos/idempotencia de alta y fallos de logo. Alertas sobre aumento de 5xx, abuso, errores SRI sostenidos y duplicados.
-
-## 13. Checklist para el equipo backend
-
-1. Versionar el contrato de `POST /api/registro`, incluido `noResolucion` y el sobre `sri`.
-2. Implementar gate de cliente con consulta parametrizada y control de enumeración.
-3. Implementar proxy SRI filtrado y resiliente.
-4. Implementar OTP de correo del lado servidor.
-5. Definir y construir la verificación backend de firma/identidad.
-6. Persistir alta y facturación por documento de forma transaccional e idempotente.
-7. Definir contrato de logo post-creación y provisional.
-8. Configurar CORS/CSRF/cookies, cabeceras HTTP, rate limits, secretos y observabilidad.
-9. Probar contratos contra este frontend antes de desactivar mocks.
-10. Ejecutar prueba de extremo a extremo en staging sin datos personales reales.
-
-## 14. Criterio de salida
-
-El paquete queda listo para que backend empiece integración y el Dev Tunnel de desarrollo ya no expone el repositorio. No está listo para etiqueta productiva mientras falten la autoridad criptográfica de identidad, los endpoints productivos/drafts, la reconciliación SRI manual y el contrato/persistencia del logo. La versión propuesta cuando se cierren esos puntos es `v2.0.0`.
-
-## 15. Referencias
-
-- `README.md`
-- `DEV-LOCAL.md`
-- `docs/REGISTRATION-FLOW.md`
-- `docs/PASO3-FACTURACION.md`
-- `SECURITY-AUDIT.md` (histórico; este documento refleja el flujo V2 actual)
-- `assets/wizard.js`
-- `assets/services/*.js`
-- `assets/screens/*.js`
-- `server/*.js`
-- `tests/*.test.js`
+- Todos los endpoints siguen esta tabla y el catálogo de errores.
+- Ningún dato del navegador sustituye verificación backend.
+- Cuenta manual queda restringida hasta reconciliación satisfactoria.
+- Idempotencia y secuencias son atómicas.
+- PKCS#12, contraseña, OTP y llaves nunca aparecen en logs.
+- El provisional se genera exactamente con razón social, Roboto Condensed Light y 2,970 × 300.
+- Tests de contrato, seguridad, smoke y E2E deben pasar antes de staging.

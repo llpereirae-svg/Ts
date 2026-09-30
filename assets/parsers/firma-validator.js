@@ -14,9 +14,9 @@
 // clave y el archivo no se envían en el flujo actual. El backend productivo debe
 // verificar criptográficamente el certificado antes de confiar en la identidad.
 
-import { validarRUC } from '../utils/ruc-validation.js?v=20260929a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
 
-const FORGE_ASSET = '/assets/node-forge-1.3.1.min.js?v=20260929a';
+const FORGE_ASSET = '/assets/node-forge-1.3.1.min.js?v=20260930c';
 
 let _forgePromise = null;
 
@@ -293,6 +293,10 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
   const { ruc: rucCert, titular, esJuridica, razonSocial, repLegal, esHeuristica, soloCedula, datosExtra } = datos;
   const fechaCaducidad = cert.validity.notAfter;
 
+  if (cert.validity.notBefore > new Date()) {
+    return { valid: false, error: 'AUN_NO_VIGENTE', reason: 'El certificado todavía no está vigente. No podemos continuar.' };
+  }
+
   if (fechaCaducidad < new Date()) {
     return {
       valid: false,
@@ -331,5 +335,31 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
     repLegal,
     esHeuristica,
     datosExtra,
+    certificateDerBase64: forge.util.encode64(forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes()),
+  };
+}
+
+export async function firmarChallengeP12(file, clave, payloadBase64Url) {
+  if (!file || !clave || !payloadBase64Url) throw new Error('No se pudo preparar la prueba de posesión.');
+  const forge = await loadForge();
+  const binary = await fileToBinaryString(file);
+  const asn1 = forge.asn1.fromDer(binary);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, clave);
+  const cert = pickTitularCert(forge, p12);
+  const keyBags = [
+    ...(p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || []),
+    ...(p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] || []),
+  ];
+  const key = keyBags.find(bag => bag?.key)?.key;
+  if (!cert || !key) throw new Error('La firma no contiene una clave privada utilizable.');
+  const normalized = String(payloadBase64Url).replace(/-/g, '+').replace(/_/g, '/');
+  const payload = forge.util.decode64(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+  const md = forge.md.sha256.create(); md.update(payload, 'raw');
+  const signature = key.sign(md, 'RSASSA-PKCS1-V1_5');
+  const toBase64Url = value => forge.util.encode64(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return {
+    algorithm: 'RSASSA-PKCS1-v1_5-SHA256',
+    signatureBase64Url: toBase64Url(signature),
+    certificateDerBase64: forge.util.encode64(forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes()),
   };
 }

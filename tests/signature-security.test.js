@@ -14,9 +14,12 @@ function validRuc() {
 test('node-forge 1.3.1 se carga localmente con checksum conocido', async () => {
   const source = await readFile(new URL('../assets/parsers/firma-validator.js', import.meta.url), 'utf8');
   const asset = await readFile(new URL('../assets/node-forge-1.3.1.min.js', import.meta.url));
+  // Git puede materializar este asset de texto con CRLF en Windows. La huella
+  // publicada corresponde al contenido canónico LF y no cambia por plataforma.
+  const canonicalAsset = Buffer.from(asset.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
   assert.match(source, /\/assets\/node-forge-1\.3\.1\.min\.js/);
   assert.doesNotMatch(source, /cdn\.jsdelivr\.net\/npm\/node-forge/);
-  assert.equal(createHash('sha256').update(asset).digest('hex'), FORGE_SHA256);
+  assert.equal(createHash('sha256').update(canonicalAsset).digest('hex'), FORGE_SHA256);
 });
 
 test('firma identificada solo con cédula se bloquea y nunca se convierte a RUC', () => {
@@ -44,4 +47,17 @@ test('servicios RUC rechazan antes de fetch cualquier valor no-string o inválid
     assert.equal((await createRucProxy({ upstreamUrl: 'https://sri.example/{ruc}', fetchImpl })(invalid)).status, 400);
     assert.equal(calls, 0);
   }
+});
+
+test('Paso 1 prueba posesión y entrega el PKCS#12 al draft antes de limpiar memoria', async () => {
+  const source = await readFile(new URL('../assets/screens/screen-firma.js', import.meta.url), 'utf8');
+  const create = source.indexOf('await crearDraft');
+  const challenge = source.indexOf('await crearChallenge');
+  const sign = source.indexOf('await firmarChallengeP12');
+  const verify = source.indexOf('await verificarChallenge');
+  const upload = source.indexOf('await subirPaqueteCertificado');
+  const clear = source.indexOf('pendingFile = null', upload);
+  assert.ok(create >= 0 && challenge > create && sign > challenge && verify > sign && upload > verify && clear > upload);
+  assert.match(source, /data\.identityStatus = 'IDENTITY_VERIFIED'/);
+  assert.doesNotMatch(source, /data\.firma = \{ \.\.\.result/);
 });

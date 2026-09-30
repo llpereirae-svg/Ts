@@ -17,9 +17,9 @@
      - Link al portal
      - Aviso de seguridad sobre la clave */
 
-import { formatCelular } from '../wizard.js?v=20260929a';
+import { formatCelular } from '../wizard.js?v=20260930c';
 
-import { TRIBUTASOFT_LOGIN_URL as PORTAL_URL } from './portal-config.js?v=20260929a';
+import { TRIBUTASOFT_LOGIN_URL as PORTAL_URL } from './portal-config.js?v=20260930c';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
 
 // ============================================================

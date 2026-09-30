@@ -1,7 +1,8 @@
-import { validarFirmaP12 } from '../parsers/firma-validator.js?v=20260929a';
-import { validarRUC } from '../utils/ruc-validation.js?v=20260929a';
-import { showLoading, hideLoading } from '../wizard.js?v=20260929a';
-import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20260929a';
+import { firmarChallengeP12, validarFirmaP12 } from '../parsers/firma-validator.js?v=20260930c';
+import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
+import { showLoading, hideLoading } from '../wizard.js?v=20260930c';
+import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20260930c';
+import { cancelarDraft, crearChallenge, crearDraft, subirPaqueteCertificado, verificarChallenge } from '../services/draft-service.js?v=20260930c';
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 let pendingFile = null;
@@ -76,6 +77,9 @@ function prepareFile(body, data, file) {
   }
 
   pendingFile = file;
+  const previousDraftId = data.registrationId;
+  data.registrationId = '';
+  if (previousDraftId) void cancelarDraft(previousDraftId).catch(() => {});
   data.firma = null;
   data.clienteGate = { status: 'IDLE' };
   body.querySelector('.signature-help').hidden = true;
@@ -114,8 +118,9 @@ export async function validarPantallaFirma(data) {
   }
   if (!valid) return false;
 
+  const secret = password.value;
   showLoading('Leyendo tu firma…');
-  const result = await validarFirmaP12(pendingFile, password.value, '');
+  const result = await validarFirmaP12(pendingFile, secret, '');
   password.value = '';
   hideLoading();
 
@@ -135,7 +140,25 @@ export async function validarPantallaFirma(data) {
   }
 
   const fileName = pendingFile.name;
-  data.firma = { ...result, archivo: fileName };
+  const file = pendingFile;
+  showLoading('Verificando la identidad…');
+  try {
+    const draft = await crearDraft({ ruc: result.ruc });
+    const challenge = await crearChallenge(draft.registrationId);
+    const proof = await firmarChallengeP12(file, secret, challenge.payloadBase64Url);
+    await verificarChallenge(draft.registrationId, challenge.challengeId, { ...proof, ruc: result.ruc });
+    await subirPaqueteCertificado(draft.registrationId, file, secret, { ruc: result.ruc, fileName, certificateFingerprint: '' });
+    data.registrationId = draft.registrationId;
+    data.identityStatus = 'IDENTITY_VERIFIED';
+    data.certificatePackageStatus = 'TEMPORARY_STORED';
+  } catch (error) {
+    hideLoading();
+    body.querySelector('#firma-file-error').textContent = 'No pudimos verificar la posesión de la firma. Intenta nuevamente.';
+    return false;
+  }
+  hideLoading();
+  const { certificateDerBase64: _certificateDerBase64, ...safeResult } = result;
+  data.firma = { ...safeResult, archivo: fileName };
   // El PKCS#12 ya fue leído. Conservar solo metadatos evita retener el archivo
   // sensible durante el resto del wizard.
   pendingFile = null;

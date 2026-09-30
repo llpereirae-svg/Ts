@@ -1,6 +1,6 @@
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260929a';
-import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260929a';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260929a';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260930c';
+import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260930c';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260930c';
 
 export function ocultarCorreo(email) {
   const [local, domain = ''] = String(email).split('@');
@@ -72,7 +72,7 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
       submit.disabled = resend.disabled = true;
       status.textContent = 'Solicitando código…';
       try {
-        const result = await generarYEnviarToken({ canal: 'email', destino: destination });
+        const result = await generarYEnviarToken({ canal: 'email', destino: destination, registrationId: data.registrationId });
         if (settled || id !== request || data.email !== destination) return;
         Object.assign(data, { _emailToken: result.token, _emailTokenExpires: result.expiraEn, _emailTokenFor: destination, _emailCodeSent: true, _emailResendAfter: Date.now() + 60_000 });
         code.value = '';
@@ -93,7 +93,7 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
       status.textContent = 'Verificando…';
       const id = ++request;
       try {
-        const result = await verificarToken({ canal: 'email', destino: destination, codigo: code.value, tokenEsperado: data._emailToken, expiraEn: data._emailTokenExpires });
+        const result = await verificarToken({ canal: 'email', destino: destination, codigo: code.value, tokenEsperado: data._emailToken, expiraEn: data._emailTokenExpires, registrationId: data.registrationId });
         if (settled || id !== request || data.email !== destination) return;
         if (!result.valid) { status.textContent = result.reason; code.setAttribute('aria-invalid', 'true'); code.focus(); return; }
         data.tokenEmailOk = true;

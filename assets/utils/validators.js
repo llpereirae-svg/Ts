@@ -2,9 +2,9 @@
 // Todas las funciones son puras: reciben un valor y devuelven { valid, ...detalles }.
 // No tocan el DOM. La UI consume estos resultados.
 
-export { validarRUC } from './ruc-validation.js?v=20260929a';
+export { validarRUC } from './ruc-validation.js?v=20260930c';
 
-import { findCountry } from './countries.js?v=20260929a';
+import { findCountry } from './countries.js?v=20260930c';
 
 /**
  * Normaliza y valida celular según el país seleccionado.
@@ -138,12 +138,12 @@ export function validarClave(clave) {
  */
 export function validarFirmaArchivo(file) {
   if (!file) return { valid: false, reason: 'No se seleccionó ningún archivo.' };
-  const MAX = 5 * 1024 * 1024; // 5MB
+  const MAX = 8 * 1024 * 1024; // contrato V2: 8 MB
   const nombre = file.name?.toLowerCase() || '';
   const extOk = nombre.endsWith('.p12') || nombre.endsWith('.pfx');
 
   if (!extOk) return { valid: false, reason: 'El archivo debe ser .p12 o .pfx (no se aceptan .cer ni tokens).' };
-  if (file.size > MAX) return { valid: false, reason: 'El archivo supera los 5MB permitidos.' };
+  if (file.size > MAX) return { valid: false, reason: 'El archivo supera los 8 MB permitidos.' };
   return { valid: true };
 }
 

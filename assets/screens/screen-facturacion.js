@@ -1,5 +1,6 @@
-import { iniciarFacturacion, elegirFacturacion, erroresFacturacion, DOCUMENTOS, TIPOS_DOCUMENTO, seleccionarDocumentos, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias } from '../utils/billing-data.js?v=20260929a';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260929a';
+import { iniciarFacturacion, elegirFacturacion, erroresFacturacion, DOCUMENTOS, TIPOS_DOCUMENTO, seleccionarDocumentos, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias, construirFacturacion } from '../utils/billing-data.js?v=20260930c';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260930c';
+import { guardarFacturacion } from '../services/draft-service.js?v=20260930c';
 
 export function renderPantallaFacturacion(body, data) {
   iniciarFacturacion(data);
@@ -71,7 +72,7 @@ function updateNext(data) {
   if (document.body.dataset.wizardStep !== 'facturacion') return;
   document.getElementById('wiz-next').disabled = Object.keys(erroresFacturacion(data)).length > 0;
 }
-export function validarPantallaFacturacion(data) {
+export async function validarPantallaFacturacion(data) {
   normalizarSecuencias(data);
   document.querySelectorAll('[data-body="facturacion"] input[data-campo="secuencia"]').forEach(input => {
     const doc = data.documentosFacturacion?.[input.dataset.tipo];
@@ -88,7 +89,14 @@ export function validarPantallaFacturacion(data) {
     input?.focus();
   }
   updateNext(data);
-  return !first;
+  if (first) return false;
+  if (!data.registrationId) return false;
+  try { await guardarFacturacion(data.registrationId, construirFacturacion(data)); return true; }
+  catch {
+    const target = body?.querySelector('#f-modo-error');
+    if (target) target.textContent = 'No pudimos guardar la configuración. Intenta nuevamente.';
+    return false;
+  }
 }
 function paintError(body, id, message) {
   const input = body?.querySelector(`#f-${id}`);

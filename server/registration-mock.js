@@ -1,6 +1,7 @@
 // Alta de desarrollo: confirma el contrato sin persistir, enviar correo ni crear cuentas.
 import { validarNoResolucion } from '../assets/utils/validators.js';
 import { validarRUC } from '../assets/utils/ruc-validation.js';
+import { ACCOUNT_STATUS, TAX_DATA_STATUS } from '../assets/services/registration-contract.js';
 
 const TIPOS_CON_RESOLUCION = new Set(['AGENTE_RETENCION', 'CONTRIBUYENTE_ESPECIAL', 'GRAN_CONTRIBUYENTE']);
 
@@ -22,7 +23,7 @@ export function createRegistrationMock({ enabled = false, nodeEnv = '' } = {}) {
     if (TIPOS_CON_RESOLUCION.has(body.tipoContribuyente) && !validarNoResolucion(body.noResolucion || '').valid) {
       return { status: 400, body: { error: 'INVALID_RESOLUTION' } };
     }
-    if (body.sri?.source === 'MANUAL') {
+    if (['MANUAL', 'MANUAL_ENTRY'].includes(body.sri?.source)) {
       const declared = body.sri.declared;
       if (body.sri.status !== 'MANUAL_PENDING' || !declared || !declared.razonSocial
           || !declared.regimen || !declared.tipoContribuyente
@@ -31,6 +32,24 @@ export function createRegistrationMock({ enabled = false, nodeEnv = '' } = {}) {
         return { status: 400, body: { error: 'INVALID_MANUAL_SRI_DATA' } };
       }
     }
-    return { status: 201, body: { ok: true, demo: true } };
+    const pendingSriReconciliation = ['MANUAL', 'MANUAL_ENTRY'].includes(body.sri?.source) && body.sri?.status === 'MANUAL_PENDING';
+    return {
+      status: 201,
+      body: {
+        ok: true,
+        demo: true,
+        accountStatus: pendingSriReconciliation ? ACCOUNT_STATUS.ACTIVE_RESTRICTED : ACCOUNT_STATUS.ACTIVE,
+        accountTaxDataStatus: pendingSriReconciliation
+          ? TAX_DATA_STATUS.PENDING_SRI_RECONCILIATION
+          : TAX_DATA_STATUS.VERIFIED,
+        capabilities: {
+          login: true,
+          nonTaxFeatures: true,
+          electronicIssuance: !pendingSriReconciliation,
+          taxFeaturesRequiringVerifiedData: !pendingSriReconciliation,
+        },
+        reconciliationRequired: pendingSriReconciliation,
+      },
+    };
   };
 }

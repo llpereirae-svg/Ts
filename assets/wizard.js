@@ -1,10 +1,12 @@
 /* Orquestador del registro — cuatro etapas y verificación de correo en Datos. */
-import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20260929a';
-import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20260929a';
-import { crearGateCliente } from './utils/cliente-gate.js?v=20260929a';
-import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20260929a';
-import { renderPantallaCliente } from './screens/screen-cliente.js?v=20260929a';
-import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20260929a';
+import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20260930c';
+import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20260930c';
+import { crearGateCliente } from './utils/cliente-gate.js?v=20260930c';
+import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20260930c';
+import { renderPantallaCliente } from './screens/screen-cliente.js?v=20260930c';
+import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20260930c';
+import { TAX_DATA_STATUS } from './services/registration-contract.js?v=20260930c';
+import { completarDraft, guardarLogo, newIdempotencyKey } from './services/draft-service.js?v=20260930c';
 
 export const SCREENS = [
   { id: 'firma', label: 'Firma electrónica', title: 'Comencemos con tu firma electrónica', eyebrow: '', lead: '' },
@@ -28,6 +30,8 @@ export const wizardData = {
   email: '', celular: '', celularPais: 'EC', tokenEmailOk: false,
   modoFacturacion: 'nuevo', codEstablecimiento: '001', codPunto: '001', nombrePunto: 'Electrónicas', secuencias: {},
   clienteGate: { status: CLIENTE_ESTADO.IDLE },
+  accountTaxDataStatus: '',
+  registrationId: '', identityStatus: '', certificatePackageStatus: '', idempotencyKey: '',
 };
 
 export function mountWizard(root) {
@@ -171,7 +175,7 @@ export function buildSummarySections(data) {
     { id: 'datos', title: 'Información tributaria', rows: [
       ['Régimen', LABEL_REGIMEN[data.regimen] || data.regimen],
       ['Tipo', LABEL_TIPO[data.tipoContribuyente] || data.tipoContribuyente],
-      ...(data.sriSource === 'MANUAL' ? [['Origen', 'Declarado por el usuario · pendiente de validación SRI']] : []),
+      ...(data.sriSource === 'MANUAL_ENTRY' ? [['Origen', 'Declarado por el usuario · pendiente de validación SRI']] : []),
       ...(data.noResolucion ? [['N.º de resolución', data.noResolucion]] : [])
     ] },
     { id: 'datos', title: 'Contacto', rows: [['Correo', data.email], ['Celular', formatCelular(data.celular, data.celularPais)]] },
@@ -185,7 +189,7 @@ export function buildSummarySections(data) {
 export function renderSummary(body, data = wizardData) {
   const sections = buildSummarySections(data);
   body.innerHTML = `
-    ${data.sriValidacionPendiente ? '<div class="status-callout status-callout--warning" role="status"><strong>Validación SRI pendiente</strong><span>El servicio no estuvo disponible. El backend debe validar estos datos antes del alta definitiva.</span></div>' : ''}
+    ${data.sriValidacionPendiente ? '<div class="status-callout status-callout--warning" role="status"><strong>Validación SRI pendiente</strong><span>Podrás crear la cuenta, pero la emisión electrónica permanecerá bloqueada hasta que el SRI confirme la información tributaria.</span></div>' : ''}
     <div class="wiz-summary">${sections.map((section) => `<section class="wiz-summary-section${section.id === 'facturacion' ? ' wiz-summary-section--billing is-collapsed' : ''}">
       <header class="wiz-summary-section-header"><h3>${section.title}</h3><span class="wiz-summary-section-actions"><button type="button" class="wiz-summary-edit" data-edit="${section.id}">Editar</button>${section.id === 'facturacion' ? '<button type="button" class="wiz-summary-toggle" aria-expanded="false" aria-label="Mostrar facturación inicial"><span aria-hidden="true"></span></button>' : ''}</span></header>
       <dl class="wiz-summary-rows">${section.rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value || '—')}</dd></div>`).join('')}</dl>
@@ -202,23 +206,27 @@ export function renderSummary(body, data = wizardData) {
 async function finishWizard() {
   showLoading('Preparando tu registro…');
   try {
-    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20260929a');
+    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20260930c');
     if (!validateAntiBot().ok) throw new Error('No pudimos validar la sesión. Recarga la página e intenta de nuevo.');
-    const { crearRegistro } = await import('./services/registration-service.js?v=20260929a');
-    await crearRegistro(buildRegistrationPayload());
+    if (!wizardData.registrationId) throw new Error('La sesión de registro expiró. Vuelve a validar la firma.');
+    wizardData.idempotencyKey ||= newIdempotencyKey();
+    const registration = await completarDraft(wizardData.registrationId, wizardData.idempotencyKey);
+    wizardData.accountTaxDataStatus = registration.accountTaxDataStatus
+      || (wizardData.sriSource === 'MANUAL_ENTRY'
+        ? TAX_DATA_STATUS.PENDING_SRI_RECONCILIATION
+        : TAX_DATA_STATUS.VERIFIED);
     hideLoading();
-    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20260929a');
-    await mostrarPersonalizacionLogo({
+    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20260930c');
+    const logoSelection = await mostrarPersonalizacionLogo({
       razonSocial: wizardData.razonSocial,
-      email: wizardData.email,
-      celular: formatCelular(wizardData.celular, wizardData.celularPais),
     });
-    renderSuccess();
+    await guardarLogo({ accountId: registration.accountId, postCreateToken: registration.postCreateToken, selection: logoSelection });
+    renderSuccess(wizardData.accountTaxDataStatus);
   } catch (error) { hideLoading(); showFormError(error?.message || 'No pudimos completar el registro. Intenta de nuevo.'); }
 }
 
 export function buildRegistrationPayload() {
-  const manualSri = wizardData.sriSource === 'MANUAL';
+  const manualSri = wizardData.sriSource === 'MANUAL_ENTRY';
   return {
     ruc: wizardData.rucManual, razonSocial: wizardData.razonSocial, nombreComercial: wizardData.nombreComercial,
     estadoContribuyenteRuc: wizardData.estadoContribuyenteRuc, actividadEconomica: wizardData.actividadEconomica,
@@ -241,15 +249,19 @@ export function buildRegistrationPayload() {
         actividadEconomicaPrincipal: wizardData.actividadEconomica,
         agenteRetencion: wizardData.tipoContribuyente === 'AGENTE_RETENCION',
         contribuyenteEspecial: wizardData.tipoContribuyente === 'CONTRIBUYENTE_ESPECIAL',
-        representanteLegal: wizardData.representanteLegalDeclarado || null,
+        granContribuyente: wizardData.tipoContribuyente === 'GRAN_CONTRIBUYENTE',
       } : null,
     },
     terminosAceptados: wizardData.terminos, validacionSriPendiente: wizardData.sriValidacionPendiente,
   };
 }
 
-function renderSuccess() {
-  document.getElementById('wizard-root').innerHTML = `<section class="wiz-success"><span class="wiz-success-check" aria-hidden="true">✓</span><p class="wiz-screen-eyebrow">Registro completado</p><h2>Bienvenido a TributaSoft</h2><p>Te llevaremos al portal de inicio de sesión.</p></section>`;
+function renderSuccess(accountTaxDataStatus = '') {
+  const pending = accountTaxDataStatus === TAX_DATA_STATUS.PENDING_SRI_RECONCILIATION;
+  const detail = pending
+    ? 'Tu cuenta está activa. La información tributaria queda pendiente de verificación y la emisión electrónica estará bloqueada hasta la conciliación con el SRI.'
+    : 'Te llevaremos al portal de inicio de sesión.';
+  document.getElementById('wizard-root').innerHTML = `<section class="wiz-success"><span class="wiz-success-check" aria-hidden="true">✓</span><p class="wiz-screen-eyebrow">Registro completado</p><h2>Bienvenido a TributaSoft</h2><p>${detail}</p></section>`;
   document.getElementById('wiz-nav')?.remove();
   window.setTimeout(() => window.location.assign(TRIBUTASOFT_LOGIN_URL), 1600);
 }
@@ -272,10 +284,10 @@ export async function startWizard() {
   const root = document.getElementById('wizard-root');
   if (!root) return;
   mountWizard(root);
-  const { startSession } = await import('./utils/anti-bot.js?v=20260929a'); startSession();
+  const { startSession } = await import('./utils/anti-bot.js?v=20260930c'); startSession();
   const [firma, datos, facturacion] = await Promise.all([
-    import('./screens/screen-firma.js?v=20260929a'), import('./screens/screen-datos.js?v=20260929a'),
-    import('./screens/screen-facturacion.js?v=20260929a'),
+    import('./screens/screen-firma.js?v=20260930c'), import('./screens/screen-datos.js?v=20260930c'),
+    import('./screens/screen-facturacion.js?v=20260930c'),
   ]);
   registerScreen('firma', firma.renderPantallaFirma); setValidator('firma', firma.validarPantallaFirma);
   registerScreen('datos', datos.renderPantallaDatos); setValidator('datos', datos.validarPantallaDatos);
