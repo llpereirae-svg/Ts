@@ -19,7 +19,7 @@
 
 import { formatCelular } from '../wizard.js?v=20260929a';
 
-const PORTAL_URL = 'https://tbc.tributasoft.ec/Erp-web/templates/registro/login.xhtml?faces-redirect=true';
+import { TRIBUTASOFT_LOGIN_URL as PORTAL_URL } from './portal-config.js?v=20260929a';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
 
 // ============================================================

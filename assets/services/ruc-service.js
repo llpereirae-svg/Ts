@@ -12,13 +12,14 @@ export function normalizarRespuestaRuc(raw) {
   const source = Array.isArray(raw) ? raw[0] : raw;
   if (!source || typeof source !== 'object') return null;
 
-  const estado = clean(source.estadoContribuyenteRuc || source.estado || '');
+  const estado = clean(source.estadoContribuyenteRuc);
   const representantes = Array.isArray(source.representantesLegales)
     ? source.representantesLegales.filter(Boolean)
     : [];
   const fechas = Array.isArray(source.informacionFechasContribuyente)
     ? source.informacionFechasContribuyente.filter(Boolean)
-    : [];
+    : source.informacionFechasContribuyente && typeof source.informacionFechasContribuyente === 'object'
+      ? [source.informacionFechasContribuyente] : [];
   const advertencias = [];
 
   if (upper(source.contribuyenteFantasma) === 'SI') advertencias.push('Contribuyente marcado como fantasma por el SRI.');
@@ -36,19 +37,23 @@ export function normalizarRespuestaRuc(raw) {
     estadoContribuyenteRuc: estado,
     actividadEconomicaPrincipal: clean(source.actividadEconomicaPrincipal || source.actividadEconomica),
     regimen: clean(source.regimen || source.regimenGeneral),
+    categoria: clean(source.categoria),
     tipoContribuyente: clean(source.tipoContribuyente),
     obligadoLlevarContabilidad: clean(source.obligadoLlevarContabilidad),
+    agenteRetencion: source.agenteRetencion ?? source.agenteDeRetencion ?? null,
+    contribuyenteEspecial: source.contribuyenteEspecial ?? null,
+    granContribuyente: source.granContribuyente ?? null,
     representantesLegales: representantes,
     representanteLegal: representantes[0] || null,
     informacionFechasContribuyente: fechas,
-    esSociedad: representantes.length > 0,
+    esSociedad: upper(source.tipoContribuyente).startsWith('SOCIEDAD') || representantes.length > 0,
     advertencias,
     validacionPendiente: false,
   };
 }
 
 export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutMs = 8_000 } = {}) {
-  const validacion = validarRUC(String(ruc || ''));
+  const validacion = validarRUC(ruc);
   if (!validacion.valid) return { status: RUC_RESULT.INVALID, reason: validacion.reason };
   if (typeof fetchImpl !== 'function') return { status: RUC_RESULT.UNAVAILABLE, reason: 'Servicio no disponible.' };
 
@@ -63,7 +68,13 @@ export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutM
       return { status: RUC_RESULT.NOT_FOUND, reason: 'El SRI no encontró ese RUC.' };
     }
     if (response.status === 408 || response.status >= 500) {
-      return { status: RUC_RESULT.UNAVAILABLE, reason: 'El SRI no está disponible temporalmente.' };
+      const envelope = await response.json?.().catch(() => ({})) || {};
+      return {
+        status: RUC_RESULT.UNAVAILABLE,
+        reason: 'El SRI no está disponible temporalmente.',
+        attempts: Number.isInteger(envelope.attempts) ? envelope.attempts : 0,
+        errorCode: typeof envelope.error === 'string' ? envelope.error : 'SRI_UNAVAILABLE',
+      };
     }
     if (!response.ok) {
       return { status: RUC_RESULT.MALFORMED, reason: 'La consulta no pudo completarse.' };
@@ -76,12 +87,13 @@ export async function consultarRuc(ruc, { fetchImpl = globalThis.fetch, timeoutM
     }
     const data = normalizarRespuestaRuc(raw);
     if (!data) return { status: RUC_RESULT.MALFORMED, reason: 'La respuesta no contiene datos de contribuyente.' };
+    if (data.ruc !== String(ruc)) return { status: RUC_RESULT.MALFORMED, reason: 'El RUC de la respuesta no coincide con el consultado.' };
     return { status: RUC_RESULT.OK, data };
   } catch (error) {
     const timeoutMessage = error?.name === 'AbortError'
       ? 'La consulta al SRI superó el tiempo de espera.'
       : 'No se pudo conectar con el servicio del RUC.';
-    return { status: RUC_RESULT.UNAVAILABLE, reason: timeoutMessage };
+    return { status: RUC_RESULT.UNAVAILABLE, reason: timeoutMessage, attempts: 0, errorCode: 'BACKEND_UNAVAILABLE' };
   } finally {
     clearTimeout(timeout);
   }

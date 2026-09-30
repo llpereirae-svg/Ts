@@ -1,7 +1,7 @@
 // firma-validator.js — Validación REAL de archivos PKCS#12 (.p12/.pfx) en el navegador.
 //
-// Usa node-forge cargado bajo demanda desde un CDN. Forge se carga sólo cuando
-// el usuario realmente sube una firma; no penaliza el bundle inicial.
+// Usa node-forge cargado bajo demanda desde un asset local versionado. Forge se
+// carga sólo cuando el usuario realmente sube una firma; no penaliza el bundle inicial.
 //
 // Lo que valida:
 //   1. Que el archivo sea un PKCS#12 parseable.
@@ -10,21 +10,36 @@
 //   4. Que ese RUC coincida con el RUC del registro.
 //   5. Que el certificado no esté caducado.
 //
-// IMPORTANTE: toda la validación es CLIENT-SIDE. La clave del usuario NUNCA
-// abandona su navegador — sólo enviamos al backend un hash + los metadatos
-// extraídos del certificado (titular, RUC, fecha de caducidad) cuando esto
-// se integre con el endpoint real.
+// IMPORTANTE: esta validación CLIENT-SIDE solo permite bloquear temprano. La
+// clave y el archivo no se envían en el flujo actual. El backend productivo debe
+// verificar criptográficamente el certificado antes de confiar en la identidad.
 
-const FORGE_CDN = 'https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js';
+import { validarRUC } from '../utils/ruc-validation.js?v=20260929a';
+
+const FORGE_ASSET = '/assets/node-forge-1.3.1.min.js?v=20260929a';
 
 let _forgePromise = null;
+
+export function validarIdentidadFiscalFirma(ruc, { soloCedula = false } = {}) {
+  if (soloCedula) {
+    return {
+      valid: false,
+      error: 'FIRMA_SOLO_CEDULA',
+      reason: 'La firma electrónica debe estar asociada a un RUC. Para registrar una cuenta en TributaSoft necesitas una firma emitida con RUC; una firma identificada únicamente con cédula no puede utilizarse para este registro.',
+    };
+  }
+  const check = validarRUC(ruc);
+  return check.valid
+    ? { valid: true, ruc }
+    : { valid: false, error: 'RUC_INVALIDO', reason: `La firma contiene un RUC inválido: ${check.reason}` };
+}
 
 function loadForge() {
   if (typeof window !== 'undefined' && window.forge) return Promise.resolve(window.forge);
   if (_forgePromise) return _forgePromise;
   _forgePromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = FORGE_CDN;
+    script.src = FORGE_ASSET;
     script.async = true;
     script.onload = () => {
       if (window.forge) resolve(window.forge);
@@ -136,6 +151,7 @@ function extraerDatosDelCert(forge, cert) {
   const razonSocial = sd['10'] || null;
   const esJuridica = !!razonSocial;
   let esHeuristica = false;
+  let soloCedula = false;
 
   // Paso 3: si no es Security Data, barrer todas las extensiones buscando 13 dígitos
   if (!ruc) {
@@ -159,11 +175,7 @@ function extraerDatosDelCert(forge, cert) {
     if (!ruc) {
       for (const c of candidatos) {
         const m = String(c).match(/(?<!\d)(\d{10})(?!\d)/);
-        if (m) {
-          ruc = m[1] + '001';
-          esHeuristica = true;
-          break;
-        }
+        if (m) { soloCedula = true; esHeuristica = true; break; }
       }
     }
   }
@@ -190,6 +202,7 @@ function extraerDatosDelCert(forge, cert) {
     razonSocial,
     repLegal,
     esHeuristica,
+    soloCedula,
     // Datos extra que pueden servir para autollenar el formulario más adelante.
     datosExtra: {
       ciudad: sd['9'] || null,
@@ -277,7 +290,7 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
   }
 
   const datos = extraerDatosDelCert(forge, cert);
-  const { ruc: rucCert, titular, esJuridica, razonSocial, repLegal, esHeuristica, datosExtra } = datos;
+  const { ruc: rucCert, titular, esJuridica, razonSocial, repLegal, esHeuristica, soloCedula, datosExtra } = datos;
   const fechaCaducidad = cert.validity.notAfter;
 
   if (fechaCaducidad < new Date()) {
@@ -289,11 +302,12 @@ export async function validarFirmaP12(file, clave, rucEsperado) {
     };
   }
 
-  if (!rucCert) {
+  const identidad = validarIdentidadFiscalFirma(rucCert, { soloCedula });
+  if (!identidad.valid) {
     return {
       valid: false,
-      error: 'SIN_RUC',
-      reason: 'No pudimos identificar el RUC en el certificado. No podemos continuar.',
+      error: identidad.error,
+      reason: identidad.reason,
       titular, fechaCaducidad, esJuridica, razonSocial, repLegal,
     };
   }

@@ -686,70 +686,13 @@ details.config-avanzada summary::after { content: " ▾"; transition: transform 
 details[open] summary::after { transform: rotate(180deg); }
 
 /* Modos de facturación (cards con icono minimalista) */
-.modo-facturacion {
-  display: grid; gap: .55rem; margin: .65rem 0 1rem;
-}
-.modo-facturacion label {
-  display: flex; align-items: center; gap: .8rem;
-  padding: .85rem 1rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition);
-  background: white;
-}
-.modo-facturacion input[type="radio"] { display: none; }
-.modo-facturacion .modo-icon {
-  flex-shrink: 0;
-  width: 2.25rem; height: 2.25rem;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--color-brand-tributa);
-  transition: color var(--transition);
-}
-.modo-facturacion .modo-icon svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.7; }
-.modo-facturacion label:has(input:checked) {
-  border-color: var(--color-primary);
-  background: rgba(0, 35, 111, .03);
-  box-shadow: 0 0 0 2px rgba(0, 35, 111, .08);
-}
-.modo-facturacion label:has(input:checked) .modo-icon { color: var(--color-cta); }
-.modo-facturacion .modo-content { flex: 1; }
-.modo-facturacion .modo-title {
-  font-weight: 600; font-size: .92rem; color: var(--color-text);
-  display: block; margin-bottom: .12rem;
-}
-.modo-facturacion .modo-desc {
-  font-size: .8rem; color: var(--color-muted);
-  line-height: 1.4;
-}
 
 /* Bloque único de establecimiento + punto de emisión (siempre editable cuando aparece) */
-.establecimiento-bloque {
-  margin-top: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-low);
-  animation: slideUp 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.establecimiento-bloque[hidden] { display: none; }
-.establecimiento-bloque.is-required {
-  border-color: var(--color-error);
-  box-shadow: 0 0 0 2px rgba(186, 26, 26, .12);
-  animation: shake 360ms cubic-bezier(.36,.07,.19,.97);
-}
 @keyframes shake {
   10%, 90% { transform: translateX(-1px); }
   20%, 80% { transform: translateX(2px); }
   30%, 50%, 70% { transform: translateX(-3px); }
   40%, 60% { transform: translateX(3px); }
-}
-.establecimiento-bloque-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: .75rem;
-}
-.establecimiento-bloque-header h4 {
-  margin: 0; font-size: .92rem; font-weight: 600; color: var(--color-primary);
 }
 
 .bloque-actions {
@@ -772,19 +715,6 @@ details[open] summary::after { transform: rotate(180deg); }
   font-size: .85rem;
 }
 
-.codigos-fila {
-  display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
-  margin-bottom: .75rem;
-}
-.codigos-fila .field { margin: 0; }
-.codigos-fila .field label {
-  font-size: .8rem; color: var(--color-muted); font-weight: 500;
-}
-.codigos-fila input {
-  font-family: ui-monospace, monospace;
-  text-align: center;
-  letter-spacing: .08em;
-}
 
 /* Secuencias por tipo de documento (con tooltip por label) */
 .secuencias {

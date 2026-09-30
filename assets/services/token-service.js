@@ -43,9 +43,11 @@
  *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
  *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
-import { BACKEND_URL, USE_MOCKS } from './config.js?v=20260929a';
+import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20260929a';
 
-const TOKEN_LEN = 4;
+const usaMock = canal => USE_MOCKS || (canal === 'email' && DEV_EMAIL_TOKEN_MOCK);
+
+const TOKEN_LEN = 6;
 const TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 /**
@@ -59,8 +61,7 @@ function generarCodigo() {
     const n = buf[0] % Math.pow(10, TOKEN_LEN);
     return String(n).padStart(TOKEN_LEN, '0');
   }
-  // Fallback inseguro (no debería usarse en producción)
-  return String(Math.floor(Math.random() * Math.pow(10, TOKEN_LEN))).padStart(TOKEN_LEN, '0');
+  throw new Error('El navegador no ofrece un generador criptográfico seguro.');
 }
 
 // ============================================================
@@ -88,7 +89,7 @@ async function sendEmail(destino, token) {
   // ver el código sin tener mailbox configurado. Al reemplazar esta función
   // por el fetch real, BORRAR esta línea — un token de verificación NUNCA
   // debe quedar en logs/consola en producción.
-  console.log(`[token-service MOCK] Email a ${destino}: código ${token}`);
+  // El modal muestra el código de prueba; no registrar correo ni token en consola.
   // Simular latencia de red
   await new Promise((r) => setTimeout(r, 250));
   return { ok: true };
@@ -139,7 +140,7 @@ export async function generarYEnviarToken({ canal, destino }) {
   if (!destino) throw new Error('Falta el destino del token');
   if (canal !== 'email' && canal !== 'sms') throw new Error(`Canal inválido: ${canal}`);
 
-  if (!USE_MOCKS) {
+  if (!usaMock(canal)) {
     const response = await fetch(`${BACKEND_URL}/api/token/${canal}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -181,7 +182,7 @@ export async function verificarToken({ canal, destino, codigo, tokenEsperado, ex
   if (expiraEn && new Date() > new Date(expiraEn)) {
     return { valid: false, error: 'EXPIRADO', reason: 'El código expiró. Pide uno nuevo.' };
   }
-  if (!USE_MOCKS) {
+  if (!usaMock(canal)) {
     try {
       const response = await fetch(`${BACKEND_URL}/api/token/verify`, {
         method: 'POST',
@@ -191,7 +192,10 @@ export async function verificarToken({ canal, destino, codigo, tokenEsperado, ex
       });
       if (!response.ok) return { valid: false, error: 'SERVICIO', reason: 'No pudimos verificar el código.' };
       const result = await response.json();
-      return result.valid ? { valid: true } : { valid: false, error: 'INCORRECTO', reason: 'El código no coincide.' };
+      if (!result || Array.isArray(result) || typeof result.valid !== 'boolean') {
+        return { valid: false, error: 'SERVICIO', reason: 'No pudimos verificar el código.' };
+      }
+      return result.valid === true ? { valid: true } : { valid: false, error: 'INCORRECTO', reason: 'El código no coincide.' };
     } catch {
       return { valid: false, error: 'SERVICIO', reason: 'No pudimos conectar con el servicio de verificación.' };
     }

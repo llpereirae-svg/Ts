@@ -5,7 +5,7 @@ const PROVINCIAS_VALIDAS = Array.from({ length: 24 }, (_, i) => i + 1);
 
 export function validarRUC(ruc) {
   if (typeof ruc !== 'string') return { valid: false, reason: 'RUC debe ser texto.' };
-  const value = ruc.trim();
+  const value = ruc;
 
   if (!/^\d{13}$/.test(value)) {
     return { valid: false, reason: 'El RUC debe tener exactamente 13 dígitos numéricos.' };

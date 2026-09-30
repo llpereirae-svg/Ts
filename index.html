@@ -26,8 +26,8 @@
     script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://connect.facebook.net;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com data:;
-    img-src 'self' data: https://llpereirae-svg.github.io https://www.facebook.com;
-    connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.facebook.com;
+    img-src 'self' data: blob: https://llpereirae-svg.github.io https://www.facebook.com;
+    connect-src 'self' https://api.tributasoft.ec https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.facebook.com;
     frame-ancestors 'none';
     base-uri 'self';
     form-action 'self';
@@ -114,7 +114,7 @@
       </h1>
     </section>
 
-    <!-- Punto de montaje del flujo de registro de cinco pasos. -->
+    <!-- Punto de montaje del flujo de registro de cuatro pasos. -->
     <div id="wizard-root"></div>
 
     <!-- ============================================================

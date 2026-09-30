@@ -1,11 +1,16 @@
-/* Orquestador del registro 300 documentos gratis — cinco etapas. */
+/* Orquestador del registro — cuatro etapas y verificación de correo en Datos. */
+import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20260929a';
+import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20260929a';
+import { crearGateCliente } from './utils/cliente-gate.js?v=20260929a';
+import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20260929a';
+import { renderPantallaCliente } from './screens/screen-cliente.js?v=20260929a';
+import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20260929a';
 
 export const SCREENS = [
-  { id: 'firma', label: 'Firma', title: 'Comencemos con tu firma electrónica', eyebrow: 'Paso 1 de 5', lead: 'La procesamos dentro de este navegador; la clave y el archivo no se guardan ni se envían.' },
-  { id: 'datos', label: 'Datos', title: 'Confirma tus datos', eyebrow: 'Paso 2 de 5', lead: 'Consultamos tu RUC mediante el servidor de TributaSoft y completamos lo que esté disponible.' },
-  { id: 'token', label: 'Correo', title: 'Verifica tu correo', eyebrow: 'Paso 3 de 5', lead: 'Usaremos este correo para confirmar el registro y enviarte las instrucciones de acceso.' },
-  { id: 'facturacion', label: 'Facturación', title: 'Información de facturación', eyebrow: 'Paso 4 de 5', lead: 'Cuéntanos si ya has emitido comprobantes electrónicos anteriormente.' },
-  { id: 'resumen', label: 'Revisión', title: 'Revisa y crea tu cuenta', eyebrow: 'Paso 5 de 5', lead: 'Confirma que todo esté correcto. Puedes editar cualquier sección antes de continuar.' },
+  { id: 'firma', label: 'Firma electrónica', title: 'Comencemos con tu firma electrónica', eyebrow: '', lead: '' },
+  { id: 'datos', label: 'Datos', title: 'Confirma tus datos', eyebrow: '', lead: '' },
+  { id: 'facturacion', label: 'Facturación', title: '¿Ya has emitido comprobantes electrónicos anteriormente?', eyebrow: '', lead: '' },
+  { id: 'resumen', label: 'Revisión', title: 'Revisa y crea tu cuenta', eyebrow: '', lead: '' },
 ];
 
 const SCREEN_INDEX = new Map(SCREENS.map((screen, index) => [screen.id, index]));
@@ -13,20 +18,23 @@ const renderers = new Map();
 const validators = new Map();
 let currentIdx = 0;
 let onNavigateCb = null;
+let validatingDatos = false;
+const clienteGate = crearGateCliente();
 
 export const wizardData = {
-  terminos: false, firma: null, rucManual: '', sriStatus: 'PENDING', sriValidacionPendiente: false, sriAdvertencias: [],
-  razonSocial: '', nombreComercial: '', actividadEconomica: '', estadoContribuyenteRuc: '', representanteLegal: null,
-  regimen: '', tipoContribuyente: '', noResolucion: '', direccion: '', provincia: '', ciudad: '',
+  terminos: false, firma: null, rucManual: '', sriStatus: 'PENDING', sriSource: '', sriTechnicalStatus: '', sriAttempts: 0, sriLastAttemptAt: '', sriErrorCode: '', sriValidacionPendiente: false, sriAdvertencias: [],
+  razonSocial: '', nombreComercial: '', actividadEconomica: '', estadoContribuyenteRuc: '',
+  regimen: '', tipoContribuyente: '', obligadoLlevarContabilidad: '', noResolucion: '', representanteLegalDeclarado: '', direccion: '', provincia: '', ciudad: '',
   email: '', celular: '', celularPais: 'EC', tokenEmailOk: false,
   modoFacturacion: 'nuevo', codEstablecimiento: '001', codPunto: '001', nombrePunto: 'Electrónicas', secuencias: {},
+  clienteGate: { status: CLIENTE_ESTADO.IDLE },
 };
 
 export function mountWizard(root) {
   root.innerHTML = `
     <div class="wizard" id="wizard">
       <div class="wiz-progress" aria-label="Progreso del registro">
-        <div class="wiz-progress-copy"><span id="wiz-progress-label">Paso 1 de 5</span><strong id="wiz-progress-title">Firma</strong></div>
+        <div class="wiz-progress-copy"><span id="wiz-progress-label">Paso 1 de ${SCREENS.length}</span><strong id="wiz-progress-title">Firma</strong></div>
         <div class="wiz-progress-bar" aria-hidden="true"><span id="wiz-progress-fill"></span></div>
         <div class="wiz-progress-track" id="wiz-progress-track"></div>
       </div>
@@ -51,9 +59,9 @@ export function mountWizard(root) {
   document.getElementById('wiz-screens').innerHTML = SCREENS.map((screen) => `
     <section class="wiz-screen" id="wiz-screen-${screen.id}" data-id="${screen.id}" aria-labelledby="wiz-h-${screen.id}">
       <header class="wiz-screen-header">
-        <p class="wiz-screen-eyebrow">${screen.eyebrow}</p>
+        ${screen.eyebrow ? `<p class="wiz-screen-eyebrow">${screen.eyebrow}</p>` : ''}
         <h2 id="wiz-h-${screen.id}">${screen.title}</h2>
-        <p class="wiz-screen-lead">${screen.lead}</p>
+        ${screen.lead ? `<p class="wiz-screen-lead">${screen.lead}</p>` : ''}
       </header>
       <div class="wiz-screen-body" data-body="${screen.id}"></div>
     </section>`).join('');
@@ -66,31 +74,58 @@ export function mountWizard(root) {
 export function registerScreen(id, renderer) {
   renderers.set(id, renderer);
   const body = document.querySelector(`[data-body="${id}"]`);
-  if (body) renderer(body, wizardData);
+  if (body && SCREENS[currentIdx].id === id) renderer(body, wizardData);
 }
 export function setValidator(id, validator) { validators.set(id, validator); }
 
 export async function goNext() {
+  if (validatingDatos) return;
+  const from = currentIdx;
   const validator = validators.get(SCREENS[currentIdx].id);
-  if (validator && !(await validator(wizardData))) return;
+  validatingDatos = true;
+  try {
+    if (validator && !(await validator(wizardData))) return;
+    if (SCREENS[from].id === 'firma') {
+      const result = await clienteGate.verificar(wizardData, state => {
+        if (state.status === CLIENTE_ESTADO.CHECKING) showLoading('Estamos verificando tu información...');
+      });
+      hideLoading();
+      if (result.status !== CLIENTE_ESTADO.NEW_CLIENT) {
+        if (result.status !== CLIENTE_ESTADO.IDLE) showCliente(result);
+        return;
+      }
+    }
+    if (currentIdx !== from) return;
+  } finally { validatingDatos = false; }
+  if (currentIdx >= SCREEN_INDEX.get('datos') && (!estadoSriPermiteContinuar(wizardData) || !correoVerificado(wizardData))) {
+    await transitionTo(SCREEN_INDEX.get('datos')); return;
+  }
   if (currentIdx === SCREENS.length - 1) return finishWizard();
   await transitionTo(currentIdx + 1);
 }
 export async function goBack() { if (currentIdx > 0) await transitionTo(currentIdx - 1); }
 export async function goTo(idOrIndex) {
-  const index = typeof idOrIndex === 'number' ? idOrIndex : SCREEN_INDEX.get(idOrIndex);
+  let index = typeof idOrIndex === 'number' ? idOrIndex : SCREEN_INDEX.get(idOrIndex);
+  if (index > SCREEN_INDEX.get('datos') && (!estadoSriPermiteContinuar(wizardData) || !correoVerificado(wizardData))) index = SCREEN_INDEX.get('datos');
   if (Number.isInteger(index) && index >= 0 && index < SCREENS.length) await transitionTo(index);
 }
 
 async function transitionTo(index) {
+  if (index > 0 && !clienteGate.permite(wizardData)) {
+    showScreen(0);
+    return;
+  }
   const active = document.querySelector('.wiz-screen.is-active');
   if (active) { active.classList.add('is-leaving'); await wait(190); }
   showScreen(index);
 }
 
 function showScreen(index, { skipScroll = false } = {}) {
+  if (index > 0 && !clienteGate.permite(wizardData)) index = 0;
+  document.getElementById('cliente-screen')?.remove();
   document.querySelectorAll('.wiz-screen').forEach((screen) => screen.classList.remove('is-active', 'is-leaving'));
   const config = SCREENS[index];
+  document.body.dataset.wizardStep = config.id;
   const screen = document.getElementById(`wiz-screen-${config.id}`);
   screen.classList.add('is-active');
   document.querySelectorAll('.wiz-step').forEach((step, i) => { step.dataset.state = i < index ? 'done' : i === index ? 'active' : 'pending'; });
@@ -98,7 +133,9 @@ function showScreen(index, { skipScroll = false } = {}) {
   document.getElementById('wiz-progress-title').textContent = config.label;
   document.getElementById('wiz-progress-fill').style.width = `${((index + 1) / SCREENS.length) * 100}%`;
   document.getElementById('wiz-back').disabled = index === 0;
-  document.getElementById('wiz-next').textContent = index === SCREENS.length - 1 ? 'Crear mi cuenta' : 'Continuar';
+  document.getElementById('wiz-back').hidden = index === 0;
+  document.getElementById('wiz-next').textContent = index === SCREENS.length - 1 ? 'Crear cuenta' : 'Continuar';
+  document.getElementById('wiz-next').disabled = false;
 
   const body = document.querySelector(`[data-body="${config.id}"]`);
   renderers.get(config.id)?.(body, wizardData);
@@ -109,23 +146,57 @@ function showScreen(index, { skipScroll = false } = {}) {
   setTimeout(() => screen.querySelector('input, button, select, textarea')?.focus({ preventScroll: true }), 220);
 }
 
-function renderSummary(body) {
-  const representative = wizardData.representanteLegal;
-  const repName = representative && typeof representative === 'object'
-    ? (representative.nombre || representative.nombreCompleto || representative.razonSocial || '') : '';
-  const sections = [
-    { id: 'firma', title: 'Identidad', rows: [['Titular', wizardData.firma?.titular || wizardData.razonSocial], ['RUC', wizardData.rucManual], ['Firma válida hasta', formatDate(wizardData.firma?.fechaCaducidad || wizardData.firma?.caducidad)]] },
-    { id: 'datos', title: 'Datos tributarios', rows: [['Razón social', wizardData.razonSocial], ['Estado', wizardData.estadoContribuyenteRuc || 'Validación pendiente'], ['Actividad', wizardData.actividadEconomica], ['Régimen', wizardData.regimen], ...(repName ? [['Representante legal', repName]] : [])] },
-    { id: 'datos', title: 'Contacto', rows: [['Correo', wizardData.email], ['Celular', wizardData.celular]] },
-    { id: 'facturacion', title: 'Facturación', rows: [['Experiencia previa', wizardData.modoFacturacion === 'continuar' ? 'Sí, ya emitía comprobantes' : 'No, empezaré ahora'], ['Establecimiento / punto', `${wizardData.codEstablecimiento}-${wizardData.codPunto}`]] },
+function showCliente(result) {
+  document.querySelectorAll('.wiz-screen').forEach(screen => screen.classList.remove('is-active', 'is-leaving'));
+  document.body.dataset.wizardStep = 'cliente';
+  let section = document.getElementById('cliente-screen');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'cliente-screen';
+    section.setAttribute('aria-labelledby', 'cliente-heading');
+    document.getElementById('wizard').append(section);
+  }
+  renderPantallaCliente(section, result, { onRetry: goNext, onBack: () => showScreen(0) });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+export function buildSummarySections(data) {
+  const facturacion = construirFacturacion(data);
+  const codigo = documento => documento ? `${documento.establecimiento} - ${documento.punto_emision} - ${documento.secuencia}` : '—';
+  return [
+    { id: 'datos', title: 'Contribuyente', rows: [
+      ['RUC', data.rucManual], ['Razón social', data.razonSocial],
+      ...(data.nombreComercial ? [['Nombre comercial', data.nombreComercial]] : [])
+    ] },
+    { id: 'datos', title: 'Información tributaria', rows: [
+      ['Régimen', LABEL_REGIMEN[data.regimen] || data.regimen],
+      ['Tipo', LABEL_TIPO[data.tipoContribuyente] || data.tipoContribuyente],
+      ...(data.sriSource === 'MANUAL' ? [['Origen', 'Declarado por el usuario · pendiente de validación SRI']] : []),
+      ...(data.noResolucion ? [['N.º de resolución', data.noResolucion]] : [])
+    ] },
+    { id: 'datos', title: 'Contacto', rows: [['Correo', data.email], ['Celular', formatCelular(data.celular, data.celularPais)]] },
+    { id: 'facturacion', title: 'Facturación inicial', rows: [
+      ['Inicio', facturacion.modo === 'continuar' ? 'Continuar numeración' : 'Empezar a facturar'],
+      ...facturacion.documentos.map(documento => [DOCUMENTOS[documento.tipo_documento] || documento.tipo_documento, codigo(documento)])
+    ] },
   ];
+}
+
+export function renderSummary(body, data = wizardData) {
+  const sections = buildSummarySections(data);
   body.innerHTML = `
-    ${wizardData.sriValidacionPendiente ? '<div class="status-callout status-callout--warning" role="status"><strong>Validación SRI pendiente</strong><span>El servicio no estuvo disponible. El backend debe validar estos datos antes del alta definitiva.</span></div>' : ''}
-    <div class="wiz-summary">${sections.map((section) => `<article class="wiz-summary-card">
-      <header class="wiz-summary-card-header"><h3>${section.title}</h3><button type="button" class="wiz-summary-edit" data-edit="${section.id}">Editar</button></header>
-      <dl class="wiz-summary-rows">${section.rows.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value || '—')}</dd>`).join('')}</dl>
-    </article>`).join('')}</div>`;
+    ${data.sriValidacionPendiente ? '<div class="status-callout status-callout--warning" role="status"><strong>Validación SRI pendiente</strong><span>El servicio no estuvo disponible. El backend debe validar estos datos antes del alta definitiva.</span></div>' : ''}
+    <div class="wiz-summary">${sections.map((section) => `<section class="wiz-summary-section${section.id === 'facturacion' ? ' wiz-summary-section--billing is-collapsed' : ''}">
+      <header class="wiz-summary-section-header"><h3>${section.title}</h3><span class="wiz-summary-section-actions"><button type="button" class="wiz-summary-edit" data-edit="${section.id}">Editar</button>${section.id === 'facturacion' ? '<button type="button" class="wiz-summary-toggle" aria-expanded="false" aria-label="Mostrar facturación inicial"><span aria-hidden="true"></span></button>' : ''}</span></header>
+      <dl class="wiz-summary-rows">${section.rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value || '—')}</dd></div>`).join('')}</dl>
+    </section>`).join('')}</div>`;
   body.querySelectorAll('[data-edit]').forEach((button) => button.addEventListener('click', () => goTo(button.dataset.edit)));
+  body.querySelectorAll('.wiz-summary-toggle').forEach((button) => button.addEventListener('click', () => {
+    const section = button.closest('.wiz-summary-section--billing');
+    const expanded = section.classList.toggle('is-collapsed') === false;
+    button.setAttribute('aria-expanded', String(expanded));
+    button.setAttribute('aria-label', `${expanded ? 'Ocultar' : 'Mostrar'} facturación inicial`);
+  }));
 }
 
 async function finishWizard() {
@@ -134,26 +205,53 @@ async function finishWizard() {
     const { validateAntiBot } = await import('./utils/anti-bot.js?v=20260929a');
     if (!validateAntiBot().ok) throw new Error('No pudimos validar la sesión. Recarga la página e intenta de nuevo.');
     const { crearRegistro } = await import('./services/registration-service.js?v=20260929a');
-    const result = await crearRegistro(buildRegistrationPayload());
-    hideLoading(); renderSuccess(result.demo);
+    await crearRegistro(buildRegistrationPayload());
+    hideLoading();
+    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20260929a');
+    await mostrarPersonalizacionLogo({
+      razonSocial: wizardData.razonSocial,
+      email: wizardData.email,
+      celular: formatCelular(wizardData.celular, wizardData.celularPais),
+    });
+    renderSuccess();
   } catch (error) { hideLoading(); showFormError(error?.message || 'No pudimos completar el registro. Intenta de nuevo.'); }
 }
 
-function buildRegistrationPayload() {
+export function buildRegistrationPayload() {
+  const manualSri = wizardData.sriSource === 'MANUAL';
   return {
     ruc: wizardData.rucManual, razonSocial: wizardData.razonSocial, nombreComercial: wizardData.nombreComercial,
     estadoContribuyenteRuc: wizardData.estadoContribuyenteRuc, actividadEconomica: wizardData.actividadEconomica,
-    regimen: wizardData.regimen, tipoContribuyente: wizardData.tipoContribuyente, representanteLegal: wizardData.representanteLegal,
+    regimen: wizardData.regimen, tipoContribuyente: wizardData.tipoContribuyente, noResolucion: wizardData.noResolucion,
     email: wizardData.email, celular: wizardData.celular,
-    facturacion: { modo: wizardData.modoFacturacion, establecimiento: wizardData.codEstablecimiento, puntoEmision: wizardData.codPunto, secuencias: wizardData.secuencias },
+    facturacion: construirFacturacion(wizardData),
     firma: wizardData.firma ? { titular: wizardData.firma.titular, ruc: wizardData.firma.ruc, caducidad: wizardData.firma.fechaCaducidad || wizardData.firma.caducidad, esJuridica: wizardData.firma.esJuridica } : null,
+    sri: {
+      source: wizardData.sriSource || (wizardData.sriStatus === 'OK' ? 'SRI' : ''),
+      status: wizardData.sriStatus,
+      attempts: wizardData.sriAttempts || 0,
+      lastAttemptAt: wizardData.sriLastAttemptAt || null,
+      errorCode: wizardData.sriErrorCode || null,
+      declared: manualSri ? {
+        razonSocial: wizardData.razonSocial,
+        nombreComercial: wizardData.nombreComercial || null,
+        regimen: wizardData.regimen,
+        tipoContribuyente: wizardData.tipoContribuyente,
+        obligadoLlevarContabilidad: wizardData.obligadoLlevarContabilidad,
+        actividadEconomicaPrincipal: wizardData.actividadEconomica,
+        agenteRetencion: wizardData.tipoContribuyente === 'AGENTE_RETENCION',
+        contribuyenteEspecial: wizardData.tipoContribuyente === 'CONTRIBUYENTE_ESPECIAL',
+        representanteLegal: wizardData.representanteLegalDeclarado || null,
+      } : null,
+    },
     terminosAceptados: wizardData.terminos, validacionSriPendiente: wizardData.sriValidacionPendiente,
   };
 }
 
-function renderSuccess(demo) {
-  document.getElementById('wizard-root').innerHTML = `<section class="wiz-success"><span class="wiz-success-check" aria-hidden="true">✓</span><p class="wiz-screen-eyebrow">Registro completado</p><h2>${demo ? 'Tu solicitud quedó preparada' : 'Tu cuenta fue creada'}</h2><p>${demo ? 'Esta versión local no envía datos ni crea cuentas reales. El contrato de alta está listo para conectarse al backend.' : `Enviamos la confirmación a <strong>${escapeHtml(wizardData.email)}</strong>.`}</p></section>`;
+function renderSuccess() {
+  document.getElementById('wizard-root').innerHTML = `<section class="wiz-success"><span class="wiz-success-check" aria-hidden="true">✓</span><p class="wiz-screen-eyebrow">Registro completado</p><h2>Bienvenido a TributaSoft</h2><p>Te llevaremos al portal de inicio de sesión.</p></section>`;
   document.getElementById('wiz-nav')?.remove();
+  window.setTimeout(() => window.location.assign(TRIBUTASOFT_LOGIN_URL), 1600);
 }
 
 function showFormError(message) {
@@ -175,13 +273,12 @@ export async function startWizard() {
   if (!root) return;
   mountWizard(root);
   const { startSession } = await import('./utils/anti-bot.js?v=20260929a'); startSession();
-  const [firma, datos, token, facturacion] = await Promise.all([
+  const [firma, datos, facturacion] = await Promise.all([
     import('./screens/screen-firma.js?v=20260929a'), import('./screens/screen-datos.js?v=20260929a'),
-    import('./screens/screen-token.js?v=20260929a'), import('./screens/screen-facturacion.js?v=20260929a'),
+    import('./screens/screen-facturacion.js?v=20260929a'),
   ]);
   registerScreen('firma', firma.renderPantallaFirma); setValidator('firma', firma.validarPantallaFirma);
   registerScreen('datos', datos.renderPantallaDatos); setValidator('datos', datos.validarPantallaDatos);
-  registerScreen('token', token.renderPantallaToken); setValidator('token', token.validarPantallaToken);
   registerScreen('facturacion', facturacion.renderPantallaFacturacion); setValidator('facturacion', facturacion.validarPantallaFacturacion);
   showScreen(0, { skipScroll: true });
 }

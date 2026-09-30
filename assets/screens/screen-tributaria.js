@@ -12,25 +12,7 @@
 import { validarNoResolucion } from '../utils/validators.js?v=20260929a';
 import { goNext } from '../wizard.js?v=20260929a';
 
-const TIPOS_CON_RESOLUCION = new Set([
-  'AGENTE_RETENCION',
-  'CONTRIBUYENTE_ESPECIAL',
-  'GRAN_CONTRIBUYENTE',
-]);
-
-const LABEL_TIPO = {
-  NO_OBLIGADO: 'No Obligado a Llevar Contabilidad',
-  OBLIGADO: 'Obligado a Llevar Contabilidad',
-  AGENTE_RETENCION: 'Agente de Retención',
-  CONTRIBUYENTE_ESPECIAL: 'Contribuyente Especial',
-  GRAN_CONTRIBUYENTE: 'Gran Contribuyente',
-};
-
-const LABEL_REGIMEN = {
-  'GENERAL': 'GENERAL',
-  'RIMPE - EMPRENDEDOR': 'RIMPE - Emprendedor',
-  'RIMPE - NEGOCIO POPULAR': 'RIMPE - Negocio Popular',
-};
+import { LABEL_TIPO, LABEL_REGIMEN, TIPOS_CON_RESOLUCION } from '../utils/registration-data.js?v=20260929a';
 
 export function renderPantallaTributaria(body, wizardData) {
   preFillFromCert(wizardData);

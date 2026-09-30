@@ -52,9 +52,18 @@ const BACKEND_URLS = {
 };
 export const BACKEND_URL = BACKEND_URLS[ENV];
 
+// El alta local y el Dev Tunnel pasan por el mismo origen (puerto 8000).
+// El servidor decide, mediante variables de entorno, si habilita el mock.
+const IS_DEV_TUNNEL = HOSTNAME.endsWith('.devtunnels.ms');
+export const REGISTRATION_API_URL = ENV === 'production'
+  ? `${BACKEND_URL}/api/registro`
+  : (ENV === 'development' || IS_DEV_TUNNEL ? '/api/registro' : null);
+
 // Mientras BACKEND_URL sea null, los servicios (token-service.js,
 // email-service.js) usan sus implementaciones MOCK.
 export const USE_MOCKS = BACKEND_URL === null;
+// Mock de correo autorizado para pruebas locales. No activa mocks de alta/SRI.
+export const DEV_EMAIL_TOKEN_MOCK = ENV === 'development';
 
 // =========================================================================
 //   META PIXEL + CONVERSIONS API (CAPI)

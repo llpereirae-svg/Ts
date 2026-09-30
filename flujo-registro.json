@@ -14,23 +14,19 @@
       "numero": 2,
       "titulo": "Datos tributarios y contacto",
       "ruc": "GET /api/ruc/:ruc",
-      "fallback": "captura manual solo ante indisponibilidad temporal, con validacionSriPendiente=true"
-    },
-    {
-      "id": "token",
-      "numero": 3,
-      "titulo": "Verificación de correo",
+      "bloqueo": "requiere consulta exitosa del mismo RUC y estadoContribuyenteRuc ACTIVO; indisponibilidad no permite avanzar",
+      "correo": "modal/bottom sheet dentro de Datos; verificación vinculada a la dirección exacta",
       "endpoints": ["POST /api/token/email", "POST /api/token/verify"]
     },
     {
       "id": "facturacion",
-      "numero": 4,
+      "numero": 3,
       "titulo": "Información de facturación",
       "pregunta": "¿Ya has emitido comprobantes electrónicos anteriormente?"
     },
     {
       "id": "resumen",
-      "numero": 5,
+      "numero": 4,
       "titulo": "Revisión y creación",
       "accion": "POST /api/registro"
     }
@@ -45,6 +41,6 @@
     },
     "estadoPrincipal": "estadoContribuyenteRuc",
     "fechas": "informacionFechasContribuyente",
-    "sociedad": "representantesLegales"
+    "representanteVisible": "Solo información temporal en Firma; ausente de Datos, Revisión y payload de registro"
   }
 }
