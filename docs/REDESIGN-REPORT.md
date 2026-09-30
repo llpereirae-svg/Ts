@@ -1,5 +1,7 @@
 # Reporte del rediseño
 
+> Reporte histórico del rediseño inicial. El flujo vigente de cuatro pasos, bloqueo ACTIVO y verificación de correo integrada está documentado en `REGISTRATION-FLOW.md` y `../README.md`; reemplaza las referencias de este baseline a cinco pasos y fallback manual.
+
 ## Identificación
 
 - Baseline: `461c05e7a775c074294905bb624383a52173e8bd`
@@ -63,7 +65,7 @@ El frontend trata 204, timeout/5xx y respuesta malformada como estados distintos
 ## Archivos principales modificados o creados
 
 - `assets/wizard.js`, `assets/wizard.css`
-- `assets/screens/screen-firma.js`, `screen-datos.js`, `screen-token.js`, `screen-facturacion.js`
+- `assets/screens/screen-firma.js`, `screen-datos.js`, `email-verification.js`, `screen-facturacion.js` (correo integrado en Datos; flujo vigente en README.md)
 - `assets/services/ruc-service.js`, `registration-service.js`, `token-service.js`, `meta-pixel.js`
 - `assets/utils/ruc-validation.js`, `validators.js`
 - `server/dev-server.js`, `server/ruc-proxy.js`

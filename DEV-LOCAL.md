@@ -1,6 +1,50 @@
 # Guía de instalación local — TributaSoft Landing
 
-> **Documento legado del baseline.** Para el flujo vigente de cinco pasos y el comando actual use `README.md` y `docs/REDESIGN-REPORT.md`. Las referencias a certificado PDF, SMS, clave y logo describen la versión anterior.
+## Superficie pública del servidor
+
+`server/dev-server.js` escucha por defecto en `127.0.0.1` y aplica una allowlist positiva. Solo sirve `/`, `/index.html`, los tres textos legales, los archivos raíz públicos enumerados en `server/public-surface.js` y archivos `.css`, `.js`, `.otf`, `.png`, `.svg` o `.ttf` dentro de `assets/fonts`, `assets/manual`, `assets/parsers`, `assets/screens`, `assets/services` y `assets/utils`.
+
+Todo lo demás devuelve 404; rutas malformadas o traversal devuelven 400. No ampliar la lista con una blacklist. Dev Tunnels recibe exactamente la misma superficie y no obtiene acceso adicional al repositorio. `DEV_BIND_HOST` solo acepta `127.0.0.1`, `::1` o `localhost`.
+
+## Dev Tunnels — mock de cliente (flujo vigente)
+
+`POST /api/registro/verificar-cliente`, `POST /api/registro` y el frontend comparten el puerto 8000.
+Localhost funciona porque el servidor permite conexiones loopback con Host local
+(`localhost`, `127.0.0.1`, `[::1]`) y Origin HTTP coincidente, sin forwarding.
+Dev Tunnels usa un origen público HTTPS; necesita una autorización explícita:
+
+```powershell
+$env:NODE_ENV = 'development'
+$env:DEV_ALLOWED_ORIGIN = 'https://3h0mfxrs-8000.use.devtunnels.ms'
+$env:DEV_REGISTRATION_MOCK = '1'
+npm start
+```
+
+`DEV_REGISTRATION_MOCK` habilita la creación simulada del recorrido completo. Nunca crea cuentas, no almacena el payload y no funciona en producción. Si falta el flag, el origen no está autorizado o `NODE_ENV` no es `development`, `/api/registro` responde 503.
+
+El valor anterior es el túnel autorizado para esta prueba. Si cambia, use el
+**origin del enlace del puerto 8000** que muestra VS Code:
+scheme + host + puerto si no es el predeterminado; sin ruta, query ni barra final.
+Conserve la configuración existente de `DEV_CLIENT_LOOKUP_MOCK=1`,
+`DEV_CLIENT_LOOKUP_EXISTING_RUC` y `SRI_RUC_URL`; esta variable no las reemplaza.
+Reinicie el servidor desde esa misma terminal para aplicar el entorno. No publique
+8080 ni cambie el fetch relativo del frontend.
+
+La excepción exige `NODE_ENV=development`, conexión loopback, Host local y Origin
+HTTP coincidente (el agente del túnel los reescribe). Debe existir exactamente un
+`X-Forwarded-Proto=https` y un `X-Forwarded-Host`; el origen reconstruido debe ser
+idéntico a `DEV_ALLOWED_ORIGIN`. No se aceptan listas, duplicados, comodines ni
+`Forwarded` junto con estas cabeceras. `X-Forwarded-For` no concede confianza.
+No se añade CORS. Cualquier combinación inválida mantiene 503
+`BACKEND/CONFIG_REQUIRED`. Tanto localhost como la excepción del túnel requieren
+`NODE_ENV=development` para activar mocks. Producción
+permanece bloqueada incluso con la variable configurada.
+
+Esto habilita **un mock, no la consulta real a clientes**. La allowlist no sustituye
+autenticación: conserve el control de acceso de VS Code al túnel. Pendiente de
+verificación en iPhone después de configurar el origen real y reiniciar.
+
+> **Documento legado del baseline.** Para el flujo vigente de cuatro pasos y el comando actual use `README.md`. Las referencias a certificado PDF, SMS, clave y logo describen la versión anterior.
 
 Para devs que van a construir el backend desde cero o que necesitan tocar el frontend en su máquina antes de pushear.
 
@@ -89,19 +133,20 @@ tributasoft/
 │
 └── assets/
     ├── bootstrap.js           ← Carga wizard.js + app.js
-    ├── wizard.js              ← Orquestador del wizard 8 pantallas
+    ├── wizard.js              ← Orquestador del wizard de 4 pasos
     ├── app.js                 ← Modales auxiliares (Cotizar, Pago, etc.)
     ├── styles.css
     ├── wizard.css
     │
     ├── screens/               ← Una pantalla del wizard por archivo
     │   ├── screen-firma.js        (paso 1: firma + cert)
-    │   ├── screen-datos.js        (paso 2: datos personales)
-    │   ├── screen-token.js        (paso 3: SMS + email OTP)
-    │   ├── screen-tributaria.js   (paso 4: régimen + tipo)
-    │   ├── screen-facturacion.js  (paso 5: facturación)
-    │   ├── screen-clave.js        (paso 6: crear clave)
-    │   └── screen-logo.js         (paso 7: logo opcional)
+    │   ├── screen-datos.js        (paso 2: datos + verificación de correo)
+    │   ├── email-verification.js  (diálogo integrado en Datos)
+    │   ├── screen-facturacion.js  (paso 3: facturación)
+    │   │                         (paso 4: revisión renderizada por wizard.js)
+    │   ├── screen-tributaria.js   (módulo legado, fuera del flujo)
+    │   ├── screen-clave.js        (módulo legado, fuera del flujo)
+    │   └── screen-logo.js         (módulo legado, fuera del flujo)
     │
     ├── services/              ← LO QUE HAY QUE CONECTAR AL BACKEND
     │   ├── token-service.js   ← reemplazar Capa 2 (SMS + email OTP)
@@ -162,7 +207,7 @@ Si no tenés acceso a archivos reales, pedí a TributaSoft un set de prueba sani
 | 1 | `POST /api/token/sms` | `assets/services/token-service.js` | `sendSms()` |
 | 2 | `POST /api/token/email` | `assets/services/token-service.js` | `sendEmail()` |
 | 3 | `POST /api/email/registro` | `assets/services/email-service.js` | `sendEmailHtml()` |
-| 4 | `POST /api/registro` | `assets/wizard.js → finishWizard()` | (agregar fetch nuevo) |
+| 4 | `POST /api/registro` | `assets/services/registration-service.js` | fetch cableado; persistencia real pendiente |
 
 > **IMPORTANTE de seguridad (ver SECURITY-AUDIT.md §4.1):** el modelo correcto es que el backend genere el token (no el frontend) y lo guarde en una tabla `tokens_verificacion`. El frontend solo manda el destino al pedir el SMS y el código al verificar.
 
