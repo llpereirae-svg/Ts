@@ -93,6 +93,16 @@ El navegador **no debe consultar directamente al SRI**. Se observaron cabeceras 
 Endpoint público actualmente configurado para la prueba local:
 `https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/ConsolidadoContribuyente/obtenerPorNumerosRuc?&ruc={ruc}`
 
+URLs externas que debe distinguir el backend:
+
+| Consulta | URL | Uso en Registro V2 |
+|---|---|---|
+| Catastro por RUC | `https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/ConsolidadoContribuyente/obtenerPorNumerosRuc?&ruc={ruc}` | Sí, detrás de `/sri/lookup`. |
+| Emisor autorizado | `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf` | Sí, detrás de `/issuer-authorization/check`; requiere `GET` + `POST` JSF desde backend. |
+| Comprobante emitido por clave de acceso | `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf` | No; es una consulta pública puntual para validar un comprobante. |
+
+El historial de comprobantes emitidos requiere autenticación en SRI en Línea y no debe confundirse con una API pública del onboarding. El contrato completo, incluida la diferencia entre estas consultas, está en `docs/V2-BACKEND-HANDOFF.md`.
+
 Contrato aplicado:
 
 - RUC: exactamente 13 dígitos, termina en `001` y pasa el dígito verificador.

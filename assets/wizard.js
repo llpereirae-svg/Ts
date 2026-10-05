@@ -1,16 +1,16 @@
 /* Orquestador del registro — cuatro etapas y verificación de correo en Datos. */
-import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20261004a';
-import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20261005f';
-import { crearGateCliente } from './utils/cliente-gate.js?v=20261004a';
-import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20261004a';
-import { renderPantallaCliente } from './screens/screen-cliente.js?v=20261004a';
-import { crearGateAutorizacionEmisor } from './utils/issuer-authorization-gate.js?v=20261004a';
-import { ISSUER_AUTHORIZATION_STATE } from './services/issuer-authorization-service.js?v=20261004a';
-import { renderPantallaAutorizacionEmisor } from './screens/screen-emisor-autorizado.js?v=20261005n';
-import { precargarDatosSri } from './screens/screen-datos.js?v=20261005g';
-import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20261005g';
-import { TAX_DATA_STATUS } from './services/registration-contract.js?v=20261004a';
-import { completarDraft, guardarLogo, newIdempotencyKey } from './services/draft-service.js?v=20261004a';
+import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20261005p';
+import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20261005p';
+import { crearGateCliente } from './utils/cliente-gate.js?v=20261005p';
+import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20261005p';
+import { renderPantallaCliente } from './screens/screen-cliente.js?v=20261005p';
+import { crearGateAutorizacionEmisor } from './utils/issuer-authorization-gate.js?v=20261005p';
+import { ISSUER_AUTHORIZATION_STATE } from './services/issuer-authorization-service.js?v=20261005p';
+import { renderPantallaAutorizacionEmisor } from './screens/screen-emisor-autorizado.js?v=20261005p';
+import { precargarDatosSri } from './screens/screen-datos.js?v=20261005p';
+import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20261005p';
+import { TAX_DATA_STATUS } from './services/registration-contract.js?v=20261005p';
+import { completarDraft, guardarLogo, newIdempotencyKey } from './services/draft-service.js?v=20261005p';
 
 export const SCREENS = [
   { id: 'firma', label: 'Firma electrónica', title: 'Comencemos con tu firma electrónica', eyebrow: '', lead: '' },
@@ -215,7 +215,9 @@ export function buildSummarySections(data) {
     ] },
     { id: 'datos', title: 'Contacto', rows: [['Correo', data.email], ['Celular', formatCelular(data.celular, data.celularPais)]] },
     { id: 'facturacion', title: 'Facturación inicial', rows: [
-      ...facturacion.documentos.map(documento => [DOCUMENTOS[documento.tipo_documento] || documento.tipo_documento, codigo(documento)])
+      ...facturacion.documentos
+        .filter(documento => documento.tipo_documento === 'factura')
+        .map(documento => [DOCUMENTOS[documento.tipo_documento] || documento.tipo_documento, codigo(documento)])
     ] },
   ];
 }
@@ -234,7 +236,7 @@ export function renderSummary(body, data = wizardData) {
 async function finishWizard() {
   showLoading('Preparando tu registro…');
   try {
-    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20261004a');
+    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20261005p');
     if (!validateAntiBot().ok) throw new Error('No pudimos validar la sesión. Recarga la página e intenta de nuevo.');
     if (!wizardData.registrationId) throw new Error('La sesión de registro expiró. Vuelve a validar la firma.');
     wizardData.idempotencyKey ||= newIdempotencyKey();
@@ -244,7 +246,7 @@ async function finishWizard() {
         ? TAX_DATA_STATUS.PENDING_SRI_RECONCILIATION
         : TAX_DATA_STATUS.VERIFIED);
     hideLoading();
-    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20261005f');
+    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20261005p');
     const logoSelection = await mostrarPersonalizacionLogo({
       razonSocial: wizardData.razonSocial,
       email: wizardData.email,
@@ -315,17 +317,17 @@ export async function startWizard() {
   if (!root) return;
   mountWizard(root);
   const screensReady = Promise.all([
-    import('./screens/screen-firma.js?v=20261005f'), import('./screens/screen-datos.js?v=20261005g'),
-    import('./screens/screen-facturacion.js?v=20261005f'),
+    import('./screens/screen-firma.js?v=20261005p'), import('./screens/screen-datos.js?v=20261005p'),
+    import('./screens/screen-facturacion.js?v=20261005p'),
   ]).then(([firma, datos, facturacion]) => {
     registerScreen('firma', firma.renderPantallaFirma); setValidator('firma', firma.validarPantallaFirma);
     registerScreen('datos', datos.renderPantallaDatos); setValidator('datos', datos.validarPantallaDatos);
     registerScreen('facturacion', facturacion.renderPantallaFacturacion); setValidator('facturacion', facturacion.validarPantallaFacturacion);
     return [firma, datos, facturacion];
   });
-  const { mostrarRequisitosRegistro } = await import('./screens/preflight-dialog.js?v=20261005f');
+  const { mostrarRequisitosRegistro } = await import('./screens/preflight-dialog.js?v=20261005p');
   await mostrarRequisitosRegistro(screensReady);
-  const { startSession } = await import('./utils/anti-bot.js?v=20261004a'); startSession();
+  const { startSession } = await import('./utils/anti-bot.js?v=20261005p'); startSession();
   await screensReady;
   showScreen(0, { skipScroll: true });
 }

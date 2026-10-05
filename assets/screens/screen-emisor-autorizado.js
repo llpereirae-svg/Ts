@@ -1,4 +1,4 @@
-import { ISSUER_AUTHORIZATION_STATE } from '../services/issuer-authorization-service.js?v=20261004a';
+import { ISSUER_AUTHORIZATION_STATE } from '../services/issuer-authorization-service.js?v=20261005p';
 
 export function renderPantallaAutorizacionEmisor(body, result, { onRetry, onBack }) {
   const notAuthorized = result.status === ISSUER_AUTHORIZATION_STATE.NOT_AUTHORIZED;

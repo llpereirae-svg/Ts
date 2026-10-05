@@ -1,4 +1,4 @@
-import { verificarAutorizacionFacturacion } from './draft-service.js?v=20261004a';
+import { verificarAutorizacionFacturacion } from './draft-service.js?v=20261005p';
 
 export const ISSUER_AUTHORIZATION_STATE = Object.freeze({
   IDLE: 'IDLE',

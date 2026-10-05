@@ -2,6 +2,10 @@
 
 > **Estado del documento:** el contenido original de este handover describe el baseline V1 y se conserva como referencia histórica. No debe guiar una implementación nueva. El contrato vigente es V2 y está en `README.md`, `docs/REGISTRATION-FLOW.md` y, como autoridad backend, `docs/V2-BACKEND-HANDOFF.md`.
 
+> **Contrato de facturación V2:** `PUT /api/registro/drafts/{id}/billing` recibe directamente `{ modo, documentos }` con seis tipos en este orden: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`. Las rutas V1 descritas más abajo no sustituyen los endpoints de draft V2.
+
+URLs SRI para el backend: catastro por RUC `https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/ConsolidadoContribuyente/obtenerPorNumerosRuc?&ruc={ruc}`; autorización de emisor `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf`; validez puntual de un comprobante emitido `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf`. La consulta histórica de emitidos requiere sesión en SRI en Línea.
+
 ## Resumen vigente para TICS
 
 El wizard visible tiene cuatro pasos: Firma, Datos, Facturación y Revisión. El RUC se extrae de la firma y queda ligado al draft. Challenge y custodia vuelven a enviarlo solo para comprobar coincidencia; `client-check`, autorización de emisor y consulta SRI llevan body vacío y el backend usa el RUC autoritativo.

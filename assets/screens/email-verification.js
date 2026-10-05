@@ -1,6 +1,6 @@
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20261004a';
-import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261004a';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20261005p';
+import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261005p';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261005p';
 
 export function mensajeDestinoCorreo(email) {
   return `Te hemos enviado un código a ${String(email).trim()}. Tendrá una validez de 5 minutos.`;

@@ -34,8 +34,20 @@
       "id": "facturacion",
       "numero": 3,
       "titulo": "Información de facturación",
-      "pregunta": "¿Ya has emitido comprobantes electrónicos anteriormente?",
-      "peticion": "PUT /api/registro/drafts/{id}/billing"
+      "interfaz": "muestra y permite editar únicamente Factura; no pregunta si ya emitió comprobantes",
+      "peticion": "PUT /api/registro/drafts/{id}/billing",
+      "body": {
+        "modo": "nuevo",
+        "documentos": [
+          { "tipo_documento": "factura", "establecimiento": "001", "punto_emision": "002", "secuencia": "000000001" },
+          { "tipo_documento": "guia", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+          { "tipo_documento": "nc", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+          { "tipo_documento": "nd", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+          { "tipo_documento": "liquidacion", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+          { "tipo_documento": "retencion", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" }
+        ]
+      },
+      "regla": "el body no lleva wrapper; Factura conserva la edición y los otros cinco documentos usan 001/001/000000001"
     },
     {
       "id": "resumen",
@@ -45,6 +57,12 @@
       "accion": "POST /api/registro/drafts/{id}/complete con Idempotency-Key"
     }
   ],
+  "dependenciasSri": {
+    "catastroRuc": "https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/ConsolidadoContribuyente/obtenerPorNumerosRuc?&ruc={ruc}",
+    "emisorAutorizado": "https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf",
+    "comprobanteEmitidoPorClave": "https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf",
+    "historialEmitidos": "requiere sesión autenticada en SRI en Línea; no es un endpoint público del onboarding"
+  },
   "ruc": {
     "formato": "13 dígitos, terminación 001 y dígito verificador válido",
     "arquitectura": "frontend -> POST /api/registro/drafts/{id}/sri/lookup -> backend usa RUC autoritativo -> SRI",

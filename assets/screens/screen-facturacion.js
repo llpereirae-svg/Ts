@@ -1,6 +1,6 @@
-import { iniciarFacturacion, erroresFacturacion, DOCUMENTOS, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias, construirFacturacion } from '../utils/billing-data.js?v=20261005f';
-import { guardarFacturacion } from '../services/draft-service.js?v=20261004a';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
+import { iniciarFacturacion, erroresFacturacion, DOCUMENTOS, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias, construirFacturacion } from '../utils/billing-data.js?v=20261005p';
+import { guardarFacturacion } from '../services/draft-service.js?v=20261005p';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261005p';
 
 export function renderPantallaFacturacion(body, data) {
   iniciarFacturacion(data);

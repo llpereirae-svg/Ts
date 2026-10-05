@@ -1,7 +1,7 @@
 import {
   consultarAutorizacionEmisor,
   ISSUER_AUTHORIZATION_STATE,
-} from '../services/issuer-authorization-service.js?v=20261004a';
+} from '../services/issuer-authorization-service.js?v=20261005p';
 
 export function crearGateAutorizacionEmisor(lookup = consultarAutorizacionEmisor) {
   const sessions = new WeakMap();

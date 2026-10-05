@@ -23,7 +23,7 @@
  *   Meta NO deduplica y cuenta cada conversión dos veces.
  */
 
-import { ENABLE_PIXEL, META_DATASET_ID, nuevoEventId } from './config.js?v=20261004a';
+import { ENABLE_PIXEL, META_DATASET_ID, nuevoEventId } from './config.js?v=20261005p';
 
 const CONSENT_KEY = 'tributasoft_analytics_consent';
 

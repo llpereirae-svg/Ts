@@ -1,4 +1,4 @@
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261005p';
 
 export const LOGO_SPEC = Object.freeze({
   width: 2970,

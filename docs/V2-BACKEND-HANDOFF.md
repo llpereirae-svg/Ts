@@ -98,11 +98,41 @@ Estados terminales: `COMPLETED`, `EXPIRED`, `CANCELLED`. No son reutilizables.
 | PUT | `/api/registro/drafts/{id}/contact` | email, celular | 200 |
 | POST | `/api/registro/drafts/{id}/otp/email/send` | `{}` | 200 expiración/cooldown |
 | POST | `/api/registro/drafts/{id}/otp/email/verify` | PIN de 4 dígitos | 200 verificado |
-| PUT | `/api/registro/drafts/{id}/billing` | modo y documentos | 200 |
+| PUT | `/api/registro/drafts/{id}/billing` | `{ "modo": "nuevo", "documentos": [...] }` con los seis tipos contractuales | 200 |
 | POST | `/api/registro/drafts/{id}/complete` | `{}` + `Idempotency-Key` | 201 cuenta/token post-creación |
 | PUT | `/api/registro/accounts/{accountId}/logo` | bearer + multipart con archivo JPG/PNG | 200 persistido |
 
 Todos los endpoints responden JSON, `Cache-Control: no-store` y correlation ID. Los 429 incluyen `Retry-After` en segundos.
+
+### 4.1 Dependencias externas del SRI
+
+| Uso | URL externa | Integración |
+|---|---|---|
+| Catastro por RUC | `https://srienlinea.sri.gob.ec/sri-catastro-sujeto-servicio-internet/rest/ConsolidadoContribuyente/obtenerPorNumerosRuc?&ruc={ruc}` | Solo backend; configurar como `SRI_RUC_URL` y sustituir `{ruc}`. |
+| Emisor electrónico autorizado | `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf` | Solo backend: `GET` para cookie y `javax.faces.ViewState`, luego `POST` al mismo URL. Referencia: `server/emisor-autorizado.js`. |
+| Validez de comprobante emitido | `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf` | Consulta pública de un comprobante por clave de acceso; no forma parte del onboarding V2. |
+
+La consulta histórica de comprobantes emitidos de un contribuyente requiere sesión en SRI en Línea; no se documenta como API pública. El navegador no llama directamente a ninguna de estas dependencias.
+
+### 4.2 Contrato de facturación
+
+El body de `PUT /api/registro/drafts/{id}/billing` no lleva un wrapper adicional. La interfaz muestra únicamente Factura, pero siempre envía los seis documentos en este orden:
+
+```json
+{
+  "modo": "nuevo",
+  "documentos": [
+    { "tipo_documento": "factura", "establecimiento": "001", "punto_emision": "002", "secuencia": "000000001" },
+    { "tipo_documento": "guia", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+    { "tipo_documento": "nc", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+    { "tipo_documento": "nd", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+    { "tipo_documento": "liquidacion", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" },
+    { "tipo_documento": "retencion", "establecimiento": "001", "punto_emision": "001", "secuencia": "000000001" }
+  ]
+}
+```
+
+Factura conserva lo ingresado en pantalla. Los otros cinco se inicializan con `001 / 001 / 000000001`. Todos los valores son strings; el backend debe rechazar tipos faltantes, duplicados, fuera de orden o códigos `000`. El detalle está en `docs/PASO3-FACTURACION.md`.
 
 ## 5. Consentimiento
 
@@ -114,8 +144,8 @@ Request obligatorio al crear draft:
   "legalDocumentVersion": "REGISTRATION_V2_2026-10-05",
   "legalDocumentId": "TRIBUTASOFT_REGISTRATION_TERMS_PRIVACY_V2",
   "documentHashes": {
-    "termsSha256": "6c55d698ea7b6eafca80687e13965d4297950dfb3949e2a2dc1e057f70d002b2",
-    "privacySha256": "5979589c6f43bd20626ee2600767fe7e96cea2ec8177dba2f655cb8762d24ce5"
+    "termsSha256": "46e595f8ad910fb87e1a6f123c16c00fe52975ac5ce5bfe692c9f34efced9ff9",
+    "privacySha256": "d17eba4b5eb62950355f8c6dd089597dd94729056210eee0222416672458eb7d"
   }
 }
 ```
@@ -346,7 +376,7 @@ Errores nunca incluyen stack, SQL, filesystem, secretos, PKCS#12, OTP ni respues
 | Emisor autorizado | no existía | gate backend ligado al draft | Consulta pública JSF, caché y monitoreo |
 | SRI | consulta puntual | snapshot + fallback/reconciliación | Persistir fuente/estado |
 | OTP | mock/flujo separado | OTP ligado al draft | Servicio server-side |
-| Facturación | establecimiento compartido | alta inicial de Factura; configuración ampliada posterior en perfil | Persistencia y secuencia atómica |
+| Facturación | establecimiento compartido | pantalla de Factura con JSON inicial de seis documentos | Persistir y validar los seis tipos; secuencia atómica |
 | Alta | `POST /api/registro` | `/drafts/{id}/complete` | Transacción/idempotencia |
 | Logo | payload/preview sin persistencia | endpoint post-creación con archivo real | Validación y storage privado |
 | Consentimiento | implícito/final | evidencia al crear draft | Registro versionado/auditable |

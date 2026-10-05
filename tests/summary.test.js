@@ -51,7 +51,7 @@ test('overview no usa puntos medios para separar la numeración', async () => {
 
 test('facturación inicial muestra únicamente Factura sin controles adicionales', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
-  assert.match(source, /facturacion\.documentos\.map\(documento => \[DOCUMENTOS\[documento\.tipo_documento\]/);
+  assert.match(source, /facturacion\.documentos[\s\S]*\.filter\(documento => documento\.tipo_documento === 'factura'\)[\s\S]*\.map\(documento => \[DOCUMENTOS\[documento\.tipo_documento\]/);
   assert.doesNotMatch(source, /class="wiz-summary-toggle" aria-expanded="false"/);
   assert.match(source, /Todos los derechos reservados/);
 });

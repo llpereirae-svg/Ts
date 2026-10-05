@@ -1,5 +1,5 @@
-import { validarRUC } from '../utils/ruc-validation.js?v=20261004a';
-import { draftSecurityHeaders } from './draft-service.js?v=20261004a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20261005p';
+import { draftSecurityHeaders } from './draft-service.js?v=20261005p';
 
 export const RUC_RESULT = Object.freeze({
   OK: 'OK',

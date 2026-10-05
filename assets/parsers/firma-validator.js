@@ -14,9 +14,9 @@
 // clave y el archivo no se envían en el flujo actual. El backend productivo debe
 // verificar criptográficamente el certificado antes de confiar en la identidad.
 
-import { validarRUC } from '../utils/ruc-validation.js?v=20261004a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20261005p';
 
-const FORGE_ASSET = '/assets/node-forge-1.3.1.min.js?v=20261004a';
+const FORGE_ASSET = '/assets/node-forge-1.3.1.min.js?v=20261005p';
 
 let _forgePromise = null;
 

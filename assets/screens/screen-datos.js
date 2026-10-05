@@ -1,8 +1,8 @@
-import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20261004a';
-import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20261004a';
-import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261004a';
-import { solicitarVerificacionCorreo } from './email-verification.js?v=20261004a';
-import { confirmarDatosTributariosSri, guardarContacto, guardarDatosTributariosManuales } from '../services/draft-service.js?v=20261004a';
+import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20261005p';
+import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20261005p';
+import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261005p';
+import { solicitarVerificacionCorreo } from './email-verification.js?v=20261005p';
+import { confirmarDatosTributariosSri, guardarContacto, guardarDatosTributariosManuales } from '../services/draft-service.js?v=20261005p';
 
 let sectionListeners;
 

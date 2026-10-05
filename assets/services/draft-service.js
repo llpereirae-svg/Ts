@@ -1,7 +1,7 @@
 import {
   draftPath, LEGAL_DOCUMENT_HASHES, LEGAL_DOCUMENT_ID, LEGAL_DOCUMENT_VERSION,
   REGISTRATION_ERROR, SESSION_POLICY, SIGNATURE_ALGORITHM, TAX_DATA_SOURCE,
-} from './registration-contract.js?v=20261004a';
+} from './registration-contract.js?v=20261005p';
 
 const csrfTokens = new Map();
 

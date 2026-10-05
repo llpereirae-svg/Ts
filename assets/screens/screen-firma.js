@@ -1,9 +1,9 @@
-import { firmarChallengeP12, validarFirmaP12 } from '../parsers/firma-validator.js?v=20261004a';
-import { validarRUC } from '../utils/ruc-validation.js?v=20261004a';
-import { showLoading, hideLoading } from '../wizard.js?v=20261005f';
-import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20261004a';
-import { mostrarConsentimientoLegal } from './legal-consent-dialog.js?v=20261005f';
-import { cancelarDraft, crearChallenge, crearDraft, subirPaqueteCertificado, verificarChallenge } from '../services/draft-service.js?v=20261004a';
+import { firmarChallengeP12, validarFirmaP12 } from '../parsers/firma-validator.js?v=20261005p';
+import { validarRUC } from '../utils/ruc-validation.js?v=20261005p';
+import { showLoading, hideLoading } from '../wizard.js?v=20261005p';
+import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20261005p';
+import { mostrarConsentimientoLegal } from './legal-consent-dialog.js?v=20261005p';
+import { cancelarDraft, crearChallenge, crearDraft, subirPaqueteCertificado, verificarChallenge } from '../services/draft-service.js?v=20261005p';
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 let pendingFile = null;

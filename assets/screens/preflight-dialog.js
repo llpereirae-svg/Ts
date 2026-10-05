@@ -1,4 +1,4 @@
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261005p';
 
 const ICONS = Object.freeze({
   signature: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M9.5 14.5c1.2-2 2.3-3 3.2-3 .8 0 .5 2.4 1.3 2.4.5 0 1-.5 1.6-1.3M9 17h6"/></svg>',

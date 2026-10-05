@@ -1,4 +1,4 @@
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261005p';
 
 const DOCUMENTS = Object.freeze([
   { title: 'Términos y Condiciones', url: './Terminos-y-Condiciones.txt' },

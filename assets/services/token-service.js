@@ -43,9 +43,9 @@
  *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
  *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
-import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20261004a';
-import { enviarOtpEmail, verificarOtpEmail } from './draft-service.js?v=20261004a';
-import { OTP_LENGTH } from './registration-contract.js?v=20261004a';
+import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20261005p';
+import { enviarOtpEmail, verificarOtpEmail } from './draft-service.js?v=20261005p';
+import { OTP_LENGTH } from './registration-contract.js?v=20261005p';
 
 const usaMock = canal => USE_MOCKS || (canal === 'email' && DEV_EMAIL_TOKEN_MOCK);
 

@@ -109,6 +109,23 @@ test('documentación de entrada conserva las ramas y checkpoints V2 del RUC', as
   assert.doesNotMatch(machineText, /GET \/api\/ruc\/:ruc|POST \/api\/registro"/);
 });
 
+test('contrato de billing conserva los seis documentos y las dependencias SRI', async () => {
+  const [machineText, handoff, issuerAdapter] = await Promise.all([
+    read('flujo-registro.json'), read('docs/V2-BACKEND-HANDOFF.md'), read('server/emisor-autorizado.js'),
+  ]);
+  const machine = JSON.parse(machineText);
+  const billing = machine.pasos.find(step => step.id === 'facturacion');
+  assert.equal(billing.peticion, 'PUT /api/registro/drafts/{id}/billing');
+  assert.deepEqual(billing.body.documentos.map(doc => doc.tipo_documento), [
+    'factura', 'guia', 'nc', 'nd', 'liquidacion', 'retencion',
+  ]);
+  assert.deepEqual(billing.body.documentos.slice(1).map(doc => [doc.establecimiento, doc.punto_emision, doc.secuencia]),
+    Array(5).fill(['001', '001', '000000001']));
+  assert.match(handoff, /validezEmisor\.jsf/);
+  assert.match(handoff, /validezComprobantes\.jsf/);
+  assert.match(issuerAdapter, /validezEmisor\.jsf/);
+});
+
 test('límite PKCS#12 queda alineado en 8 MB', () => {
   assert.equal(validarFirmaArchivo({ name: 'firma.p12', size: 8 * 1024 * 1024 }).valid, true);
   assert.equal(validarFirmaArchivo({ name: 'firma.p12', size: 8 * 1024 * 1024 + 1 }).valid, false);
