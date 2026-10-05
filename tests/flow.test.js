@@ -22,9 +22,16 @@ test('razón social es readonly con SRI y editable solo en fallback manual decla
 
 test('la aceptación de términos y privacidad permanece obligatoria', async () => {
   const source = await readFile(new URL('../assets/screens/screen-firma.js', import.meta.url), 'utf8');
+  const dialog = await readFile(new URL('../assets/screens/legal-consent-dialog.js', import.meta.url), 'utf8');
   assert.match(source, /data\.terminos/);
   assert.match(source, /Política de Privacidad/);
   assert.match(source, /Debes aceptar los Términos/);
+  assert.match(source, /mostrarConsentimientoLegal/);
+  assert.match(dialog, /Desliza hasta el final/);
+  assert.match(dialog, /accept\.disabled = !reachedEnd/);
+  assert.match(dialog, /scrollTarget: scroll/);
+  assert.match(dialog, /Terminos-y-Condiciones\.txt/);
+  assert.match(dialog, /Politica-de-Privacidad\.txt/);
 });
 
 test('frontend consulta solo la API propia y contempla fallback seguro', async () => {

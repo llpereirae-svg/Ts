@@ -43,8 +43,9 @@
  *   Cuando el backend esté listo, reemplazar TODA la Capa 2 + simplificar
  *   la Capa 1 para que delegue al backend (ver ejemplo más abajo). */
 
-import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20260930c';
-import { enviarOtpEmail, verificarOtpEmail } from './draft-service.js?v=20260930c';
+import { BACKEND_URL, USE_MOCKS, DEV_EMAIL_TOKEN_MOCK } from './config.js?v=20261004a';
+import { enviarOtpEmail, verificarOtpEmail } from './draft-service.js?v=20261004a';
+import { OTP_LENGTH } from './registration-contract.js?v=20261004a';
 
 const usaMock = canal => USE_MOCKS || (canal === 'email' && DEV_EMAIL_TOKEN_MOCK);
 
@@ -181,8 +182,9 @@ export async function generarYEnviarToken({ canal, destino, registrationId = '' 
  * @returns {{ valid: boolean, error?: string, reason?: string }}
  */
 export async function verificarToken({ canal, destino, codigo, tokenEsperado, expiraEn, registrationId = '' }) {
-  if (!codigo || codigo.length !== TOKEN_LEN || !/^\d+$/.test(codigo)) {
-    return { valid: false, error: 'FORMATO', reason: `El código debe tener ${TOKEN_LEN} dígitos.` };
+  const expectedLength = registrationId ? OTP_LENGTH : TOKEN_LEN;
+  if (!codigo || codigo.length !== expectedLength || !/^\d+$/.test(codigo)) {
+    return { valid: false, error: 'FORMATO', reason: `El código debe tener ${expectedLength} dígitos.` };
   }
   if (expiraEn && new Date() > new Date(expiraEn)) {
     return { valid: false, error: 'EXPIRADO', reason: 'El código expiró. Pide uno nuevo.' };
@@ -219,5 +221,5 @@ export async function verificarToken({ canal, destino, codigo, tokenEsperado, ex
   return { valid: true };
 }
 
-export const TOKEN_LENGTH = TOKEN_LEN;
+export const TOKEN_LENGTH = OTP_LENGTH;
 export const TOKEN_TTL = TOKEN_TTL_MS;

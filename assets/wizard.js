@@ -1,17 +1,21 @@
 /* Orquestador del registro — cuatro etapas y verificación de correo en Datos. */
-import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20260930c';
-import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20260930c';
-import { crearGateCliente } from './utils/cliente-gate.js?v=20260930c';
-import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20260930c';
-import { renderPantallaCliente } from './screens/screen-cliente.js?v=20260930c';
-import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20260930c';
-import { TAX_DATA_STATUS } from './services/registration-contract.js?v=20260930c';
-import { completarDraft, guardarLogo, newIdempotencyKey } from './services/draft-service.js?v=20260930c';
+import { estadoSriPermiteContinuar, correoVerificado, LABEL_REGIMEN, LABEL_TIPO } from './utils/registration-data.js?v=20261004a';
+import { construirFacturacion, DOCUMENTOS } from './utils/billing-data.js?v=20261005f';
+import { crearGateCliente } from './utils/cliente-gate.js?v=20261004a';
+import { CLIENTE_ESTADO } from './services/cliente-service.js?v=20261004a';
+import { renderPantallaCliente } from './screens/screen-cliente.js?v=20261004a';
+import { crearGateAutorizacionEmisor } from './utils/issuer-authorization-gate.js?v=20261004a';
+import { ISSUER_AUTHORIZATION_STATE } from './services/issuer-authorization-service.js?v=20261004a';
+import { renderPantallaAutorizacionEmisor } from './screens/screen-emisor-autorizado.js?v=20261005n';
+import { precargarDatosSri } from './screens/screen-datos.js?v=20261005g';
+import { TRIBUTASOFT_LOGIN_URL } from './services/portal-config.js?v=20261005g';
+import { TAX_DATA_STATUS } from './services/registration-contract.js?v=20261004a';
+import { completarDraft, guardarLogo, newIdempotencyKey } from './services/draft-service.js?v=20261004a';
 
 export const SCREENS = [
   { id: 'firma', label: 'Firma electrónica', title: 'Comencemos con tu firma electrónica', eyebrow: '', lead: '' },
   { id: 'datos', label: 'Datos', title: 'Confirma tus datos', eyebrow: '', lead: '' },
-  { id: 'facturacion', label: 'Facturación', title: '¿Ya has emitido comprobantes electrónicos anteriormente?', eyebrow: '', lead: '' },
+  { id: 'facturacion', label: 'Facturación', title: 'Empecemos con tu configuración de facturación electrónica', eyebrow: '', lead: '' },
   { id: 'resumen', label: 'Revisión', title: 'Revisa y crea tu cuenta', eyebrow: '', lead: '' },
 ];
 
@@ -22,14 +26,16 @@ let currentIdx = 0;
 let onNavigateCb = null;
 let validatingDatos = false;
 const clienteGate = crearGateCliente();
+const issuerAuthorizationGate = crearGateAutorizacionEmisor();
 
 export const wizardData = {
   terminos: false, firma: null, rucManual: '', sriStatus: 'PENDING', sriSource: '', sriTechnicalStatus: '', sriAttempts: 0, sriLastAttemptAt: '', sriErrorCode: '', sriValidacionPendiente: false, sriAdvertencias: [],
   razonSocial: '', nombreComercial: '', actividadEconomica: '', estadoContribuyenteRuc: '',
   regimen: '', tipoContribuyente: '', obligadoLlevarContabilidad: '', noResolucion: '', representanteLegalDeclarado: '', direccion: '', provincia: '', ciudad: '',
   email: '', celular: '', celularPais: 'EC', tokenEmailOk: false,
-  modoFacturacion: 'nuevo', codEstablecimiento: '001', codPunto: '001', nombrePunto: 'Electrónicas', secuencias: {},
+  modoFacturacion: 'nuevo', codEstablecimiento: '001', codPunto: '002', nombrePunto: 'Electrónicas', secuencias: {},
   clienteGate: { status: CLIENTE_ESTADO.IDLE },
+  issuerAuthorization: { status: ISSUER_AUTHORIZATION_STATE.IDLE },
   accountTaxDataStatus: '',
   registrationId: '', identityStatus: '', certificatePackageStatus: '', idempotencyKey: '',
 };
@@ -43,7 +49,6 @@ export function mountWizard(root) {
         <div class="wiz-progress-track" id="wiz-progress-track"></div>
       </div>
       <div id="wiz-screens"></div>
-      <footer class="wiz-copyright"><p>© 2026 TributaSoft S.A.</p></footer>
     </div>
     <nav class="wiz-nav" id="wiz-nav" aria-label="Navegación del registro">
       <div class="wiz-nav-inner">
@@ -51,6 +56,7 @@ export function mountWizard(root) {
         <button type="button" class="btn btn--primary" id="wiz-next">Continuar</button>
       </div>
     </nav>
+    <footer class="wiz-copyright"><p>© 2026 TributaSoft S.A. Todos los derechos reservados.</p></footer>
     <div class="wiz-loading" id="wiz-loading" aria-hidden="true" role="status" aria-live="polite">
       <img src="./assets/Logo%20TributaSoft.png" alt="" class="wiz-loading-logo">
       <p class="wiz-loading-text" id="wiz-loading-text">Procesando…</p>
@@ -98,6 +104,20 @@ export async function goNext() {
         if (result.status !== CLIENTE_ESTADO.IDLE) showCliente(result);
         return;
       }
+      // Una vez confirmado que es nuevo cliente, ambas consultas independientes
+      // comienzan juntas. El backend conserva el RUC autoritativo del draft.
+      const sriPrefetch = precargarDatosSri(wizardData);
+      const authorization = await issuerAuthorizationGate.verificar(wizardData, state => {
+        if (state.status === ISSUER_AUTHORIZATION_STATE.CHECKING) showLoading('Verificando tu autorización para facturar...');
+      });
+      hideLoading();
+      if (authorization.status !== ISSUER_AUTHORIZATION_STATE.AUTHORIZED) {
+        if (authorization.status !== ISSUER_AUTHORIZATION_STATE.IDLE) showIssuerAuthorization(authorization);
+        return;
+      }
+      showLoading('Preparando tus datos tributarios...');
+      await sriPrefetch;
+      hideLoading();
     }
     if (currentIdx !== from) return;
   } finally { validatingDatos = false; }
@@ -115,7 +135,7 @@ export async function goTo(idOrIndex) {
 }
 
 async function transitionTo(index) {
-  if (index > 0 && !clienteGate.permite(wizardData)) {
+  if (index > 0 && (!clienteGate.permite(wizardData) || !issuerAuthorizationGate.permite(wizardData))) {
     showScreen(0);
     return;
   }
@@ -125,8 +145,9 @@ async function transitionTo(index) {
 }
 
 function showScreen(index, { skipScroll = false } = {}) {
-  if (index > 0 && !clienteGate.permite(wizardData)) index = 0;
+  if (index > 0 && (!clienteGate.permite(wizardData) || !issuerAuthorizationGate.permite(wizardData))) index = 0;
   document.getElementById('cliente-screen')?.remove();
+  document.getElementById('issuer-authorization-screen')?.remove();
   document.querySelectorAll('.wiz-screen').forEach((screen) => screen.classList.remove('is-active', 'is-leaving'));
   const config = SCREENS[index];
   document.body.dataset.wizardStep = config.id;
@@ -164,6 +185,20 @@ function showCliente(result) {
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
+function showIssuerAuthorization(result) {
+  document.querySelectorAll('.wiz-screen').forEach(screen => screen.classList.remove('is-active', 'is-leaving'));
+  document.body.dataset.wizardStep = 'issuer-authorization';
+  let section = document.getElementById('issuer-authorization-screen');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'issuer-authorization-screen';
+    section.setAttribute('aria-labelledby', 'cliente-heading');
+    document.getElementById('wizard').append(section);
+  }
+  renderPantallaAutorizacionEmisor(section, result, { onRetry: goNext, onBack: () => showScreen(0) });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
 export function buildSummarySections(data) {
   const facturacion = construirFacturacion(data);
   const codigo = documento => documento ? `${documento.establecimiento} - ${documento.punto_emision} - ${documento.secuencia}` : '—';
@@ -180,7 +215,6 @@ export function buildSummarySections(data) {
     ] },
     { id: 'datos', title: 'Contacto', rows: [['Correo', data.email], ['Celular', formatCelular(data.celular, data.celularPais)]] },
     { id: 'facturacion', title: 'Facturación inicial', rows: [
-      ['Inicio', facturacion.modo === 'continuar' ? 'Continuar numeración' : 'Empezar a facturar'],
       ...facturacion.documentos.map(documento => [DOCUMENTOS[documento.tipo_documento] || documento.tipo_documento, codigo(documento)])
     ] },
   ];
@@ -190,23 +224,17 @@ export function renderSummary(body, data = wizardData) {
   const sections = buildSummarySections(data);
   body.innerHTML = `
     ${data.sriValidacionPendiente ? '<div class="status-callout status-callout--warning" role="status"><strong>Validación SRI pendiente</strong><span>Podrás crear la cuenta, pero la emisión electrónica permanecerá bloqueada hasta que el SRI confirme la información tributaria.</span></div>' : ''}
-    <div class="wiz-summary">${sections.map((section) => `<section class="wiz-summary-section${section.id === 'facturacion' ? ' wiz-summary-section--billing is-collapsed' : ''}">
-      <header class="wiz-summary-section-header"><h3>${section.title}</h3><span class="wiz-summary-section-actions"><button type="button" class="wiz-summary-edit" data-edit="${section.id}">Editar</button>${section.id === 'facturacion' ? '<button type="button" class="wiz-summary-toggle" aria-expanded="false" aria-label="Mostrar facturación inicial"><span aria-hidden="true"></span></button>' : ''}</span></header>
+    <div class="wiz-summary">${sections.map((section) => `<section class="wiz-summary-section${section.id === 'facturacion' ? ' wiz-summary-section--billing' : ''}">
+      <header class="wiz-summary-section-header"><h3>${section.title}</h3><span class="wiz-summary-section-actions"><button type="button" class="wiz-summary-edit" data-edit="${section.id}">Editar</button></span></header>
       <dl class="wiz-summary-rows">${section.rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value || '—')}</dd></div>`).join('')}</dl>
     </section>`).join('')}</div>`;
   body.querySelectorAll('[data-edit]').forEach((button) => button.addEventListener('click', () => goTo(button.dataset.edit)));
-  body.querySelectorAll('.wiz-summary-toggle').forEach((button) => button.addEventListener('click', () => {
-    const section = button.closest('.wiz-summary-section--billing');
-    const expanded = section.classList.toggle('is-collapsed') === false;
-    button.setAttribute('aria-expanded', String(expanded));
-    button.setAttribute('aria-label', `${expanded ? 'Ocultar' : 'Mostrar'} facturación inicial`);
-  }));
 }
 
 async function finishWizard() {
   showLoading('Preparando tu registro…');
   try {
-    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20260930c');
+    const { validateAntiBot } = await import('./utils/anti-bot.js?v=20261004a');
     if (!validateAntiBot().ok) throw new Error('No pudimos validar la sesión. Recarga la página e intenta de nuevo.');
     if (!wizardData.registrationId) throw new Error('La sesión de registro expiró. Vuelve a validar la firma.');
     wizardData.idempotencyKey ||= newIdempotencyKey();
@@ -216,9 +244,11 @@ async function finishWizard() {
         ? TAX_DATA_STATUS.PENDING_SRI_RECONCILIATION
         : TAX_DATA_STATUS.VERIFIED);
     hideLoading();
-    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20260930c');
+    const { mostrarPersonalizacionLogo } = await import('./screens/post-create-logo.js?v=20261005f');
     const logoSelection = await mostrarPersonalizacionLogo({
       razonSocial: wizardData.razonSocial,
+      email: wizardData.email,
+      celular: wizardData.celular,
     });
     await guardarLogo({ accountId: registration.accountId, postCreateToken: registration.postCreateToken, selection: logoSelection });
     renderSuccess(wizardData.accountTaxDataStatus);
@@ -284,14 +314,19 @@ export async function startWizard() {
   const root = document.getElementById('wizard-root');
   if (!root) return;
   mountWizard(root);
-  const { startSession } = await import('./utils/anti-bot.js?v=20260930c'); startSession();
-  const [firma, datos, facturacion] = await Promise.all([
-    import('./screens/screen-firma.js?v=20260930c'), import('./screens/screen-datos.js?v=20260930c'),
-    import('./screens/screen-facturacion.js?v=20260930c'),
-  ]);
-  registerScreen('firma', firma.renderPantallaFirma); setValidator('firma', firma.validarPantallaFirma);
-  registerScreen('datos', datos.renderPantallaDatos); setValidator('datos', datos.validarPantallaDatos);
-  registerScreen('facturacion', facturacion.renderPantallaFacturacion); setValidator('facturacion', facturacion.validarPantallaFacturacion);
+  const screensReady = Promise.all([
+    import('./screens/screen-firma.js?v=20261005f'), import('./screens/screen-datos.js?v=20261005g'),
+    import('./screens/screen-facturacion.js?v=20261005f'),
+  ]).then(([firma, datos, facturacion]) => {
+    registerScreen('firma', firma.renderPantallaFirma); setValidator('firma', firma.validarPantallaFirma);
+    registerScreen('datos', datos.renderPantallaDatos); setValidator('datos', datos.validarPantallaDatos);
+    registerScreen('facturacion', facturacion.renderPantallaFacturacion); setValidator('facturacion', facturacion.validarPantallaFacturacion);
+    return [firma, datos, facturacion];
+  });
+  const { mostrarRequisitosRegistro } = await import('./screens/preflight-dialog.js?v=20261005f');
+  await mostrarRequisitosRegistro(screensReady);
+  const { startSession } = await import('./utils/anti-bot.js?v=20261004a'); startSession();
+  await screensReady;
   showScreen(0, { skipScroll: true });
 }
 

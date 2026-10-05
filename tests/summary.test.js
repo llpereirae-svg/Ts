@@ -18,11 +18,7 @@ test('overview compacto conserva solo información esencial y configuración ini
   const sections = buildSummarySections(data());
   assert.deepEqual(sections.map(section => section.title), ['Contribuyente', 'Información tributaria', 'Contacto', 'Facturación inicial']);
   assert.deepEqual(sections[0].rows, [['RUC', '9999999999001'], ['Razón social', 'EMPRESA EJEMPLO S.A.'], ['Nombre comercial', 'EJEMPLO']]);
-  assert.deepEqual(sections[3].rows, [
-    ['Inicio', 'Continuar numeración'],
-    ['Factura', '001 - 001 - 000000027'],
-    ['Nota de crédito', '001 - 002 - 000000003'],
-  ]);
+  assert.deepEqual(sections[3].rows, [['Factura', '001 - 001 - 000000027']]);
   assert.equal(sections.flatMap(section => section.rows).some(([label]) => label === 'Actividad'), false);
 });
 
@@ -50,13 +46,23 @@ test('CTA final y alta real conservan contrato y redirigen al portal configurado
 test('overview no usa puntos medios para separar la numeración', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\$\{documento\.establecimiento\} · \$\{documento\.punto_emision\} · \$\{documento\.secuencia\}/);
-  assert.match(buildSummarySections(data())[3].rows[1][1], /^001 - 001 - 000000027$/);
+  assert.match(buildSummarySections(data())[3].rows[0][1], /^001 - 001 - 000000027$/);
 });
 
-test('facturación inicial muestra cada secuencia y se pliega solo visualmente en móvil', async () => {
+test('facturación inicial muestra únicamente Factura sin controles adicionales', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
-  const css = await readFile(new URL('../assets/wizard.css', import.meta.url), 'utf8');
   assert.match(source, /facturacion\.documentos\.map\(documento => \[DOCUMENTOS\[documento\.tipo_documento\]/);
-  assert.match(source, /class="wiz-summary-toggle" aria-expanded="false"/);
-  assert.match(css, /@media \(max-width: 820px\)[\s\S]*?\.wiz-summary-section--billing\.is-collapsed \.wiz-summary-rows \{ display: none; \}/);
+  assert.doesNotMatch(source, /class="wiz-summary-toggle" aria-expanded="false"/);
+  assert.match(source, /Todos los derechos reservados/);
+});
+
+test('navegación móvil mantiene acciones equivalentes y el copyright cierra la pantalla', async () => {
+  const [source, css] = await Promise.all([
+    readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8'),
+    readFile(new URL('../assets/wizard.css', import.meta.url), 'utf8'),
+  ]);
+  assert.ok(source.indexOf('id="wiz-back"') < source.indexOf('id="wiz-next"'));
+  assert.ok(source.indexOf('id="wiz-nav"') < source.indexOf('class="wiz-copyright"'));
+  assert.match(css, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /#wiz-back,\s*body:is\(\[data-wizard-step="datos"\], \[data-wizard-step="facturacion"\]\) #wiz-next\s*\{[^}]*width:\s*100%[^}]*min-height:\s*54px/s);
 });

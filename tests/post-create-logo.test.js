@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildProvisionalLogoMarkup, detectImageMime, validateLogoFile, validateLogoMetadata, LOGO_SPEC } from '../assets/screens/post-create-logo.js';
+import { detectImageMime, drawProvisionalLogo, validateLogoFile, validateLogoMetadata, LOGO_SPEC } from '../assets/screens/post-create-logo.js';
 
 const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const jpeg = Uint8Array.from([255, 216, 255, 224, 0, 16]);
@@ -47,17 +47,28 @@ test('rechaza el sobre antes de intentar decodificar una imagen grande', async (
     else globalThis.createImageBitmap = previous;
   }
 });
-test('logo provisional muestra únicamente la razón social con contenido seguro', () => {
-  const markup = buildProvisionalLogoMarkup({
-    razonSocial: 'Empresa & Asociados',
-    email: 'contacto@ejemplo.com',
-    celular: '099-999-9999',
-  });
-  assert.match(markup, /post-logo-provisional-name/);
-  assert.match(markup, /Empresa &amp; Asociados/);
-  assert.doesNotMatch(markup, /contacto@ejemplo\.com/);
-  assert.doesNotMatch(markup, /099-999-9999/);
-  assert.equal((markup.match(/<svg/g) || []).length, 0);
+test('logo provisional dibuja razón social, correo y celular con iconos vectoriales', () => {
+  const painted = [];
+  const context = {
+    clearRect() {}, fillRect() {}, beginPath() {}, rect() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, stroke() {}, measureText: text => ({ width: text.length * 45 }),
+    fillText(text) { painted.push({ text, fillStyle: this.fillStyle, font: this.font }); },
+  };
+  const canvas = { getContext: () => context };
+  drawProvisionalLogo(canvas, 'EMPRESA & ASOCIADOS', { email: 'contacto@example.com', celular: '099 000 0000' });
+  assert.equal(painted[0].text, 'EMPRESA & ASOCIADOS');
+  assert.equal(painted[0].fillStyle, '#111827');
+  assert.match(painted[0].font, /Roboto Condensed/);
+  assert.equal(painted[1].text, 'contacto@example.com');
+  assert.equal(painted[2].text, '099 000 0000');
+  assert.equal(context.strokeStyle, '#0b2d6b');
+  assert.equal(LOGO_SPEC.maxBytes, 250 * 1024);
+});
+test('logo generado se envía como archivo multipart y no como instrucción provisional', async () => {
+  const source = await readFile(new URL('../assets/services/draft-service.js', import.meta.url), 'utf8');
+  assert.match(source, /form\.append\('logo', selection\.file/);
+  assert.match(source, /form\.append\('mode', 'upload'\)/);
+  assert.match(source, /selection\.generated \? 'generated' : 'user'/);
+  assert.doesNotMatch(source, /JSON\.stringify\(\{ mode: 'provisional' \}\)/);
 });
 test('personalización ocurre después del alta y antes de la redirección', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
@@ -65,4 +76,16 @@ test('personalización ocurre después del alta y antes de la redirección', asy
   const personalize = source.indexOf('await mostrarPersonalizacionLogo({');
   const redirect = source.indexOf('window.setTimeout(() => window.location.assign(TRIBUTASOFT_LOGIN_URL), 1600)');
   assert.ok(create >= 0 && personalize > create && redirect > personalize);
+});
+test('personalización evita metadatos redundantes y conserva acciones horizontales equivalentes', async () => {
+  const [source, css] = await Promise.all([
+    readFile(new URL('../assets/screens/post-create-logo.js', import.meta.url), 'utf8'),
+    readFile(new URL('../assets/wizard.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /Este es un logo pregenerado/);
+  assert.doesNotMatch(source, /Logo provisional · JPG/);
+  assert.ok(source.indexOf('Cargar mi logo') < source.indexOf('Continuar con este logo'));
+  assert.match(css, /\.post-logo-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
+  assert.match(css, /\.post-logo-actions \.btn\s*\{[^}]*box-sizing:\s*border-box[^}]*height:\s*54px[^}]*min-height:\s*54px[^}]*margin:\s*0/s);
+  assert.match(css, /\.post-logo-actions \.post-logo-continue\s*\{[^}]*box-shadow:\s*none/s);
 });

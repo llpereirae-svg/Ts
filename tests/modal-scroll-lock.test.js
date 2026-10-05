@@ -55,6 +55,21 @@ test('bloquea gestos de fondo y rebote, permite scroll interno y zoom', () => {
   assert.equal(move('outside', 80, 2), false);
   release();
 });
+test('permite desplazar un contenedor interno del diálogo en móvil', () => {
+  const env = environment();
+  const nested = { scrollTop: 20, clientHeight: 240, scrollHeight: 900, contains: target => target === 'legal-text' };
+  env.dialog.contains = target => target === 'legal-text' || target === 'dialog-header';
+  const release = lockModalScroll(env.dialog, { ...env, scrollTarget: nested });
+  let prevented = false;
+  env.events.get('touchstart')({ touches: [{ clientY: 200 }] });
+  env.events.get('touchmove')({ target: 'legal-text', touches: [{ clientY: 120 }], preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, false);
+  prevented = false;
+  env.events.get('touchstart')({ touches: [{ clientY: 200 }] });
+  env.events.get('touchmove')({ target: 'dialog-header', touches: [{ clientY: 120 }], preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, true);
+  release();
+});
 test('sigue el viewport visual móvil y limpia resize/scroll al cerrar', () => {
   const env = environment();
   const visualEvents = new Map();

@@ -1,8 +1,8 @@
-import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20260930c';
-import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20260930c';
-import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260930c';
-import { solicitarVerificacionCorreo } from './email-verification.js?v=20260930c';
-import { confirmarDatosTributariosSri, guardarContacto, guardarDatosTributariosManuales } from '../services/draft-service.js?v=20260930c';
+import { consultarRuc, RUC_RESULT } from '../services/ruc-service.js?v=20261004a';
+import { validarEmail, validarCelular, validarNoResolucion } from '../utils/validators.js?v=20261004a';
+import { LABEL_REGIMEN, LABEL_TIPO, LABEL_OBLIGADO, sincronizarResolucion, aplicarDatosSri, activarCapturaSriManual, esModoManualSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261004a';
+import { solicitarVerificacionCorreo } from './email-verification.js?v=20261004a';
+import { confirmarDatosTributariosSri, guardarContacto, guardarDatosTributariosManuales } from '../services/draft-service.js?v=20261004a';
 
 let sectionListeners;
 
@@ -32,7 +32,7 @@ export function renderPantallaDatos(body, data) {
   paintSectionSummaries(body, data);
   paintStatus(body, data);
   paintWarnings(body, data.sriAdvertencias);
-  if (data.sriStatus === 'PENDING') runLookup(body, data);
+  if (data.sriStatus === 'PENDING' || data.sriStatus === 'LOADING') runLookup(body, data);
 }
 
 function wireFields(root, data, body) {
@@ -133,31 +133,47 @@ function setupSections(body) {
   sync();
 }
 
-async function runLookup(body, data) {
-  data.sriStatus = 'LOADING';
-  paintStatus(body, data);
+export function precargarDatosSri(data) {
+  prefillFromSignature(data);
   const requestedRuc = data.rucManual;
-  const requestId = data._rucRequestId = (data._rucRequestId || 0) + 1;
-  const result = await consultarRuc(requestedRuc, { registrationId: data.registrationId });
-  if (data.rucManual !== requestedRuc || data._rucRequestId !== requestId) return;
-  data.sriAttempts = result.attempts || (result.status === RUC_RESULT.OK || result.status === RUC_RESULT.NOT_FOUND ? 1 : 0);
-  data.sriLastAttemptAt = new Date().toISOString();
-  data.sriErrorCode = result.errorCode || '';
-  data.sriStatus = result.status;
-  if (result.status === RUC_RESULT.OK) {
-    aplicarDatosSri(data, result.data, requestedRuc);
-    syncFields(body, data);
-  } else if (result.status === RUC_RESULT.UNAVAILABLE && result.attempts >= 3 && result.errorCode === 'SRI_UNAVAILABLE') {
-    activarCapturaSriManual(data, { attempts: result.attempts, errorCode: result.errorCode, attemptedAt: data.sriLastAttemptAt });
-    data.sriAdvertencias = [];
-    syncFields(body, data);
-  } else if (result.status === RUC_RESULT.UNAVAILABLE) {
-    data.sriValidacionPendiente = true;
-    data.sriAdvertencias = [];
-  } else {
-    data.sriValidacionPendiente = false;
+  if (data._sriLookupPromise && data._sriLookupRuc === requestedRuc) return data._sriLookupPromise;
+  if (data._sriRuc === requestedRuc && data.sriStatus !== 'PENDING' && data.sriStatus !== 'LOADING') {
+    return Promise.resolve(data.sriStatus);
   }
-  data.sriReason = result.reason || '';
+  data.sriStatus = 'LOADING';
+  data._sriLookupRuc = requestedRuc;
+  const requestId = data._rucRequestId = (data._rucRequestId || 0) + 1;
+  data._sriLookupPromise = (async () => {
+    const result = await consultarRuc(requestedRuc, { registrationId: data.registrationId });
+    if (data.rucManual !== requestedRuc || data._rucRequestId !== requestId) return data.sriStatus;
+    data.sriAttempts = result.attempts || (result.status === RUC_RESULT.OK || result.status === RUC_RESULT.NOT_FOUND ? 1 : 0);
+    data.sriLastAttemptAt = new Date().toISOString();
+    data.sriErrorCode = result.errorCode || '';
+    data.sriStatus = result.status;
+    if (result.status === RUC_RESULT.OK) {
+      aplicarDatosSri(data, result.data, requestedRuc);
+    } else if (result.status === RUC_RESULT.UNAVAILABLE && result.attempts >= 3 && result.errorCode === 'SRI_UNAVAILABLE') {
+      activarCapturaSriManual(data, { attempts: result.attempts, errorCode: result.errorCode, attemptedAt: data.sriLastAttemptAt });
+      data.sriAdvertencias = [];
+    } else if (result.status === RUC_RESULT.UNAVAILABLE) {
+      data.sriValidacionPendiente = true;
+      data.sriAdvertencias = [];
+    } else {
+      data.sriValidacionPendiente = false;
+    }
+    data.sriReason = result.reason || '';
+    return data.sriStatus;
+  })().finally(() => {
+    if (data._rucRequestId === requestId) data._sriLookupPromise = null;
+  });
+  return data._sriLookupPromise;
+}
+
+async function runLookup(body, data) {
+  paintStatus(body, data);
+  await precargarDatosSri(data);
+  if (!body.isConnected) return;
+  if ([RUC_RESULT.OK, 'MANUAL_PENDING'].includes(data.sriStatus)) syncFields(body, data);
   paintStatus(body, data);
   paintWarnings(body, data.sriAdvertencias);
 }

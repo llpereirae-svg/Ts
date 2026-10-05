@@ -5,9 +5,9 @@ Landing estática en HTML, CSS y JavaScript ES modules con un flujo responsive d
 ## Flujo de registro
 
 1. **Firma:** lee `.p12` o `.pfx` localmente con `node-forge`, valida el RUC, crea un draft, firma un challenge y entrega el paquete al backend para custodia temporal. La clave privada nunca sale del navegador; archivo y contraseña se eliminan de memoria después del upload confirmado.
-2. **Gate de cliente:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, consulta SRI; un fallo persistente tras tres intentos habilita `MANUAL_ENTRY` y cuenta restringida.
-3. **Datos:** muestra snapshot SRI o captura manual identificada, contacto y OTP de correo ligados al draft.
-4. **Facturación:** configuración por documento, Factura obligatoria y adicionales opcionales. Véase `docs/PASO3-FACTURACION.md`.
+2. **Gates previos:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, exige que figure como emisor electrónico autorizado antes de consultar sus datos tributarios.
+3. **Datos:** consulta el catastro SRI; muestra snapshot oficial o captura manual identificada tras tres fallos transitorios, contacto y OTP ligados al draft.
+4. **Facturación:** configuración inicial de Factura; otros documentos, establecimientos y puntos se administran después desde el perfil. Véase `docs/PASO3-FACTURACION.md`.
 5. **Revisión:** resume identidad, datos tributarios, contacto y facturación antes del alta. Son cuatro pasos visibles; el gate no es un quinto paso.
 
 ```text
@@ -19,14 +19,19 @@ Challenge backend + verificación criptográfica
   ├─ cliente existente → pantalla específica → Portal TributaSoft (clic)
   └─ nuevo cliente
         ↓
-      POST /api/registro/drafts/{id}/sri/lookup
-        ├─ SRI verificado
-        └─ 3 fallos transitorios → MANUAL_ENTRY / cuenta restringida
+      Consultas paralelas sobre el RUC autoritativo del draft
+        ├─ POST .../issuer-authorization/check
+        │    ├─ autorizado → habilita continuar
+        │    ├─ no autorizado → guía de autoservicio y bloqueo
+        │    └─ indisponible → reintentar, sin asumir resultado
+        └─ POST .../sri/lookup
+             ├─ SRI verificado y precargado
+             └─ 3 fallos transitorios → MANUAL_ENTRY / cuenta restringida
         ↓
       Datos + OTP → Facturación → Revisión → complete idempotente
 ```
 
-Ser cliente de TributaSoft y tener RUC ACTIVO en SRI son controles distintos, en ese orden. Un cliente existente nunca necesita consultar el SRI dentro de esta promoción.
+Ser cliente, figurar como emisor electrónico autorizado y tener RUC ACTIVO son tres controles distintos. El gate de cliente se resuelve primero; para un cliente nuevo, las otras dos consultas son independientes y paralelas. Un cliente existente no las ejecuta dentro de esta promoción.
 
 ### Cliente existente
 
@@ -44,6 +49,9 @@ La asociación `registrationId + sesión + RUC` y el rate limiting están defini
 
 ```powershell
 $env:DEV_CLIENT_LOOKUP_MOCK='1'
+$env:DEV_ISSUER_AUTHORIZATION_MOCK='by_ruc' # 'authorized' y 'not_authorized' siguen disponibles para un estado global
+# En by_ruc, solo este caso muestra el estado guiado; los demás quedan autorizados.
+$env:DEV_ISSUER_NOT_AUTHORIZED_RUC=Read-Host 'RUC de prueba sin autorización SRI'
 $env:DEV_CLIENT_LOOKUP_EXISTING_RUC=Read-Host 'RUC autorizado solo para este proceso'
 $env:DEV_ALLOWED_ORIGIN='https://subdominio-8000.use.devtunnels.ms' # solo si se usa un túnel
 npm start
@@ -51,7 +59,7 @@ npm start
 
 No hay DB, archivos de respuestas ni logs de RUC. Respuestas con Cache-Control: no-store. Para integrar backend real, implementar/reverse-proxy el endpoint propio y desactivar el mock.
 
-Demo y localhost muestran expresamente que no envían correos y presentan el código de prueba en el modal. `DEV_EMAIL_TOKEN_MOCK` activa únicamente el correo en desarrollo; no cambia SRI, el gate de cliente, SMS ni el alta. Producción conserva envío/verificación por backend y falla cerrado si no responde. El código de prueba conserva formato, caducidad y coincidencia; el correo verificado se vincula a la dirección exacta y se invalida al editarla.
+El tutorial local usa el PIN `1234` sin mostrar etiquetas técnicas en la interfaz. Producción genera y verifica el OTP en backend y nunca lo devuelve al frontend. El correo verificado se vincula a la dirección exacta y se invalida al editarla.
 
 ## Arquitectura RUC
 
@@ -112,6 +120,7 @@ Esta variable es solo de proceso local. En producción el backend configura el u
 | `/api/registro/drafts/{id}/signature-challenges...` | Challenge y prueba de posesión | Cableado; PKI real es backend-required |
 | `POST /api/registro/drafts/{id}/certificate-package` | Custodia temporal | Cableado; cifrado/KMS real es backend-required |
 | `POST /api/registro/drafts/{id}/client-check` | Gate comercial | Cableado y mock contractual |
+| `POST /api/registro/drafts/{id}/issuer-authorization/check` | Gate de emisor electrónico autorizado | Cableado; consulta real exclusivamente backend |
 | `POST /api/registro/drafts/{id}/sri/lookup` | Proxy SRI | Cableado con tres intentos/fallback |
 | `PUT /api/registro/drafts/{id}/tax-data` | `MANUAL_ENTRY` o `SRI_CONFIRMATION` | Cableado y mock contractual |
 | `.../contact`, `.../otp/email/*`, `.../billing` | Contacto, OTP y facturación | Cableado y mock contractual |
@@ -127,9 +136,9 @@ Política cerrada para indisponibilidad persistente del SRI: después de tres in
 
 ### Personalización post-creación
 
-Después de un alta confirmada, el frontend llama `PUT /api/registro/accounts/{accountId}/logo` con el bearer post-creación de 10 minutos. El upload acepta JPG/JPEG o PNG, máximo 500 KB, y el backend valida/re-encodea antes de persistir en storage privado.
+Después de un alta confirmada, el frontend llama `PUT /api/registro/accounts/{accountId}/logo` con el bearer post-creación de 10 minutos. El upload acepta JPG/JPEG o PNG, máximo 250 KB, y el backend valida/re-encodea antes de persistir en storage privado. Si el usuario no aporta una imagen, el navegador genera un JPG de 2,970 × 300 px con la razón social en Roboto Condensed Light y lo envía por el mismo multipart; el backend siempre recibe un archivo real.
 
-Si no se carga una imagen, el backend genera y persiste un provisional de 2,970 × 300, fondo blanco, razón social únicamente, color negro y Roboto Condensed Light. No incluye email, celular ni iconos.
+El JPG provisional conserva fondo blanco y presenta la razón social en negro con Roboto Condensed Light. Debajo incluye el correo y celular registrados con iconos lineales; la imagen resultante se envía al backend por multipart.
 
 ## Responsabilidades de arquitectura
 
@@ -145,7 +154,7 @@ UX, validación local de firma y formato/dígito de RUC, consumo de endpoints pr
 4. Custodiar PKCS#12 y contraseña mediante envelope encryption y KMS/Vault.
 5. Implementar lookup cliente y SRI con queries parametrizadas, anti-enumeración y reconciliación.
 6. Implementar OTP server-side, complete transaccional/idempotente y secuencias atómicas.
-7. Persistir logo subido o generar el provisional definitivo.
+7. Validar y persistir el archivo de logo recibido, incluido el JPG provisional generado por el frontend.
 8. Mantener mocks y excepciones de Dev Tunnel fuera de producción.
 
 ### Proxy SRI

@@ -39,6 +39,8 @@ function identify(api) {
   assert.equal(api.verifyChallenge(id, challenge.body.challengeId, proof, context).status, 200);
   assert.equal(api.uploadCertificate(id, { file: { name: 'firma.p12', size: 128, type: 'application/x-pkcs12' }, password: 'secreto' }, context).status, 201);
   assert.equal(api.clientCheck(id, context).body.esCliente, false);
+  assert.equal(api.beginIssuerAuthorizationCheck(id, context).status, 200);
+  assert.equal(api.storeIssuerAuthorization(id, { ruc, authorized: true, checkedAt: new Date().toISOString() }, context).body.status, 'AUTHORIZED');
   return { ...created, challenge, proof };
 }
 function markSriUnavailable(api, id, context) {
@@ -51,6 +53,7 @@ function completeManual(api) {
   assert.equal(api.storeSri(id, { source: TAX_DATA_SOURCE.MANUAL_ENTRY, status: 'MANUAL_PENDING', declared: manualDeclared }, context).status, 200);
   assert.equal(api.storeContact(id, { email: 'persona@example.com', celular: '0991234567' }, context).status, 200);
   const sent = api.sendOtp(id, context);
+  assert.equal(sent.body.devCode, '1234');
   assert.equal(api.verifyOtp(id, { codigo: sent.body.devCode }, context).status, 200);
   assert.equal(api.storeBilling(id, billing, context).status, 200);
   const completed = api.complete(id, 'idempotency-test-1', context);
@@ -91,6 +94,22 @@ test('SRI_PENDING entra por lookup, sale por MANUAL_ENTRY y CANCELLED destruye e
   assert.equal(api.cancelDraft(id, context).body.status, 'CANCELLED');
   assert.equal(api._drafts.get(id).certificatePackage, null);
   assert.equal(api.createChallenge(id, { algorithm: SIGNATURE_ALGORITHM }, context).body.error, 'DRAFT_CANCELLED');
+});
+
+test('SRI se precarga en paralelo, pero autorización sigue siendo gate obligatorio', () => {
+  const api = setup(); const created = create(api); const { id, context } = created;
+  const challenge = api.createChallenge(id, { algorithm: SIGNATURE_ALGORITHM }, context);
+  const proof = { algorithm: SIGNATURE_ALGORITHM, ruc, signatureBase64Url: 'c2ln', certificateDerBase64: 'Y2VydA==' };
+  api.verifyChallenge(id, challenge.body.challengeId, proof, context);
+  api.uploadCertificate(id, { file: { name: 'firma.p12', size: 128 }, password: 'secreto' }, context);
+  api.clientCheck(id, context);
+  assert.equal(api.beginSriLookup(id, context).body.status, 'SRI_PENDING');
+  assert.equal(api.beginIssuerAuthorizationCheck(id, context).status, 200);
+  const denied = api.storeIssuerAuthorization(id, { ruc, authorized: false }, context);
+  assert.equal(denied.body.status, 'NOT_AUTHORIZED');
+  assert.equal(denied.body.code, 'ISSUER_AUTHORIZATION_REQUIRED');
+  assert.equal(api.beginIssuerAuthorizationCheck(id, context).status, 200);
+  assert.equal(api.storeIssuerAuthorization(id, { ruc, authorized: true }, context).body.status, 'AUTHORIZED');
 });
 
 test('/tax-data separa SRI_CONFIRMATION de MANUAL_ENTRY', () => {
@@ -145,15 +164,14 @@ test('rate limits contractuales devuelven 429 y Retry-After', () => {
   assert.ok(limited.retryAfter > 0);
 });
 
-test('logo provisional cumple dimensiones, tipografía y contenido cerrados', () => {
+test('endpoint de logo persiste el archivo enviado y rechaza instrucciones sin imagen', () => {
   const api = setup(); const { completed } = completeManual(api);
-  const stored = api.storeLogo(completed.body.accountId, completed.body.postCreateToken, { mode: 'provisional' }, { local: true, ip: '127.0.0.1' });
+  const stored = api.storeLogo(completed.body.accountId, completed.body.postCreateToken, { mode: 'upload' }, { local: true, ip: '127.0.0.1' });
   assert.equal(stored.status, 200);
   const logo = api._accounts.get(completed.body.accountId).logo;
-  assert.equal(logo.width, LOGO_CONTRACT.width);
-  assert.equal(logo.height, LOGO_CONTRACT.height);
-  assert.equal(logo.font, 'Roboto Condensed Light');
-  assert.equal(logo.content, 'RAZON_SOCIAL_ONLY');
+  assert.equal(logo.mode, 'upload');
+  assert.equal(api.storeLogo(completed.body.accountId, completed.body.postCreateToken, { mode: 'provisional' }, { local: true, ip: '127.0.0.1' }).status, 422);
+  assert.equal(LOGO_CONTRACT.maxBytes, 250 * 1024);
 });
 
 test('complete rechaza drafts incompletos y facturación inválida', () => {

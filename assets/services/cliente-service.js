@@ -1,6 +1,6 @@
-import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
-import { TRIBUTASOFT_LOGIN_URL } from './portal-config.js?v=20260930c';
-import { draftSecurityHeaders } from './draft-service.js?v=20260930c';
+import { validarRUC } from '../utils/ruc-validation.js?v=20261004a';
+import { TRIBUTASOFT_LOGIN_URL } from './portal-config.js?v=20261004a';
+import { draftSecurityHeaders } from './draft-service.js?v=20261004a';
 
 export const CLIENTE_ESTADO = Object.freeze({ IDLE: 'IDLE', CHECKING: 'CHECKING', NEW_CLIENT: 'NEW_CLIENT', EXISTING_CLIENT: 'EXISTING_CLIENT', ERROR: 'ERROR' });
 export const CLIENTE_ERROR = 'No pudimos verificar tu registro en este momento.';

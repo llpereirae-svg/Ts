@@ -1,9 +1,9 @@
 export const REGISTRATION_CONTRACT_VERSION = 'v2';
-export const LEGAL_DOCUMENT_VERSION = 'REGISTRATION_V2_2026-09-30';
+export const LEGAL_DOCUMENT_VERSION = 'REGISTRATION_V2_2026-10-05';
 export const LEGAL_DOCUMENT_ID = 'TRIBUTASOFT_REGISTRATION_TERMS_PRIVACY_V2';
 export const LEGAL_DOCUMENT_HASHES = Object.freeze({
-  termsSha256: '1b2a36395a997b6daa6ac516b077fcb001084d4fc836d50703a263b3913ba1a6',
-  privacySha256: 'd0482a2c9bd659d30ed5e739a5f1ed0c777818d590f1b489e3f1b22b3bfd5dde',
+  termsSha256: '6c55d698ea7b6eafca80687e13965d4297950dfb3949e2a2dc1e057f70d002b2',
+  privacySha256: '5979589c6f43bd20626ee2600767fe7e96cea2ec8177dba2f655cb8762d24ce5',
 });
 
 export const DRAFT_STATUS = Object.freeze({
@@ -29,6 +29,13 @@ export const TAX_DATA_SOURCE = Object.freeze({
   SRI_CONFIRMATION: 'SRI_CONFIRMATION',
 });
 
+export const ISSUER_AUTHORIZATION_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  AUTHORIZED: 'AUTHORIZED',
+  NOT_AUTHORIZED: 'NOT_AUTHORIZED',
+  UNAVAILABLE: 'UNAVAILABLE',
+});
+
 export const RECONCILIATION_OUTCOME = Object.freeze({
   AUTO_RECONCILED: 'AUTO_RECONCILED',
   REQUIRES_USER_CONFIRMATION: 'REQUIRES_USER_CONFIRMATION',
@@ -49,6 +56,8 @@ export const CONTRACT_TTL = Object.freeze({
   cleanupMs: 5 * 60 * 1000,
   postCreateTokenMs: 10 * 60 * 1000,
 });
+
+export const OTP_LENGTH = 4;
 
 export const SESSION_POLICY = Object.freeze({
   cookieName: '__Host-ts_registration_session',
@@ -92,6 +101,7 @@ export const RATE_LIMIT_POLICY = Object.freeze({
   draftCreate: limit(5, 900, ['IP']),
   draftCreateByRuc: limit(3, 3600, ['RUC']),
   clientCheck: limit(5, 600, ['DRAFT', 'RUC', 'IP']),
+  issuerAuthorizationCheck: limit(4, 900, ['DRAFT', 'RUC', 'IP']),
   sriLookup: limit(4, 900, ['DRAFT', 'RUC', 'IP']),
   challengeCreate: limit(5, 600, ['DRAFT', 'IP']),
   challengeVerify: limit(5, 600, ['DRAFT', 'IP']),
@@ -107,9 +117,11 @@ export const RATE_LIMIT_POLICY = Object.freeze({
 export const LOGO_CONTRACT = Object.freeze({
   width: 2970,
   height: 300,
+  generatedMimeType: 'image/jpeg',
+  generationOwner: 'FRONTEND',
   provisionalFont: 'Roboto Condensed Light',
-  provisionalContent: 'RAZON_SOCIAL_ONLY',
-  maxBytes: 500 * 1024,
+  provisionalContent: 'RAZON_SOCIAL_EMAIL_CELULAR_WITH_ICONS',
+  maxBytes: 250 * 1024,
   mimeTypes: Object.freeze(['image/jpeg', 'image/png']),
 });
 
@@ -131,6 +143,8 @@ export const REGISTRATION_ERROR = Object.freeze({
   CERTIFICATE_STATUS_UNAVAILABLE: 'CERTIFICATE_STATUS_UNAVAILABLE',
   CERTIFICATE_PACKAGE_REQUIRED: 'CERTIFICATE_PACKAGE_REQUIRED',
   CLIENT_CHECK_REQUIRED: 'CLIENT_CHECK_REQUIRED',
+  ISSUER_AUTHORIZATION_REQUIRED: 'ISSUER_AUTHORIZATION_REQUIRED',
+  ISSUER_AUTHORIZATION_UNAVAILABLE: 'ISSUER_AUTHORIZATION_UNAVAILABLE',
   SRI_DATA_REQUIRED: 'SRI_DATA_REQUIRED',
   CONTACT_NOT_VERIFIED: 'CONTACT_NOT_VERIFIED',
   BILLING_REQUIRED: 'BILLING_REQUIRED',
@@ -168,6 +182,7 @@ export const ERROR_HTTP_STATUS = Object.freeze({
   CERTIFICATE_REVOKED: 422, CERTIFICATE_STATUS_UNAVAILABLE: 503,
   CHALLENGE_EXPIRED: 410, CHALLENGE_ALREADY_USED: 409,
   CERTIFICATE_PACKAGE_REQUIRED: 409, CLIENT_CHECK_REQUIRED: 409,
+  ISSUER_AUTHORIZATION_REQUIRED: 409, ISSUER_AUTHORIZATION_UNAVAILABLE: 503,
   SRI_DATA_REQUIRED: 409, CONTACT_NOT_VERIFIED: 409, BILLING_REQUIRED: 409,
   CONSENT_REQUIRED: 409,
   DRAFT_NOT_FOUND: 404, DRAFT_EXPIRED: 410, INVALID_DRAFT_STATE: 409,

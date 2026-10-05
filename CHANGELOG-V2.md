@@ -7,7 +7,7 @@ Versión candidata propuesta: `v2.0.0`. Este documento no crea tag, release, mer
 - Wizard mobile-first de cuatro pasos: Firma, Datos, Facturación y Revisión.
 - Lectura local de firma `.p12`/`.pfx`, extracción del RUC y gate previo de cliente existente.
 - Consulta SRI mediante API propia, RUC ACTIVO como condición de avance y datos de contacto con verificación de correo integrada.
-- Facturación inicial por tipo de documento, con Factura obligatoria y cinco tipos adicionales.
+- Facturación inicial simplificada a Factura, con valores sugeridos editables; las configuraciones adicionales quedan para el perfil.
 - Resumen final editable, alta mediante `POST /api/registro/drafts/{id}/complete`, personalización de logo persistente y redirección al portal configurado.
 - Mocks locales explícitos, sin persistencia, protegidos por entorno y allowlist exacta para Dev Tunnels.
 - Cobertura automatizada del flujo, validaciones, mocks, compatibilidad de facturación y componentes auxiliares.
@@ -25,9 +25,12 @@ Versión candidata propuesta: `v2.0.0`. Este documento no crea tag, release, mer
 - Se cerró la política `MANUAL_PENDING_POLICY=RESTRICTED_ACCOUNT`: el alta y el login se permiten, la cuenta queda en `PENDING_SRI_RECONCILIATION`, se bloquean emisión y funciones tributarias dependientes, y las funciones no tributarias siguen disponibles hasta reconciliar con SRI.
 - El frontend V2 quedó cableado a un draft server-side con challenge criptográfico single-use, custodia temporal del PKCS#12, OTP/SRI/facturación ligados al `registrationId`, alta idempotente y persistencia post-creación del logo.
 - `noResolucion` se incorporó al payload y se valida también en el mock de alta.
-- El OTP de correo pasó a seis dígitos y el generador local exige `crypto.getRandomValues`.
+- El PIN de correo del flujo de registro usa cuatro dígitos; el mock tutorial entrega siempre `1234` sin mensajes técnicos en pantalla.
+- El registro muestra un aviso inicial responsive con los requisitos de firma, autorización para facturar en el SRI y logo.
+- Los nuevos clientes deben superar un gate backend adicional que confirma que el RUC figura como emisor electrónico autorizado; un resultado negativo o una consulta no verificable bloquean el avance sin confundirse entre sí.
+- El logo provisional se genera como JPG real de 2,970 × 300 px, máximo 250 KB, y se envía al backend por multipart.
 - Se cerraron sesión HttpOnly/CSRF, state machine, trust policy, custodia PKCS#12, rate limits, reconciliación SRI, matriz de errores y comparación V1→V2.
-- El provisional definitivo quedó fijado en 2,970 × 300, Roboto Condensed Light y razón social únicamente.
+- El provisional definitivo quedó fijado en 2,970 × 300, Roboto Condensed Light, razón social y una línea inferior con correo y celular registrados e iconos lineales.
 
 ## Pendiente antes de etiqueta productiva
 

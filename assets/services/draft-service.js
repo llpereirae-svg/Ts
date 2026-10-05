@@ -1,7 +1,7 @@
 import {
   draftPath, LEGAL_DOCUMENT_HASHES, LEGAL_DOCUMENT_ID, LEGAL_DOCUMENT_VERSION,
   REGISTRATION_ERROR, SESSION_POLICY, SIGNATURE_ALGORITHM, TAX_DATA_SOURCE,
-} from './registration-contract.js?v=20260930c';
+} from './registration-contract.js?v=20261004a';
 
 const csrfTokens = new Map();
 
@@ -78,6 +78,10 @@ export function verificarCliente(registrationId) {
   return request(draftPath(registrationId, '/client-check'), { method: 'POST', ...protectedJson(registrationId, {}) });
 }
 
+export function verificarAutorizacionFacturacion(registrationId) {
+  return request(draftPath(registrationId, '/issuer-authorization/check'), { method: 'POST', ...protectedJson(registrationId, {}) });
+}
+
 export function consultarSriDraft(registrationId) {
   return request(draftPath(registrationId, '/sri/lookup'), { method: 'POST', ...protectedJson(registrationId, {}) });
 }
@@ -122,13 +126,12 @@ export async function cancelarDraft(registrationId) {
 
 export function guardarLogo({ accountId, postCreateToken, selection }) {
   const path = `/api/registro/accounts/${encodeURIComponent(accountId)}/logo`;
-  if (selection.kind === 'file') {
-    const form = new FormData();
-    form.append('mode', 'upload');
-    form.append('logo', selection.file, selection.file.name);
-    return request(path, { method: 'PUT', headers: { Accept: 'application/json', Authorization: `Bearer ${postCreateToken}` }, body: form });
-  }
-  return request(path, { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${postCreateToken}` }, body: JSON.stringify({ mode: 'provisional' }) });
+  if (selection?.kind !== 'file' || !selection.file) throw new Error('No se pudo preparar el logo para enviarlo.');
+  const form = new FormData();
+  form.append('mode', 'upload');
+  form.append('source', selection.generated ? 'generated' : 'user');
+  form.append('logo', selection.file, selection.file.name);
+  return request(path, { method: 'PUT', headers: { Accept: 'application/json', Authorization: `Bearer ${postCreateToken}` }, body: form });
 }
 
 export function newIdempotencyKey() {

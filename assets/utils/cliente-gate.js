@@ -1,5 +1,5 @@
-import { CLIENTE_ESTADO, CLIENTE_ERROR, consultarCliente } from '../services/cliente-service.js?v=20260930c';
-import { validarRUC } from './ruc-validation.js?v=20260930c';
+import { CLIENTE_ESTADO, CLIENTE_ERROR, consultarCliente } from '../services/cliente-service.js?v=20261004a';
+import { validarRUC } from './ruc-validation.js?v=20261004a';
 
 // Solo memoria de la sesión: una consulta por firma validada, errores reintentables.
 export function crearGateCliente(lookup = consultarCliente) {

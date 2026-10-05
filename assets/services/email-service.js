@@ -17,9 +17,9 @@
      - Link al portal
      - Aviso de seguridad sobre la clave */
 
-import { formatCelular } from '../wizard.js?v=20260930c';
+import { formatCelular } from '../wizard.js?v=20261004a';
 
-import { TRIBUTASOFT_LOGIN_URL as PORTAL_URL } from './portal-config.js?v=20260930c';
+import { TRIBUTASOFT_LOGIN_URL as PORTAL_URL } from './portal-config.js?v=20261004a';
 const LOGO_URL = 'https://llpereirae-svg.github.io/Ts/assets/Logo%20TributaSoft.png';
 
 // ============================================================
@@ -72,7 +72,7 @@ export async function enviarEmailRegistro({ destino, asunto, datosRegistro }) {
 function buildHtml(d) {
   const usuario = derivarUsuario(d.rucManual);
   const tipoLabel = mapTipo(d.tipoContribuyente);
-  const modoLabel = d.modoFacturacion === 'continuar' ? 'Continuar con mi facturación' : 'Empezar desde cero';
+  const modoLabel = 'Configuración inicial de Factura';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -152,7 +152,7 @@ function buildHtml(d) {
           ['Establecimiento', d.codEstablecimiento],
           ['Punto de emisión', d.codPunto],
           ['Descripción', d.nombrePunto],
-          ['Próxima factura', d.secuencias?.factura || '000000001'],
+          ['Secuencia', d.secuencias?.factura || '000000001'],
         ])}
 
         <!-- FOOTER -->

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LABEL_REGIMEN, LABEL_TIPO, activarCapturaSriManual, mapearRegimen, mapearTipo, aplicarDatosSri, estadoSriPermiteContinuar, correoVerificado, invalidarCorreo, valorUtil } from '../assets/utils/registration-data.js';
 import { normalizarRespuestaRuc, consultarRuc } from '../assets/services/ruc-service.js';
-import { ocultarCorreo } from '../assets/screens/email-verification.js';
+import { mensajeDestinoCorreo } from '../assets/screens/email-verification.js';
 import { validarRUC } from '../assets/utils/ruc-validation.js';
 import { verificarToken } from '../assets/services/token-service.js';
 
@@ -83,7 +83,7 @@ test('verificación se vincula al correo exacto y se invalida al cambiarlo', () 
   assert.equal(data.tokenEmailOk, false);
   assert.equal(data._emailCodeSent, false);
   assert.equal(data._emailToken, null);
-  assert.equal(ocultarCorreo('prueba@example.com'), 'p•••@e•••.com');
+  assert.equal(mensajeDestinoCorreo('prueba@example.com'), 'Te hemos enviado un código a prueba@example.com. Tendrá una validez de 5 minutos.');
 });
 test('rechaza respuesta SRI cuyo número no corresponde a la consulta', async () => {
   const ruc = Array.from({ length: 100 }, (_, n) => `010${String(n).padStart(7, '0')}001`).find(value => validarRUC(value).valid);

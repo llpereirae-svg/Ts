@@ -1,46 +1,24 @@
-import { iniciarFacturacion, elegirFacturacion, erroresFacturacion, DOCUMENTOS, TIPOS_DOCUMENTO, seleccionarDocumentos, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias, construirFacturacion } from '../utils/billing-data.js?v=20260930c';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260930c';
-import { guardarFacturacion } from '../services/draft-service.js?v=20260930c';
+import { iniciarFacturacion, erroresFacturacion, DOCUMENTOS, sincronizarCompatibilidad, normalizarSecuencia, normalizarSecuencias, construirFacturacion } from '../utils/billing-data.js?v=20261005f';
+import { guardarFacturacion } from '../services/draft-service.js?v=20261004a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
 
 export function renderPantallaFacturacion(body, data) {
   iniciarFacturacion(data);
+  const doc = data.documentosFacturacion.factura;
   body.innerHTML = `
-    <fieldset class="billing-choice"><legend class="sr-only">¿Ya has emitido comprobantes electrónicos anteriormente?</legend>
-      <label><input type="radio" name="f-modo" value="continuar" ${data._facturacionElegida && data.modoFacturacion === 'continuar' ? 'checked' : ''}>${billingIcon('continuar')}<span>Sí, ya he facturado</span></label>
-      <label><input type="radio" name="f-modo" value="nuevo" ${data._facturacionElegida && data.modoFacturacion === 'nuevo' ? 'checked' : ''}>${billingIcon('nuevo')}<span>No, voy a empezar</span></label>
-    </fieldset>
-    <span class="field-error" id="f-modo-error" role="alert"></span>
-    <div id="billing-fields"></div>`;
-  const renderFields = () => {
-    const root = body.querySelector('#billing-fields');
-    if (!data._facturacionElegida) { root.innerHTML = ''; updateNext(data); return; }
-    const continuing = data.modoFacturacion === 'continuar';
-    // Un cliente nuevo no tiene numeración previa que revisar: conserva todos
-    // los valores iniciales aprobados, pero no abre campos innecesarios.
-    const expanded = continuing
-      ? new Set([...root.querySelectorAll('details[open]')].map(section => section.dataset.documento))
-      : new Set();
-    if (continuing && !root.children.length) expanded.add('factura');
-    const visibleTypes = continuing
-      ? TIPOS_DOCUMENTO.filter(tipo => data.documentosFacturacion[tipo])
-      : ['factura'];
-    root.innerHTML = `<div class="billing-details">
-      ${visibleTypes.map(tipo => {
-        const doc = data.documentosFacturacion[tipo];
-        return `<details name="billing-document" class="form-section datos-section billing-document" data-documento="${tipo}" ${expanded.has(tipo) ? 'open' : ''}>
-          <summary><h3>${billingIcon(tipo)}${DOCUMENTOS[tipo]}</h3><span class="datos-section-summary">${escapeAttr(summary(doc))}</span></summary>
-          <div class="datos-section-content"><div class="form-grid form-grid--2">
-            ${field(tipo, 'establecimiento', 'Establecimiento', doc.establecimiento, 3)}
-            ${field(tipo, 'punto_emision', 'Punto de emisión', doc.punto_emision, 3)}
-            ${field(tipo, 'secuencia', 'Secuencia', doc.secuencia, 9)}
-          </div></div>
-        </details>`;
-      }).join('')}
-      ${continuing ? '<button type="button" class="billing-add" id="billing-add" aria-haspopup="dialog">También he emitido otros tipos de documentos</button>' : ''}
-    </div>`;
-    root.querySelector('#billing-add')?.addEventListener('click', () => abrirDocumentos(data, renderFields, body));
-    setupSequenceTooltips(root, body);
-    root.querySelectorAll('input').forEach(input => {
+    <div class="billing-guidance"><strong>Valores sugeridos por TributaSoft</strong><span>Puedes editarlos según la configuración de tu negocio.</span></div>
+    <section class="billing-details billing-invoice" aria-labelledby="billing-invoice-title">
+      <h3 id="billing-invoice-title">${billingIcon('factura')}${DOCUMENTOS.factura}</h3>
+      <div class="form-grid form-grid--2">
+        ${field('factura', 'establecimiento', 'Establecimiento', doc.establecimiento, 3)}
+        ${field('factura', 'punto_emision', 'Punto de emisión', doc.punto_emision, 3)}
+        ${field('factura', 'secuencia', 'Secuencia', doc.secuencia, 9)}
+      </div>
+    </section>
+    <p class="billing-later">Más adelante podrás configurar desde tu perfil otros establecimientos, puntos de emisión y secuencias por tipo de documento.</p>
+    <span class="field-error" id="f-modo-error" role="alert"></span>`;
+    body.querySelector('[data-sequence-help]')?.addEventListener('click', showSequenceHelp);
+    body.querySelectorAll('input').forEach(input => {
       const id = input.id.slice(2);
       const sync = ({ normalize = false } = {}) => {
         const limit = input.dataset.campo === 'secuencia' ? 9 : 3;
@@ -48,23 +26,14 @@ export function renderPantallaFacturacion(body, data) {
         if (normalize && input.dataset.campo === 'secuencia') input.value = normalizarSecuencia(input.value);
         data.documentosFacturacion[input.dataset.tipo][input.dataset.campo] = input.value;
         sincronizarCompatibilidad(data);
-        input.closest('details').querySelector('.datos-section-summary').textContent = summary(data.documentosFacturacion[input.dataset.tipo]);
         paintError(body, id, erroresFacturacion(data)[id] || '');
         updateNext(data);
       };
       input.addEventListener('input', () => sync());
       input.addEventListener('blur', () => sync({ normalize: true }));
     });
-    for (const [id, message] of Object.entries(erroresFacturacion(data))) paintError(body, id, message);
-    updateNext(data);
-  };
-  body.querySelectorAll('[name="f-modo"]').forEach(radio => radio.addEventListener('change', () => {
-    if (!radio.checked) return;
-    elegirFacturacion(data, radio.value);
-    body.querySelector('#f-modo-error').textContent = '';
-    renderFields();
-  }));
-  renderFields();
+  for (const [id, message] of Object.entries(erroresFacturacion(data))) paintError(body, id, message);
+  updateNext(data);
 }
 
 function updateNext(data) {
@@ -83,9 +52,7 @@ export async function validarPantallaFacturacion(data) {
   for (const [id, message] of Object.entries(errors)) paintError(body, id, message);
   const first = Object.keys(errors)[0];
   if (first) {
-    const input = body?.querySelector(first === 'modo' ? '[name="f-modo"]' : `#f-${first}`);
-    const section = input?.closest('details');
-    if (section) section.open = true;
+    const input = body?.querySelector(`#f-${first}`);
     input?.focus();
   }
   updateNext(data);
@@ -112,88 +79,27 @@ function paintError(body, id, message) {
 }
 function field(tipo, campo, label, value, max) {
   const id = `${tipo}-${campo}`;
-  const labelMarkup = campo === 'secuencia'
-    ? `<div class="field-label-row"><label for="f-${id}">${billingIcon(campo)}${label}</label><button type="button" class="sequence-info-button" aria-label="Información sobre la secuencia" aria-expanded="false" aria-controls="f-${id}-info">i</button><span id="f-${id}-info" class="sequence-info-popover" role="tooltip" hidden>Ingresa la última secuencia utilizada para este tipo de comprobante. TributaSoft continuará desde el número siguiente.<strong>Si tu última factura fue la 27, ingresa 27. Se guardará como 000000027 y TributaSoft emitirá la siguiente con la secuencia 000000028.</strong></span></div>`
-    : `<label for="f-${id}">${billingIcon(campo)}${label}</label>`;
+  const help = campo === 'secuencia' ? '<button type="button" class="billing-help-link" data-sequence-help>Saber más</button>' : '';
+  const labelMarkup = `<span class="billing-field-heading"><label for="f-${id}">${billingIcon(campo)}${label}</label>${help}</span>`;
   return `<div class="field-group">${labelMarkup}<input id="f-${id}" data-tipo="${tipo}" data-campo="${campo}" type="text" value="${escapeAttr(value)}" maxlength="${max}" inputmode="numeric" pattern="\\d{${campo === 'secuencia' ? '1,9' : '3'}}" required autocomplete="off" aria-describedby="f-${id}-error"><span id="f-${id}-error" class="field-error" role="alert"></span></div>`;
 }
-function summary(doc) { return `${doc.establecimiento || '—'} · ${doc.punto_emision || '—'} · ${doc.secuencia || '—'}`; }
-function abrirDocumentos(data, renderFields, body) {
+function showSequenceHelp() {
   const dialog = document.createElement('dialog');
-  dialog.className = 'email-verification billing-picker';
-  dialog.setAttribute('aria-labelledby', 'billing-picker-title');
-  dialog.innerHTML = `<button type="button" class="email-verification-close" aria-label="Cerrar selección">×</button>
-    <h2 id="billing-picker-title">Otros documentos</h2>
-    <form method="dialog"><fieldset><legend class="sr-only">Selecciona los documentos que vas a emitir</legend>
-    ${TIPOS_DOCUMENTO.filter(tipo => tipo !== 'factura').map(tipo => `<label class="billing-pick"><input type="checkbox" name="documento" value="${tipo}" ${data.documentosFacturacion[tipo] ? 'checked' : ''}><span>${billingIcon(tipo)}${DOCUMENTOS[tipo]}</span></label>`).join('')}
-    </fieldset><button type="submit" class="btn btn--primary email-code-verify">Aceptar</button></form>`;
+  dialog.className = 'billing-help-dialog';
+  dialog.setAttribute('aria-labelledby', 'billing-help-title');
+  dialog.innerHTML = `
+    <h2 id="billing-help-title">¿Qué es la secuencia?</h2>
+    <p>Es el número consecutivo que identifica cada factura.</p>
+    <p>Con los valores sugeridos, tu primera factura se mostrará como:</p>
+    <strong class="billing-help-example">001-002-000000001</strong>
+    <p>La secuencia siempre utiliza nueve dígitos y se completa con ceros a la izquierda.</p>
+    <button type="button" class="btn btn--primary billing-help-close">Entendido</button>`;
   document.body.append(dialog);
-  const release = lockModalScroll(dialog);
-  dialog.addEventListener('close', () => { release(); dialog.remove(); body.querySelector('#billing-add')?.focus({ preventScroll: true }); }, { once: true });
-  dialog.querySelector('.email-verification-close').addEventListener('click', () => dialog.close());
-  dialog.querySelector('form').addEventListener('submit', event => {
-    event.preventDefault();
-    seleccionarDocumentos(data, [...dialog.querySelectorAll('input:checked')].map(input => input.value));
-    renderFields();
-    dialog.close();
-  });
-  dialog.showModal();
-}
-
-function setupSequenceTooltips(root, body) {
-  body._billingTooltipAbort?.abort();
-  const controller = new AbortController();
-  body._billingTooltipAbort = controller;
-  const closeAll = except => root.querySelectorAll('.sequence-info-button').forEach(button => {
-    if (button === except) return;
-    button.setAttribute('aria-expanded', 'false');
-    const tooltip = root.querySelector(`#${button.getAttribute('aria-controls')}`);
-    if (tooltip) { tooltip.hidden = true; tooltip.removeAttribute('style'); }
-  });
-  root.querySelectorAll('.sequence-info-button').forEach(button => button.addEventListener('click', event => {
-    event.stopPropagation();
-    const tooltip = root.querySelector(`#${button.getAttribute('aria-controls')}`);
-    const opening = button.getAttribute('aria-expanded') !== 'true';
-    closeAll(button);
-    button.setAttribute('aria-expanded', String(opening));
-    if (tooltip) {
-      tooltip.hidden = !opening;
-      if (opening) placeTooltip(button, tooltip);
-      else tooltip.removeAttribute('style');
-    }
-  }, { signal: controller.signal }));
-  document.addEventListener('click', event => {
-    if (!event.target.closest('.field-label-row')) closeAll();
-  }, { signal: controller.signal });
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closeAll();
-  }, { signal: controller.signal });
-  window.addEventListener('resize', () => closeAll(), { signal: controller.signal });
-  window.addEventListener('scroll', () => closeAll(), { signal: controller.signal, capture: true });
-}
-
-function placeTooltip(button, tooltip) {
-  const margin = 12;
-  const gap = 8;
-  const viewport = window.visualViewport;
-  const viewportTop = viewport?.offsetTop || 0;
-  const viewportWidth = viewport?.width || window.innerWidth;
-  const viewportBottom = viewportTop + (viewport?.height || window.innerHeight);
-  const anchor = button.getBoundingClientRect();
-  const box = tooltip.getBoundingClientRect();
-  const left = Math.min(Math.max(anchor.left, margin), Math.max(margin, viewportWidth - box.width - margin));
-  const below = anchor.bottom + gap;
-  const top = below + box.height <= viewportBottom - margin
-    ? below
-    : Math.max(viewportTop + margin, anchor.top - box.height - gap);
-  // .wiz-screen conserva transform durante su transición y se convierte en
-  // bloque contenedor de elementos fixed. Restamos su origen para mantener
-  // las coordenadas finales dentro del viewport real.
-  const container = tooltip.closest('.wiz-screen');
-  const transformed = container && getComputedStyle(container).transform !== 'none';
-  const containerRect = transformed ? container.getBoundingClientRect() : { left: 0, top: 0 };
-  tooltip.style.left = `${Math.round(left - containerRect.left)}px`;
-  tooltip.style.top = `${Math.round(top - containerRect.top)}px`;
+  const unlock = lockModalScroll(dialog);
+  const close = () => { dialog.close(); dialog.remove(); unlock(); };
+  dialog.querySelector('.billing-help-close').addEventListener('click', close, { once: true });
+  dialog.addEventListener('cancel', event => { event.preventDefault(); close(); }, { once: true });
+  try { dialog.showModal(); } catch { close(); }
 }
 function billingIcon(name) {
   const document = 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Zm0 0v5h5';

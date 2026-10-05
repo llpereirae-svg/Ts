@@ -1,10 +1,9 @@
-import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20260930c';
-import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20260930c';
-import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20260930c';
+import { generarYEnviarToken, verificarToken, TOKEN_LENGTH } from '../services/token-service.js?v=20261004a';
+import { correoVerificado, invalidarCorreo } from '../utils/registration-data.js?v=20261004a';
+import { lockModalScroll } from '../utils/modal-scroll-lock.js?v=20261004a';
 
-export function ocultarCorreo(email) {
-  const [local, domain = ''] = String(email).split('@');
-  return `${local.slice(0, 1)}•••@${domain.slice(0, 1)}•••${domain.includes('.') ? domain.slice(domain.lastIndexOf('.')) : ''}`;
+export function mensajeDestinoCorreo(email) {
+  return `Te hemos enviado un código a ${String(email).trim()}. Tendrá una validez de 5 minutos.`;
 }
 
 export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } = {}) {
@@ -17,16 +16,16 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
   dialog.innerHTML = `
     <button type="button" class="email-verification-close" aria-label="Cerrar verificación">×</button>
     <h2 id="email-verification-title">Verifica tu correo</h2>
-    <p id="email-verification-destination"></p>
     <form novalidate>
       <label for="email-code">Código de verificación</label>
+      <p id="email-verification-destination"></p>
       <input id="email-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="${TOKEN_LENGTH}" aria-describedby="email-code-status" autofocus>
       <p id="email-code-status" role="status" aria-live="polite"></p>
       <p id="email-code-demo" hidden></p>
-      <button type="submit" class="btn btn--primary email-code-verify">Verificar y continuar</button>
+      <button type="submit" class="btn btn--primary email-code-verify">Verificar código</button>
     </form>
     <div class="email-code-actions"><button type="button" class="link-button email-code-resend">Reenviar código</button><button type="button" class="link-button email-code-change">Cambiar correo</button></div>`;
-  dialog.querySelector('#email-verification-destination').textContent = ocultarCorreo(destination);
+  dialog.querySelector('#email-verification-destination').textContent = mensajeDestinoCorreo(destination);
   document.body.append(dialog);
   const code = dialog.querySelector('#email-code');
   const status = dialog.querySelector('#email-code-status');
@@ -63,7 +62,7 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
     function showDemo() {
       const demo = dialog.querySelector('#email-code-demo');
       demo.hidden = !data._emailToken;
-      demo.textContent = data._emailToken ? `Modo demostración: no se envió ningún correo. Código de prueba: ${data._emailToken}` : '';
+      demo.textContent = data._emailToken ? `Código para continuar: ${data._emailToken}` : '';
     }
     async function send() {
       if (busy || (data._emailResendAfter || 0) > Date.now()) return;
@@ -77,7 +76,7 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
         Object.assign(data, { _emailToken: result.token, _emailTokenExpires: result.expiraEn, _emailTokenFor: destination, _emailCodeSent: true, _emailResendAfter: Date.now() + 60_000 });
         code.value = '';
         code.removeAttribute('aria-invalid');
-        status.textContent = result.token ? 'Ingresa el código de prueba.' : 'Código enviado. Vence en 5 minutos.';
+        status.textContent = result.token ? 'Ingresa el código indicado.' : 'Código enviado. Vence en 5 minutos.';
         showDemo();
       } catch {
         if (!settled && id === request) status.textContent = 'No pudimos enviar el código. El servicio de correo no está disponible. Intenta nuevamente.';
@@ -113,7 +112,7 @@ export function solicitarVerificacionCorreo(data, { onChangeEmail = () => {} } =
     resend.addEventListener('click', send);
     try { dialog.showModal(); } catch { finish(false); return; }
     if (data._emailCodeSent && data._emailTokenFor === destination && new Date(data._emailTokenExpires).getTime() > Date.now()) {
-      status.textContent = data._emailToken ? 'Ingresa el código de prueba.' : 'Ingresa el código que recibiste.';
+      status.textContent = data._emailToken ? 'Ingresa el código indicado.' : 'Ingresa el código que recibiste.';
       showDemo(); cooldown();
     } else {
       invalidarCorreo(data);

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { validarIdentidadFiscalFirma } from '../assets/parsers/firma-validator.js';
 import { validarRUC } from '../assets/utils/ruc-validation.js';
+import { mensajeErrorPosesion } from '../assets/screens/screen-firma.js';
 
 const FORGE_SHA256 = 'dc67fd132427ad96c9666c844b39565413c40ddb1f2d063c53512fbf6d387dfd';
 
@@ -27,6 +28,13 @@ test('firma identificada solo con cédula se bloquea y nunca se convierte a RUC'
   assert.equal(result.valid, false);
   assert.equal(result.error, 'FIRMA_SOLO_CEDULA');
   assert.match(result.reason, /firma emitida con RUC/);
+});
+
+test('la prueba de posesión distingue rate limit, sesión y backend no disponible', () => {
+  assert.match(mensajeErrorPosesion({ status: 429, code: 'RATE_LIMITED', retryAfter: 600 }), /10 minutos/);
+  assert.match(mensajeErrorPosesion({ status: 403, code: 'CSRF_INVALID' }), /sesión de registro expiró/);
+  assert.match(mensajeErrorPosesion({ status: 503, code: 'BACKEND_CONFIG_REQUIRED' }), /servicio de verificación no está disponible/);
+  assert.match(mensajeErrorPosesion({ status: 422, code: 'INVALID_SIGNATURE' }), /comprobar la firma digital/);
 });
 
 test('identidad de firma exige RUC string estricto y dígito verificador válido', () => {

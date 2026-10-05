@@ -1,14 +1,84 @@
 POLÍTICA DE PRIVACIDAD — TRIBUTASOFT
-Versión de trabajo para revisión jurídica
+Versión vigente: 5 de octubre de 2026
 
-Esta landing procesa el archivo de firma electrónica y su clave dentro del navegador. El archivo y la clave no se incluyen en el payload de registro ni se guardan en localStorage o sessionStorage.
+1. RESPONSABLE Y ALCANCE
 
-Los metadatos extraídos de la firma, los datos tributarios, los medios de contacto y la información de facturación se preparan para crear la cuenta cuando el backend productivo esté conectado. En la versión demostrativa/local no se crea una cuenta real.
+TRIBUTASOFT S.A. es responsable del tratamiento de los datos personales utilizados para registrar, habilitar y operar las cuentas de TributaSoft. Esta política se aplica al proceso de registro, al portal y a los servicios asociados. Los canales oficiales publicados en https://tributasoft.com.ec están disponibles para consultas y para el ejercicio de derechos.
 
-La consulta del RUC sigue esta ruta: navegador → API propia de TributaSoft → SRI. El navegador no consulta directamente al SRI.
+2. DATOS QUE TRATAMOS
 
-En producción, Meta Pixel solo se carga después de que la persona acepte la analítica. La preferencia de consentimiento se guarda localmente en el navegador.
+Según el servicio utilizado, podemos tratar:
 
-No se incluyen aquí plazos de conservación, destinatarios, base legal ni identidad completa del responsable porque deben confirmarse con el funcionamiento y la organización definitivos.
+- RUC, razón social, nombre comercial, régimen, tipo de contribuyente y demás información tributaria;
+- datos contenidos en la firma electrónica y su certificado;
+- archivo PKCS#12 o PFX y la clave necesaria para utilizarlo, protegidos mediante cifrado;
+- correo electrónico, número de celular y evidencia de su verificación;
+- configuración inicial de establecimiento, punto de emisión y secuencia;
+- logo del negocio o logo pregenerado;
+- consentimientos, versión de documentos legales, fecha de aceptación y evidencia técnica;
+- dirección IP, navegador, registros de seguridad, eventos técnicos y datos indispensables para prevenir fraude y diagnosticar errores; y
+- información de uso y analítica únicamente cuando exista una base legítima o el consentimiento requerido.
 
-LEGAL_REVIEW_REQUIRED: responsable del tratamiento, base jurídica, finalidades definitivas, destinatarios, transferencias internacionales, plazos de conservación, derechos y canal formal de ejercicio.
+3. ORIGEN DE LOS DATOS
+
+Los datos pueden ser entregados por el usuario, extraídos localmente de su certificado, obtenidos mediante la API propia de TRIBUTASOFT desde fuentes oficiales como el SRI o generados durante el uso seguro de la plataforma. El navegador no consulta directamente al SRI.
+
+4. FINALIDADES
+
+Tratamos la información para:
+
+- verificar identidad, RUC, firma y autorización para facturar;
+- crear, administrar y proteger la cuenta;
+- verificar correo y mantener comunicaciones operativas;
+- emitir, firmar, autorizar y administrar comprobantes electrónicos;
+- configurar numeraciones, establecimientos y puntos de emisión;
+- prestar soporte, atender solicitudes y comunicar cambios del servicio;
+- gestionar planes, pagos y renovaciones;
+- cumplir obligaciones legales, tributarias, contables y de seguridad; y
+- prevenir fraude, abuso, accesos no autorizados y fallos técnicos.
+
+5. BASES DEL TRATAMIENTO
+
+El tratamiento se realiza para ejecutar la relación solicitada por el usuario, cumplir obligaciones legales, proteger la seguridad del servicio y, cuando corresponda, con el consentimiento libre e informado del titular. La analítica no indispensable se gestiona de forma separada y puede rechazarse sin impedir el registro.
+
+6. FIRMA ELECTRÓNICA Y CREDENCIALES
+
+La clave privada permanece dentro del archivo de firma. Durante la verificación inicial, el navegador puede utilizarla localmente para probar la posesión del certificado. Para permitir la emisión posterior, el archivo y su clave se transmiten mediante conexión segura y se almacenan cifrados, con acceso limitado a los procesos autorizados. No se incluyen en URLs, analítica ni registros de aplicación.
+
+7. CONSULTAS AL SRI Y DATOS MANUALES
+
+TRIBUTASOFT consulta al SRI a través de su propio backend. Si el SRI permanece temporalmente indisponible, el usuario podrá declarar únicamente los datos necesarios para continuar. Esos datos se identificarán como pendientes y no se considerarán verificados hasta completar la reconciliación con la fuente oficial. Mientras tanto, las funciones tributarias que dependan de esa validación permanecerán restringidas.
+
+8. DESTINATARIOS Y ENCARGADOS
+
+La información podrá ser tratada por proveedores de infraestructura, almacenamiento, correo, seguridad y soporte que actúen bajo instrucciones de TRIBUTASOFT; por el SRI y otras autoridades cuando sea necesario para prestar el servicio o cumplir la ley; y por asesores o auditores sujetos a deberes de confidencialidad. No vendemos datos personales.
+
+Cuando un proveedor procese datos fuera de Ecuador, se aplicarán las garantías contractuales y medidas exigidas por la normativa aplicable.
+
+9. CONSERVACIÓN
+
+Los datos de la cuenta se conservarán mientras el servicio esté activo y durante los plazos adicionales necesarios para cumplir obligaciones legales, resolver controversias y proteger derechos. Los borradores incompletos expiran tras treinta (30) minutos de inactividad o dos (2) horas desde su creación. Los archivos temporales asociados a borradores cancelados o vencidos deben eliminarse conforme a la política técnica del servicio. Los registros de seguridad se conservarán únicamente durante el periodo proporcional a su finalidad.
+
+10. SEGURIDAD
+
+Aplicamos medidas técnicas y organizativas orientadas a preservar confidencialidad, integridad y disponibilidad, entre ellas cifrado en tránsito, cifrado autenticado de credenciales en reposo, control de acceso, limitación de intentos, trazabilidad y eliminación de archivos temporales. Ningún sistema es absolutamente infalible; ante un incidente se aplicarán los procedimientos de contención y notificación exigidos por la ley.
+
+11. DERECHOS DEL TITULAR
+
+El titular puede solicitar acceso, información, rectificación, actualización, eliminación, oposición, anulación, portabilidad, limitación o suspensión del tratamiento, así como retirar un consentimiento cuando esa sea la base aplicable. La solicitud puede presentarse mediante los canales oficiales publicados en https://tributasoft.com.ec. Podremos pedir información razonable para verificar la identidad antes de responder.
+
+12. CONSECUENCIAS DE NO ENTREGAR DATOS
+
+Los datos marcados como obligatorios son necesarios para verificar la identidad, cumplir requisitos tributarios y crear la cuenta. Si no se entregan o son inexactos, el registro, la emisión electrónica o determinadas funciones pueden quedar impedidos o restringidos.
+
+13. MENORES DE EDAD
+
+El servicio está dirigido a contribuyentes y representantes autorizados con capacidad legal. No está diseñado para recopilar deliberadamente datos de niñas, niños o adolescentes.
+
+14. COOKIES Y ANALÍTICA
+
+Las cookies indispensables permiten seguridad y funcionamiento de la sesión. La analítica opcional se activa únicamente conforme a la preferencia elegida por el usuario y puede modificarse desde los mecanismos disponibles en el sitio.
+
+15. CAMBIOS DE ESTA POLÍTICA
+
+TRIBUTASOFT podrá actualizar esta política por cambios normativos, técnicos o del servicio. Los cambios sustanciales se comunicarán mediante la plataforma, el correo registrado u otro canal oficial, indicando la versión vigente.

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#00236f">
   <meta name="description" content="TributaSoft — Para nuevos clientes: 300 facturas electrónicas o 3 meses TOTALMENTE GRATIS.">
+  <meta name="tributasoft:sri-authorization-tutorial" content="https://tributasoft.com.ec/">
 
   <!-- Cache control para que el navegador no aguante el HTML viejo entre deploys -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -69,10 +70,10 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   </style>
 
-  <link rel="stylesheet" href="./assets/styles.css?v=20260930c">
-  <link rel="stylesheet" href="./assets/wizard.css?v=20260930c">
+  <link rel="stylesheet" href="./assets/styles.css?v=20261004a">
+  <link rel="stylesheet" href="./assets/wizard.css?v=20261005m">
 </head>
-<body data-state="IDLE">
+<body class="wiz-mode" data-state="IDLE" data-wizard-step="firma">
 
   <header class="site-header">
     <a class="brand" href="https://tributasoft.com.ec" aria-label="Ir al sitio principal de TributaSoft">
@@ -336,6 +337,6 @@
 
   <!-- Bootstrap: carga wizard.js + app.js. NO inline (lo bloquearía nuestro CSP).
        Si se necesita bumpear cache, hacerlo en assets/bootstrap.js (APP_VER). -->
-  <script type="module" src="./assets/bootstrap.js?v=20260930c"></script>
+  <script type="module" src="./assets/bootstrap.js?v=20261005n"></script>
 </body>
 </html>

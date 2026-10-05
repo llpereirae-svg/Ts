@@ -7,6 +7,8 @@ import { createRucProxy } from './ruc-proxy.js';
 import { createClientLookupMock, isClientMockRequestAllowed } from './cliente-mock.js';
 import { createRegistrationMock } from './registration-mock.js';
 import { createRegistrationV2Mock } from './registration-v2-mock.js';
+import { consultarEmisorAutorizado, IssuerAuthorizationError } from './emisor-autorizado.js';
+import { resolveIssuerAuthorizationMock } from './emisor-autorizado-mock.js';
 import { SESSION_POLICY } from '../assets/services/registration-contract.js';
 import { decodeRequestPath, resolvePublicFile } from './public-surface.js';
 
@@ -23,6 +25,7 @@ const registrationV2 = createRegistrationV2Mock({
   enabled: process.env.DEV_REGISTRATION_MOCK === '1', nodeEnv: process.env.NODE_ENV,
   existingRuc: process.env.DEV_CLIENT_LOOKUP_EXISTING_RUC || '',
 });
+const issuerAuthorizationCache = new Map();
 const draftCleanup = setInterval(() => registrationV2.cleanup(), 5 * 60 * 1000);
 draftCleanup.unref();
 const contentTypes = {
@@ -149,6 +152,24 @@ async function handleRegistrationV2(req, res, pathname) {
         else if (challengeMatch && req.method === 'POST') result = registrationV2.verifyChallenge(id, decodeURIComponent(challengeMatch[1]), await readJson(req, 128 * 1024), context);
         else if (suffix === '/certificate-package' && req.method === 'POST') result = registrationV2.uploadCertificate(id, await readCertificateUpload(req), context);
         else if (suffix === '/client-check' && req.method === 'POST') { await readJson(req); result = registrationV2.clientCheck(id, context); }
+        else if (suffix === '/issuer-authorization/check' && req.method === 'POST') {
+          await readJson(req);
+          const started = registrationV2.beginIssuerAuthorizationCheck(id, context);
+          const draft = registrationV2._drafts.get(id);
+          if (started.status >= 300) result = started;
+          else if (!draft) result = { status: 404, body: { error: 'DRAFT_NOT_FOUND' } };
+          else {
+            try {
+              const authorization = await lookupIssuerAuthorization(draft.ruc);
+              result = registrationV2.storeIssuerAuthorization(id, authorization, context);
+            } catch (error) {
+              if (error instanceof IssuerAuthorizationError) {
+                console.warn(`[dev-server] consulta de emisor no disponible code=${error.code}`);
+              }
+              result = registrationV2.markIssuerAuthorizationUnavailable(id, context);
+            }
+          }
+        }
         else if (suffix === '/sri/lookup' && req.method === 'POST') {
           await readJson(req); const started = registrationV2.beginSriLookup(id, context);
           const draft = registrationV2._drafts.get(id);
@@ -213,6 +234,19 @@ function parseCookies(header) {
   }));
 }
 function safeJson(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
+async function lookupIssuerAuthorization(ruc) {
+  const mocked = resolveIssuerAuthorizationMock(ruc, {
+    mode: process.env.DEV_ISSUER_AUTHORIZATION_MOCK,
+    notAuthorizedRuc: process.env.DEV_ISSUER_NOT_AUTHORIZED_RUC,
+  });
+  if (mocked) return mocked;
+  const cached = issuerAuthorizationCache.get(ruc);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const value = await consultarEmisorAutorizado(ruc);
+  const ttl = value.authorized ? 24 * 60 * 60 * 1000 : 30 * 60 * 1000;
+  issuerAuthorizationCache.set(ruc, { value, expiresAt: Date.now() + ttl });
+  return value;
+}
 function canonicalSri(source, ruc) {
   return {
     source: 'SRI', ruc, estadoContribuyenteRuc: String(source?.estadoContribuyenteRuc || ''),

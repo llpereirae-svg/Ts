@@ -19,7 +19,7 @@
  * bumpearlo aquí en APP_VER.
  */
 
-const APP_VER = '20260929a';
+const APP_VER = '20261005n';
 
 // Wizard nuevo: monta el flujo TurboTax-style sobre #wizard-root.
 import(`./wizard.js?v=${APP_VER}`)
@@ -31,7 +31,14 @@ import(`./wizard.js?v=${APP_VER}`)
       start();
     }
   })
-  .catch((err) => console.error('Error cargando wizard.js', err));
+  .catch((err) => {
+    // El HTML arranca con el estado visual del wizard para impedir que el
+    // hero y la navegación legacy aparezcan durante el primer pintado.
+    // Si el módulo falla, recuperamos la landing anterior como fallback.
+    document.body.classList.remove('wiz-mode');
+    delete document.body.dataset.wizardStep;
+    console.error('Error cargando wizard.js', err);
+  });
 
 // app.js: maneja Cotizar, Pago, Bank, Términos, Tooltips y Manual.
 import(`./app.js?v=${APP_VER}`).catch((err) => {

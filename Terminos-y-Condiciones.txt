@@ -1,116 +1,68 @@
 TÉRMINOS Y CONDICIONES DE USO — TRIBUTASOFT
-
-LEGAL_REVIEW_REQUIRED: revisar identidad contractual, promoción vigente, responsabilidades, jurisdicción, tratamiento de datos y coherencia con la Política de Privacidad antes de publicar esta versión.
-================================================================
+Versión vigente: 5 de octubre de 2026
 
 1. OBJETO
 
-TRIBUTASOFT S.A., en adelante "TRIBUTASOFT", pone a disposición del
-usuario (en adelante, el "USUARIO" o el "CLIENTE") una plataforma
-electrónica destinada a la emisión, registro, anulación y administración
-de comprobantes electrónicos autorizados por el Servicio de Rentas
-Internas del Ecuador (SRI), conforme a la normativa tributaria vigente.
+TRIBUTASOFT S.A. (en adelante, “TRIBUTASOFT”) proporciona una plataforma para la configuración, emisión, administración y consulta de comprobantes electrónicos, así como otras funciones relacionadas con la gestión tributaria y comercial del usuario.
 
-----------------------------------------------------------------
+2. REGISTRO Y HABILITACIÓN
 
-2. PROMOCIÓN INICIAL
+Para crear una cuenta, el usuario debe proporcionar información verdadera, completa y actualizada; utilizar una firma electrónica vigente asociada a un RUC válido; contar con autorización para facturar cuando corresponda; y verificar sus medios de contacto. TRIBUTASOFT podrá validar esta información mediante sus propios servicios, el Servicio de Rentas Internas (SRI) y otros proveedores autorizados.
 
-TRIBUTASOFT otorga al USUARIO una promoción inicial sin costo
-correspondiente a:
+Si la información tributaria se ingresa manualmente por indisponibilidad temporal del SRI, la cuenta podrá quedar habilitada con funciones restringidas. La emisión o autorización de comprobantes permanecerá bloqueada hasta que la información sea verificada y conciliada satisfactoriamente.
 
-  1) Trescientos (300) documentos electrónicos; o
-  2) Un periodo máximo de tres (3) meses calendario,
+3. FIRMA ELECTRÓNICA
 
-contados desde la fecha de activación de la cuenta, lo que ocurra
-primero. Cumplido cualquiera de los dos límites, el servicio quedará
-sujeto a la contratación de un plan vigente.
+El usuario declara que está autorizado para utilizar el archivo de firma electrónica y su clave. El archivo y la clave se transmitirán por canales seguros y se custodiarán cifrados para las operaciones que requieran firmar comprobantes electrónicos. El usuario debe proteger la clave, comunicar cualquier riesgo de uso no autorizado y renovar o sustituir oportunamente un certificado vencido, revocado o comprometido.
 
-----------------------------------------------------------------
+4. PROMOCIÓN INICIAL
 
-3. CÓMPUTO DE DOCUMENTOS ELECTRÓNICOS
+La promoción de registro comprende hasta trescientos (300) documentos electrónicos o hasta tres (3) meses desde la activación de la cuenta, lo que ocurra primero. Después se aplicarán las condiciones y precios del plan vigente que el usuario decida contratar.
 
-Para los efectos del cómputo previsto en la cláusula anterior y de
-cualquier plan o renovación posterior, se considerará un (1) "documento
-electrónico" todo aquel que, de manera indistinta:
+Para el cómputo del límite podrá considerarse cada documento generado o procesado mediante la plataforma conforme a la configuración comercial vigente informada al usuario.
 
-  1) Sea EMITIDO por el USUARIO a través de la plataforma;
-  2) Sea REGISTRADO en el sistema, aun cuando no se hubiere autorizado
-     por el SRI; o
-  3) Sea ANULADO dentro del sistema, conforme la normativa tributaria
-     aplicable.
+5. OBLIGACIONES DEL USUARIO
 
-----------------------------------------------------------------
+El usuario es responsable de:
 
-4. MODIFICACIONES AL SISTEMA
+- revisar la información tributaria y de facturación antes de emitir comprobantes;
+- mantener actualizados sus datos, credenciales, firma y autorizaciones;
+- utilizar la plataforma únicamente para fines lícitos;
+- conservar el control de su cuenta y notificar accesos no autorizados; y
+- cumplir la normativa tributaria, comercial y de protección de datos aplicable a su actividad.
 
-El USUARIO reconoce y acepta que TRIBUTASOFT podrá efectuar, en
-cualquier momento y a su entera discreción, modificaciones, mejoras,
-actualizaciones o cambios en la plataforma, sus funcionalidades,
-interfaces y procesos, atendiendo a sus propias necesidades técnicas,
-operativas, comerciales o regulatorias. Dichos cambios no requerirán
-autorización previa del USUARIO y se entenderán aceptados con el uso
-continuado del servicio.
+6. FUNCIONAMIENTO DEL SERVICIO
 
-----------------------------------------------------------------
+TRIBUTASOFT podrá efectuar mantenimientos, actualizaciones y mejoras necesarias para la seguridad, continuidad o cumplimiento normativo. Algunas funciones dependen de servicios externos, incluido el SRI; cuando estos no estén disponibles, TRIBUTASOFT podrá limitar temporalmente las operaciones afectadas y reanudarlas cuando el servicio externo se restablezca.
 
-5. PROTECCIÓN DE DATOS PERSONALES
+7. PAGOS Y RENOVACIONES
 
-TRIBUTASOFT trata los datos personales del USUARIO con estricta sujeción
-a la LEY ORGÁNICA DE PROTECCIÓN DE DATOS PERSONALES DEL ECUADOR y sus
-normas reglamentarias. Los datos serán utilizados exclusivamente para
-los fines del servicio contratado, su facturación, su soporte y el
-cumplimiento de obligaciones legales o tributarias. El USUARIO podrá
-ejercer en cualquier momento sus derechos de acceso, rectificación,
-actualización, eliminación, oposición, anulación y portabilidad
-mediante comunicación dirigida a TRIBUTASOFT por los canales
-habilitados.
+Los planes pagados se habilitarán una vez confirmado el pago por los canales de TRIBUTASOFT. Los valores, vigencia, cantidad de documentos y demás condiciones del plan se informarán antes de la contratación. Un pago inexistente, incompleto, duplicado o sujeto a verificación podrá mantener el servicio pendiente o restringido hasta su regularización.
 
-----------------------------------------------------------------
+8. SUSPENSIÓN O TERMINACIÓN
 
-6. RESPONSABILIDAD DEL USUARIO
+TRIBUTASOFT podrá suspender o terminar el acceso por incumplimiento de estos términos, uso fraudulento, riesgo de seguridad, falta de pago o mandato de autoridad competente. Cuando sea posible, el usuario será informado por los medios registrados en su cuenta.
 
-El USUARIO es responsable de la veracidad de la información
-proporcionada al registrarse, del resguardo y uso adecuado de sus
-credenciales de acceso y del contenido de los comprobantes que emita
-a través de la plataforma. Cualquier perjuicio derivado de un uso
-indebido, negligente o fraudulento será de su exclusiva responsabilidad.
+9. PROPIEDAD INTELECTUAL
 
-----------------------------------------------------------------
+La plataforma, su diseño, software, marcas y contenidos pertenecen a TRIBUTASOFT o a sus licenciantes. El registro concede al usuario un derecho limitado, revocable y no transferible para utilizar el servicio contratado; no autoriza copiar, modificar, descompilar, revender ni explotar sus componentes fuera de los usos permitidos.
 
-7. CONDICIONES DEL PAGO (RENOVACIÓN PREPAGO)
+10. PROTECCIÓN DE DATOS
 
-El reporte del pago de planes prepago se entiende efectuado al momento
-de cargar el comprobante en la plataforma. La validación del pago será
-realizada por los operadores de TRIBUTASOFT dentro de un plazo máximo
-de DOS (2) HORAS desde el reporte.
+El tratamiento de datos personales se rige por la Política de Privacidad de TRIBUTASOFT, que forma parte de estos términos. La aceptación registrada electrónicamente comprende ambos documentos.
 
-En caso de que el valor reportado no corresponda al efectivamente
-acreditado en las cuentas bancarias de TRIBUTASOFT, o de detectarse
-indicios de pago erróneo, duplicado o fraudulento, el servicio será
-SUSPENDIDO DE MANERA INMEDIATA hasta la regularización del pago o la
-baja definitiva del servicio, según corresponda. TRIBUTASOFT no asume
-responsabilidad alguna por las interrupciones derivadas de pagos no
-acreditados o inexactos.
+11. RESPONSABILIDAD
 
-----------------------------------------------------------------
+TRIBUTASOFT responde por la prestación del servicio dentro del alcance contratado. El usuario conserva la responsabilidad sobre la exactitud, legalidad y contenido de sus comprobantes, así como sobre las decisiones tomadas con la información del sistema. Ninguna disposición limita responsabilidades que legalmente no puedan excluirse.
 
-8. SUSPENSIÓN Y TERMINACIÓN
+12. CAMBIOS Y COMUNICACIONES
 
-TRIBUTASOFT se reserva el derecho de suspender o dar por terminado el
-servicio en caso de incumplimiento de los presentes términos, uso
-indebido de la plataforma o causal legal aplicable, sin que ello genere
-responsabilidad alguna a su cargo, y sin perjuicio de las acciones
-legales que correspondan.
+TRIBUTASOFT podrá actualizar estos términos por cambios legales, técnicos o comerciales. Si el cambio es sustancial, informará la nueva versión mediante la plataforma, el correo registrado u otro canal oficial antes de exigir una nueva aceptación cuando corresponda.
 
-----------------------------------------------------------------
+13. LEY APLICABLE
 
-9. ACEPTACIÓN
+Estos términos se rigen por las leyes de la República del Ecuador. Las controversias se atenderán inicialmente por los canales oficiales de soporte de TRIBUTASOFT y, de no resolverse, ante las autoridades competentes conforme a la legislación aplicable.
 
-La marcación de la casilla de aceptación, una vez deslizado hasta el
-final del presente documento, constituye declaración expresa de
-conocimiento y aceptación íntegra de estos términos por parte del
-USUARIO, conforme a lo previsto en el Código de Comercio Electrónico,
-Firmas Electrónicas y Mensajes de Datos, el Código Civil y demás
-normativa aplicable de la República del Ecuador.
+14. ACEPTACIÓN ELECTRÓNICA
 
-================================================================
+Al marcar la casilla de aceptación, el usuario declara que leyó y acepta estos Términos y Condiciones y la Política de Privacidad. TRIBUTASOFT conservará evidencia de la versión aceptada, la fecha y los identificadores técnicos necesarios para demostrar dicha aceptación.

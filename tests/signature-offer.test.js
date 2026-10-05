@@ -27,7 +27,10 @@ test('ayuda inline tiene dos vigencias y un único CTA, sin modal ni segundo bot
   assert.equal((html.match(/role="button"/g) || []).length, 1);
   assert.equal((html.match(/type="radio"/g) || []).length, 2);
   assert.ok(html.includes('$40.25') && html.includes('$51.75'));
-  assert.ok(html.includes('Solicitar firma por WhatsApp'));
+  assert.ok(html.includes('Solicitar firma'));
+  assert.ok(html.includes('signature-whatsapp-icon'));
+  assert.ok(html.includes('¿Cómo obtener tu firma electrónica?'));
+  assert.ok(!html.includes('El tutorial estará disponible próximamente.'));
   assert.ok(!html.includes('Ver precios') && !html.includes('<dialog'));
 });
 test('el payload no persiste representante aun si queda en estado transitorio de firma', () => {

@@ -1,9 +1,10 @@
-import { createHash, randomBytes, randomInt, randomUUID, verify as verifySignature, X509Certificate } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, verify as verifySignature, X509Certificate } from 'node:crypto';
 import { validarRUC } from '../assets/utils/ruc-validation.js';
 import { validarNoResolucion } from '../assets/utils/validators.js';
 import {
   ACCOUNT_STATUS, CHALLENGE_NONCE_BYTES, CONTRACT_TTL, DRAFT_STATUS,
   LEGAL_DOCUMENT_HASHES, LEGAL_DOCUMENT_ID, LEGAL_DOCUMENT_VERSION, RATE_LIMIT_POLICY,
+  OTP_LENGTH,
   RECONCILIATION_OUTCOME, REGISTRATION_ERROR, SESSION_POLICY, SIGNATURE_ALGORITHM,
   TAX_DATA_SOURCE, TAX_DATA_STATUS,
 } from '../assets/services/registration-contract.js';
@@ -78,7 +79,7 @@ export function createRegistrationV2Mock({
         documentHashes: LEGAL_DOCUMENT_HASHES, acceptedAt: new Date(time).toISOString(),
         registrationId, ip: context.ip || null, userAgent: context.userAgent || null,
       },
-      challenges: new Map(), idempotency: new Map(), clientCheck: null,
+      challenges: new Map(), idempotency: new Map(), clientCheck: null, issuerAuthorization: null,
       identityVerified: false, certificatePackage: null, sri: null, sriAvailability: null,
       contact: null, otp: null, billing: null,
     });
@@ -137,11 +138,50 @@ export function createRegistrationV2Mock({
     return ok(200, { esCliente: found.draft.clientCheck === 'EXISTING' });
   }
 
+  function beginIssuerAuthorizationCheck(registrationId, context = {}) {
+    if (!authorize(context.local)) return fail(503, REGISTRATION_ERROR.BACKEND_CONFIG_REQUIRED);
+    const found = getDraft(registrationId, context); if (found.error) return found.error;
+    const rate = limited(RATE_LIMIT_POLICY.issuerAuthorizationCheck, `issuer:${registrationId}:${found.draft.ruc}:${context.ip || 'local'}`); if (rate) return rate;
+    if (found.draft.clientCheck !== 'NEW') return fail(409, REGISTRATION_ERROR.CLIENT_CHECK_REQUIRED);
+    found.draft.issuerAuthorization = { status: 'PENDING', checkedAt: null };
+    return ok(200, { status: 'PENDING' });
+  }
+
+  function storeIssuerAuthorization(registrationId, result, context = {}) {
+    if (!authorize(context.local)) return fail(503, REGISTRATION_ERROR.BACKEND_CONFIG_REQUIRED);
+    const found = getDraft(registrationId, context); if (found.error) return found.error;
+    if (found.draft.clientCheck !== 'NEW' || found.draft.issuerAuthorization?.status !== 'PENDING'
+        || result?.ruc !== found.draft.ruc || typeof result?.authorized !== 'boolean') {
+      return fail(409, REGISTRATION_ERROR.INVALID_DRAFT_STATE);
+    }
+    found.draft.issuerAuthorization = {
+      status: result.authorized ? 'AUTHORIZED' : 'NOT_AUTHORIZED',
+      authorized: result.authorized,
+      code: result.authorized ? null : REGISTRATION_ERROR.ISSUER_AUTHORIZATION_REQUIRED,
+      authorizationDate: result.authorizationDate || null,
+      checkedAt: result.checkedAt || new Date(now()).toISOString(),
+    };
+    refreshReadiness(found.draft);
+    return ok(200, structuredClone(found.draft.issuerAuthorization));
+  }
+
+  function markIssuerAuthorizationUnavailable(registrationId, context = {}) {
+    if (!authorize(context.local)) return fail(503, REGISTRATION_ERROR.BACKEND_CONFIG_REQUIRED);
+    const found = getDraft(registrationId, context); if (found.error) return found.error;
+    if (found.draft.clientCheck !== 'NEW' || found.draft.issuerAuthorization?.status !== 'PENDING') {
+      return fail(409, REGISTRATION_ERROR.INVALID_DRAFT_STATE);
+    }
+    found.draft.issuerAuthorization = { status: 'UNAVAILABLE', authorized: null, checkedAt: new Date(now()).toISOString() };
+    return fail(503, REGISTRATION_ERROR.ISSUER_AUTHORIZATION_UNAVAILABLE);
+  }
+
   function beginSriLookup(registrationId, context = {}) {
     if (!authorize(context.local)) return fail(503, REGISTRATION_ERROR.BACKEND_CONFIG_REQUIRED);
     const found = getDraft(registrationId, context); if (found.error) return found.error;
     const rate = limited(RATE_LIMIT_POLICY.sriLookup, `sri:${registrationId}:${found.draft.ruc}:${context.ip || 'local'}`); if (rate) return rate;
     if (found.draft.clientCheck !== 'NEW') return fail(409, REGISTRATION_ERROR.CLIENT_CHECK_REQUIRED);
+    // La consulta tributaria puede precargarse en paralelo con la autorización.
+    // El gate sigue siendo obligatorio para completar el registro.
     found.draft.status = DRAFT_STATUS.SRI_PENDING;
     found.draft.sriAvailability = { status: 'PENDING', attempts: 0, lastAttemptAt: new Date(now()).toISOString() };
     return ok(200, { status: DRAFT_STATUS.SRI_PENDING, ruc: found.draft.ruc });
@@ -191,7 +231,7 @@ export function createRegistrationV2Mock({
     if (!found.draft.contact) return fail(409, REGISTRATION_ERROR.INVALID_DRAFT_STATE);
     if (found.draft.otp && now() - found.draft.otp.sentAt < RATE_LIMIT_POLICY.otpSendCooldownSeconds * 1000) return fail(429, REGISTRATION_ERROR.OTP_RATE_LIMITED, RATE_LIMIT_POLICY.otpSendCooldownSeconds);
     const rate = limited(RATE_LIMIT_POLICY.otpSend, `otp:send:${registrationId}:${found.draft.contact.email}:${context.ip || 'local'}`, REGISTRATION_ERROR.OTP_RATE_LIMITED); if (rate) return rate;
-    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const code = '1234';
     found.draft.otp = { hash: sha256(`${registrationId}:${code}`), sentAt: now(), expiresAt: now() + CONTRACT_TTL.otpMs, attempts: 0, usedAt: null };
     return ok(200, { sent: true, expiresAt: new Date(found.draft.otp.expiresAt).toISOString(), cooldownSeconds: RATE_LIMIT_POLICY.otpSendCooldownSeconds, ...(nodeEnv === 'development' ? { devCode: code } : {}) });
   }
@@ -204,7 +244,7 @@ export function createRegistrationV2Mock({
     if (!otp || otp.usedAt || now() > otp.expiresAt) return fail(410, REGISTRATION_ERROR.OTP_EXPIRED);
     if (otp.attempts >= 5) return fail(429, REGISTRATION_ERROR.OTP_ATTEMPTS_EXCEEDED);
     otp.attempts += 1;
-    if (!/^\d{6}$/.test(body?.codigo || '') || sha256(`${registrationId}:${body.codigo}`) !== otp.hash) return fail(422, REGISTRATION_ERROR.OTP_INVALID);
+    if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(body?.codigo || '') || sha256(`${registrationId}:${body.codigo}`) !== otp.hash) return fail(422, REGISTRATION_ERROR.OTP_INVALID);
     otp.usedAt = now(); found.draft.contact.emailVerified = true; refreshReadiness(found.draft);
     return ok(200, { valid: true, status: found.draft.status });
   }
@@ -240,6 +280,7 @@ export function createRegistrationV2Mock({
     if (!draft.identityVerified) return fail(409, REGISTRATION_ERROR.INVALID_DRAFT_STATE);
     if (!draft.certificatePackage) return fail(409, REGISTRATION_ERROR.CERTIFICATE_PACKAGE_REQUIRED);
     if (draft.clientCheck !== 'NEW') return fail(409, REGISTRATION_ERROR.CLIENT_CHECK_REQUIRED);
+    if (draft.issuerAuthorization?.status !== 'AUTHORIZED') return fail(409, REGISTRATION_ERROR.ISSUER_AUTHORIZATION_REQUIRED);
     if (!draft.sri) return fail(409, REGISTRATION_ERROR.SRI_DATA_REQUIRED);
     if (!draft.contact?.emailVerified) return fail(409, REGISTRATION_ERROR.CONTACT_NOT_VERIFIED);
     if (!draft.billing) return fail(409, REGISTRATION_ERROR.BILLING_REQUIRED);
@@ -281,10 +322,8 @@ export function createRegistrationV2Mock({
     const account = accounts.get(accountId);
     if (!account || now() > account.tokenExpiresAt || sha256(token || '') !== account.postCreateTokenHash) return fail(401, REGISTRATION_ERROR.POST_CREATE_TOKEN_INVALID);
     const rate = limited(RATE_LIMIT_POLICY.logo, `logo:${accountId}:${context.ip || 'local'}`); if (rate) return rate;
-    if (!['upload', 'provisional'].includes(selection?.mode)) return fail(422, REGISTRATION_ERROR.INVALID_LOGO);
-    account.logo = selection.mode === 'provisional'
-      ? { mode: 'provisional', width: 2970, height: 300, font: 'Roboto Condensed Light', content: 'RAZON_SOCIAL_ONLY', storedAt: now() }
-      : { mode: 'upload', storedAt: now() };
+    if (selection?.mode !== 'upload') return fail(422, REGISTRATION_ERROR.INVALID_LOGO);
+    account.logo = { mode: 'upload', storedAt: now() };
     return ok(200, { stored: true, mode: selection.mode });
   }
 
@@ -300,6 +339,7 @@ export function createRegistrationV2Mock({
 
   return {
     createDraft, createChallenge, verifyChallenge, uploadCertificate, clientCheck,
+    beginIssuerAuthorizationCheck, storeIssuerAuthorization, markIssuerAuthorizationUnavailable,
     beginSriLookup, markSriUnavailable, storeSri, storeContact, sendOtp, verifyOtp,
     storeBilling, cancelDraft, complete, reconcileAccount, storeLogo, cleanup,
     _drafts: drafts, _accounts: accounts,
@@ -354,7 +394,7 @@ function validBilling(value) {
   return seen.has('factura');
 }
 function refreshReadiness(draft) {
-  if (draft.identityVerified && draft.certificatePackage && draft.clientCheck === 'NEW' && draft.sri && draft.contact?.emailVerified && draft.billing && draft.consent?.accepted) draft.status = DRAFT_STATUS.READY_TO_CREATE;
+  if (draft.identityVerified && draft.certificatePackage && draft.clientCheck === 'NEW' && draft.issuerAuthorization?.status === 'AUTHORIZED' && draft.sri && draft.contact?.emailVerified && draft.billing && draft.consent?.accepted) draft.status = DRAFT_STATUS.READY_TO_CREATE;
   else if (draft.status === DRAFT_STATUS.SRI_PENDING && !draft.sri) return;
   else if (draft.contact?.emailVerified) draft.status = DRAFT_STATUS.CONTACT_VERIFIED;
   else if (draft.identityVerified) draft.status = DRAFT_STATUS.IDENTITY_VERIFIED;

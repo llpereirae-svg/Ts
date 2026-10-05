@@ -2,9 +2,9 @@
 // Todas las funciones son puras: reciben un valor y devuelven { valid, ...detalles }.
 // No tocan el DOM. La UI consume estos resultados.
 
-export { validarRUC } from './ruc-validation.js?v=20260930c';
+export { validarRUC } from './ruc-validation.js?v=20261004a';
 
-import { findCountry } from './countries.js?v=20260930c';
+import { findCountry } from './countries.js?v=20261004a';
 
 /**
  * Normaliza y valida celular según el país seleccionado.

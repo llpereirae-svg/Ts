@@ -14,8 +14,9 @@ export function signatureHelpMarkup(hasSignature = false) {
     <fieldset><legend class="sr-only">Selecciona la vigencia de tu firma</legend>
       ${Object.entries(SIGNATURE_OPTIONS).map(([value, option]) => `<label class="signature-term"><input type="radio" name="signature-term" value="${value}" aria-describedby="signature-offer-error"><span>${option.label}<strong>${option.price} <small>IVA incluido</small></strong></span></label>`).join('')}
     </fieldset>
-    <a class="signature-request" role="button" tabindex="0" target="_blank" rel="noopener noreferrer">Solicitar firma por WhatsApp</a>
+    <a class="signature-request" role="button" tabindex="0" target="_blank" rel="noopener noreferrer"><svg class="signature-whatsapp-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.3 9.3 0 0 1-3.8-.9L3 21l1.8-5a8.7 8.7 0 1 1 16.2-4.5Z"/><path d="M8.7 8.4c.2 3.3 3 6 6.2 6.2"/><path d="m8.7 8.4 1.5-.7 1.1 2.1-.9.8"/><path d="m14.9 14.6.7-1 2.1 1.1-.6 1.5"/></svg><span>Solicitar firma</span></a>
     <span id="signature-offer-error" class="field-error" role="alert"></span>
+    <button type="button" class="signature-tutorial guided-help-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/></svg>¿Cómo obtener tu firma electrónica?</button>
   </div>`;
 }
 
@@ -44,4 +45,5 @@ export function wireSignatureHelp(body) {
       event.preventDefault(); action.click();
     }
   });
+  root.querySelector('.signature-tutorial').addEventListener('click', () => {});
 }

@@ -11,10 +11,10 @@ Este documento es la fuente normativa del Registro V2. El código frontend y el 
 3. Prueba posesión de la clave privada firmando un challenge backend.
 4. Backend verifica certificado, identidad y RUC; solo entonces produce `IDENTITY_VERIFIED`.
 5. El navegador sube PKCS#12 y contraseña para custodia temporal cifrada.
-6. Backend verifica cliente existente y consulta SRI.
+6. Backend verifica cliente existente. Solo para un cliente nuevo, el frontend inicia en paralelo la autorización de emisor y la consulta del catastro SRI; ambas usan el RUC autoritativo del draft.
 7. Contacto, OTP, datos tributarios y facturación quedan asociados al draft.
 8. `complete` crea la cuenta de forma transaccional e idempotente.
-9. El logo se persiste después de crear la cuenta; si no se carga uno, backend genera el provisional definitivo.
+9. El logo se persiste después de crear la cuenta; si no se carga uno, el frontend genera el JPG provisional y lo envía como archivo.
 
 El frontend nunca es autoridad sobre identidad, SRI, OTP, secuencias, consentimiento, elegibilidad ni creación de cuenta.
 
@@ -63,7 +63,7 @@ Cualquier estado no terminal -> CANCELLED
 Cualquier estado no terminal vencido -> EXPIRED
 ```
 
-Las operaciones pueden completarse en distinto orden después de `IDENTITY_VERIFIED`; `refreshReadiness` conserva `SRI_PENDING` mientras no exista snapshot SRI ni declaración manual admitida. `READY_TO_CREATE` requiere identidad, paquete de certificado, cliente nuevo, datos tributarios, email verificado, facturación y consentimiento.
+Las operaciones pueden completarse en distinto orden después de `IDENTITY_VERIFIED`; `refreshReadiness` conserva `SRI_PENDING` mientras no exista snapshot SRI ni declaración manual admitida. `READY_TO_CREATE` requiere identidad, paquete de certificado, cliente nuevo, autorización de emisor `AUTHORIZED`, datos tributarios, email verificado, facturación y consentimiento.
 
 Estados terminales: `COMPLETED`, `EXPIRED`, `CANCELLED`. No son reutilizables.
 
@@ -79,14 +79,15 @@ Estados terminales: `COMPLETED`, `EXPIRED`, `CANCELLED`. No son reutilizables.
 | POST | `/api/registro/drafts/{id}/signature-challenges/{challengeId}/verify` | firma, certificado DER, algoritmo, RUC | 200 `IDENTITY_VERIFIED` |
 | POST | `/api/registro/drafts/{id}/certificate-package` | multipart PKCS#12, password, metadata | 201 custodia temporal |
 | POST | `/api/registro/drafts/{id}/client-check` | `{}` | 200 `esCliente` |
+| POST | `/api/registro/drafts/{id}/issuer-authorization/check` | `{}` | 200 `AUTHORIZED` o `NOT_AUTHORIZED` |
 | POST | `/api/registro/drafts/{id}/sri/lookup` | `{}` | 200 snapshot o 503 tras tres intentos |
 | PUT | `/api/registro/drafts/{id}/tax-data` | `MANUAL_ENTRY` o `SRI_CONFIRMATION` | 200 fuente/estado |
 | PUT | `/api/registro/drafts/{id}/contact` | email, celular | 200 |
 | POST | `/api/registro/drafts/{id}/otp/email/send` | `{}` | 200 expiración/cooldown |
-| POST | `/api/registro/drafts/{id}/otp/email/verify` | código de 6 dígitos | 200 verificado |
+| POST | `/api/registro/drafts/{id}/otp/email/verify` | PIN de 4 dígitos | 200 verificado |
 | PUT | `/api/registro/drafts/{id}/billing` | modo y documentos | 200 |
 | POST | `/api/registro/drafts/{id}/complete` | `{}` + `Idempotency-Key` | 201 cuenta/token post-creación |
-| PUT | `/api/registro/accounts/{accountId}/logo` | bearer + multipart o provisional JSON | 200 persistido |
+| PUT | `/api/registro/accounts/{accountId}/logo` | bearer + multipart con archivo JPG/PNG | 200 persistido |
 
 Todos los endpoints responden JSON, `Cache-Control: no-store` y correlation ID. Los 429 incluyen `Retry-After` en segundos.
 
@@ -97,11 +98,11 @@ Request obligatorio al crear draft:
 ```json
 {
   "accepted": true,
-  "legalDocumentVersion": "REGISTRATION_V2_2026-09-30",
+  "legalDocumentVersion": "REGISTRATION_V2_2026-10-05",
   "legalDocumentId": "TRIBUTASOFT_REGISTRATION_TERMS_PRIVACY_V2",
   "documentHashes": {
-    "termsSha256": "1b2a36395a997b6daa6ac516b077fcb001084d4fc836d50703a263b3913ba1a6",
-    "privacySha256": "d0482a2c9bd659d30ed5e739a5f1ed0c777818d590f1b489e3f1b22b3bfd5dde"
+    "termsSha256": "6c55d698ea7b6eafca80687e13965d4297950dfb3949e2a2dc1e057f70d002b2",
+    "privacySha256": "5979589c6f43bd20626ee2600767fe7e96cea2ec8177dba2f655cb8762d24ce5"
   }
 }
 ```
@@ -149,7 +150,19 @@ La clave privada y la contraseña no salen del navegador durante el challenge.
 
 ## 8. Cliente existente
 
-Solo se consulta después de `IDENTITY_VERIFIED` y custodia temporal. Request vacío: el backend usa el RUC autoritativo del draft. Response mínima: `{ "esCliente": true|false }`. No devuelve razón social ni estado de cuenta. Queries parametrizadas obligatorias. `true` detiene el registro y muestra el estado específico aprobado; no consulta SRI.
+Solo se consulta después de `IDENTITY_VERIFIED` y custodia temporal. Request vacío: el backend usa el RUC autoritativo del draft. Response mínima: `{ "esCliente": true|false }`. No devuelve razón social ni estado de cuenta. Queries parametrizadas obligatorias. Debe resolverse mediante índice único de RUC; se permite caché positiva de 5 minutos y caché negativa máxima de 30 segundos, pero `complete` vuelve a comprobar unicidad dentro de la transacción. `true` detiene el registro y muestra el estado específico aprobado; no consulta SRI.
+
+### 8.1 Emisor electrónico autorizado
+
+Solo se ejecuta cuando `client-check` confirma cliente nuevo. El request es vacío y el backend usa el RUC autoritativo del draft; el navegador nunca llama al portal del SRI ni envía otro RUC. El backend abre la consulta pública de emisores autorizados, conserva cookie y `javax.faces.ViewState` únicamente durante esa operación y normaliza la respuesta:
+
+```json
+{ "status": "AUTHORIZED", "authorized": true, "authorizationDate": "14/04/2014 08:11", "checkedAt": "..." }
+```
+
+Un resultado vacío confirmado devuelve 200 `NOT_AUTHORIZED`, `authorized=false` y `code=ISSUER_AUTHORIZATION_REQUIRED`. Bloquea el avance, presenta la guía de autoservicio y permite reintentar después de que el contribuyente gestione su autorización. CAPTCHA, rechazo del cortafuegos, timeout, respuesta ambigua o cambio del formulario devuelven 503 `ISSUER_AUTHORIZATION_UNAVAILABLE`; nunca se convierten en `NOT_AUTHORIZED`. Caché base: autorizado 24 horas; no autorizado 30 minutos. No guardar cookie ni ViewState. Aplicar pocas consultas, timeout, límite por draft/RUC/IP y monitoreo del parser.
+
+`issuer-authorization/check` y `sri/lookup` pueden completarse en cualquier orden después de `client-check=NEW`; esto reduce espera sin debilitar el gate. El snapshot tributario puede quedar precargado en el draft, pero no se muestra ni habilita el registro si la autorización termina en `NOT_AUTHORIZED`. `complete` exige siempre `AUTHORIZED` y vuelve a comprobar las precondiciones. El tutorial se enlaza mediante la clave frontend `tributasoft:sri-authorization-tutorial`; sustituir su URL placeholder al publicar el video definitivo.
 
 ## 9. SRI y `/tax-data`
 
@@ -208,14 +221,14 @@ Solo `AUTO_RECONCILED` o una confirmación/revisión resuelta satisfactoriamente
 ## 10. Contacto y OTP
 
 - Email normalizado en minúsculas; celular validado por formato, no por OTP.
-- OTP: 6 dígitos, CSPRNG, hash con secreto/pepper server-side, TTL 5 minutos, single-use.
+- OTP: 4 dígitos, CSPRNG en producción, hash con secreto/pepper server-side, TTL 5 minutos, single-use. El mock tutorial utiliza `1234`; producción nunca devuelve el PIN al frontend.
 - Máximo 5 intentos de verificación; cambiar email invalida OTP y estado verificado.
 - Cooldown 60 segundos; máximo 3 envíos/hora por draft+email.
 - Respuestas no revelan existencia de email. OTP y hash nunca se registran.
 
 ## 11. Facturación
 
-Cada documento envía `tipo_documento`, `establecimiento`, `punto_emision`, `secuencia`. Tipos: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`. Factura es obligatoria.
+El registro V2 envía únicamente la configuración inicial de `factura`: `tipo_documento`, `establecimiento`, `punto_emision`, `secuencia`. Los demás tipos, establecimientos y puntos de emisión se configuran después desde el perfil, fuera del onboarding. Valores sugeridos editables: `001 / 002 / 1`; antes del envío la secuencia se normaliza a nueve dígitos (`000000001`).
 
 - Establecimiento y punto: exactamente 3 dígitos, distintos de `000`.
 - Secuencia UX: 1–9 dígitos; contrato persistido: 9 dígitos con ceros a la izquierda.
@@ -233,8 +246,8 @@ Transacción productiva: bloquear draft/RUC, verificar `READY_TO_CREATE`, preven
 
 - Endpoint definitivo: `PUT /api/registro/accounts/{accountId}/logo`.
 - Autenticación: bearer post-creación aleatorio, TTL 10 minutos, scope exclusivo logo y single-account.
-- Upload: JPG/JPEG/PNG, máximo 500 KB, magic bytes, MIME real, decode, dimensiones/pixel limit, protección image bomb, re-encode y storage privado con nombre generado.
-- Provisional: backend genera y persiste PNG 2,970 × 300, fondo blanco, razón social únicamente, tipografía **Roboto Condensed Light**, color negro. No Bold, email, celular ni iconos.
+- Upload: JPG/JPEG/PNG, máximo 250 KB, magic bytes, MIME real, decode, dimensiones/pixel limit, protección image bomb, re-encode y storage privado con nombre generado.
+- Provisional: el frontend genera un JPG real de 2,970 × 300, fondo blanco y razón social en negro con **Roboto Condensed Light**. Debajo incorpora el correo y celular registrados con iconos lineales. Lo envía como archivo multipart por el mismo endpoint de upload.
 - Error de logo no revierte una cuenta creada; permite reintentar dentro del TTL o continuar con provisional.
 
 ## 14. Rate limits base
@@ -243,6 +256,7 @@ Transacción productiva: bloquear draft/RUC, verificar `READY_TO_CREATE`, preven
 |---|---:|---|
 | Crear draft | 5/15 min y 3/h por RUC | IP, RUC |
 | Client check | 5/10 min | draft, RUC; además control IP global |
+| Emisor autorizado | 4/15 min | draft, RUC, IP |
 | SRI lookup | 4/15 min | draft, RUC, IP |
 | Challenge create | 5/10 min | draft, IP |
 | Challenge verify | 5/10 min | draft, IP |
@@ -273,6 +287,8 @@ Los contadores se aplican además de límites globales de infraestructura, reque
 | CHALLENGE_ALREADY_USED | 409 | challenge verify | replay | Crear challenge nuevo |
 | CERTIFICATE_PACKAGE_REQUIRED | 409 | complete | falta custodia | Volver a firma |
 | CLIENT_CHECK_REQUIRED | 409 | SRI/complete | gate no ejecutado | Ejecutar client-check |
+| ISSUER_AUTHORIZATION_REQUIRED | 409 | complete | no autorizado o gate pendiente | Mostrar guía «Cómo obtener la autorización»; no avanzar |
+| ISSUER_AUTHORIZATION_UNAVAILABLE | 503 | issuer authorization | portal caído, CAPTCHA, rechazo o parser inválido | Reintentar; no asumir “no autorizado” |
 | SRI_DATA_REQUIRED | 409 | complete | sin snapshot/declaración | Volver a Datos |
 | CONTACT_NOT_VERIFIED | 409 | complete | OTP pendiente | Abrir verificación |
 | BILLING_REQUIRED | 409 | complete | facturación pendiente | Volver a Facturación |
@@ -298,8 +314,8 @@ Los contadores se aplican además de límites globales de infraestructura, reque
 | IDEMPOTENCY_CONFLICT | 409 | complete | clave distinta tras complete | Usar resultado previo |
 | ACCOUNT_ALREADY_EXISTS | 409 | complete | carrera/duplicado | Estado cliente existente |
 | TAX_DATA_RECONCILIATION_PENDING | 423 | emisión/función tributaria | cuenta restringida | Informar pendiente SRI |
-| INVALID_LOGO | 422 | logo | imagen/modo inválido | Corregir o provisional |
-| POST_CREATE_TOKEN_INVALID | 401 | logo | token ausente/vencido | Provisional/backend o login |
+| INVALID_LOGO | 422 | logo | imagen/modo inválido | Corregir o regenerar JPG |
+| POST_CREATE_TOKEN_INVALID | 401 | logo | token ausente/vencido | Volver a iniciar sesión |
 | BACKEND_CONFIG_REQUIRED | 503 | mocks dev | mock fuera de entorno | No simular éxito |
 
 Errores nunca incluyen stack, SQL, filesystem, secretos, PKCS#12, OTP ni respuesta SRI cruda.
@@ -312,11 +328,12 @@ Errores nunca incluyen stack, SQL, filesystem, secretos, PKCS#12, OTP ni respues
 | Firma | metadatos cliente | challenge + PKI backend | Implementar trust/revocación |
 | PKCS#12 | payload monolítico | custodia temporal | Envelope encryption/KMS |
 | Cliente | endpoint temprano suelto | gate ligado al draft | Consulta parametrizada/antiabuso |
+| Emisor autorizado | no existía | gate backend ligado al draft | Consulta pública JSF, caché y monitoreo |
 | SRI | consulta puntual | snapshot + fallback/reconciliación | Persistir fuente/estado |
 | OTP | mock/flujo separado | OTP ligado al draft | Servicio server-side |
-| Facturación | establecimiento compartido | configuración por documento | Persistencia y secuencia atómica |
+| Facturación | establecimiento compartido | alta inicial de Factura; configuración ampliada posterior en perfil | Persistencia y secuencia atómica |
 | Alta | `POST /api/registro` | `/drafts/{id}/complete` | Transacción/idempotencia |
-| Logo | payload/preview sin persistencia | endpoint post-creación | Storage/provisional backend |
+| Logo | payload/preview sin persistencia | endpoint post-creación con archivo real | Validación y storage privado |
 | Consentimiento | implícito/final | evidencia al crear draft | Registro versionado/auditable |
 | Errores | heterogéneos | catálogo V2 | Respuestas uniformes |
 
@@ -329,12 +346,13 @@ Errores nunca incluyen stack, SQL, filesystem, secretos, PKCS#12, OTP ni respues
 | Challenge | firma local | verifica public key | PKI/trust/revocación |
 | PKCS#12 | upload y limpieza local | solo metadatos | cifrado/KMS/storage |
 | Cliente | consume draft endpoint | lista dev | DB parametrizada |
+| Emisor autorizado | consume draft endpoint | mock explícito o consulta backend real | parser JSF, caché, rate limit y observabilidad |
 | SRI | consume backend | proxy real/dev | proxy/cache/snapshot |
 | Tax data | dos modos | valida ambos | autoridad y auditoría |
 | OTP | UI ligada a draft | hash/cooldown/cuotas base | proveedor + store/rate limits |
 | Billing | contrato por documento | validación | DB/locks/secuencias |
 | Complete | Idempotency-Key | resultado en memoria | transacción persistente |
-| Logo | upload/provisional | persistencia simulada | imagen segura/storage |
+| Logo | upload o JPG generado | persistencia simulada | imagen segura/storage |
 | Consentimiento | versión/id/hash | evidencia mock | evidencia durable |
 | Errores | consume `code`/Retry-After | catálogo V2 | misma matriz |
 
@@ -351,5 +369,5 @@ Backend productivo debe añadir prepared statements, transacciones, correlation 
 - Cuenta manual queda restringida hasta reconciliación satisfactoria.
 - Idempotencia y secuencias son atómicas.
 - PKCS#12, contraseña, OTP y llaves nunca aparecen en logs.
-- El provisional se genera exactamente con razón social, Roboto Condensed Light y 2,970 × 300.
+- El frontend genera el provisional exactamente con razón social, Roboto Condensed Light y 2,970 × 300; el backend comprueba que recibió una imagen válida antes de persistirla.
 - Tests de contrato, seguridad, smoke y E2E deben pasar antes de staging.

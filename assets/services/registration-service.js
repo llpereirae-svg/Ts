@@ -1,4 +1,4 @@
-import { ENV, REGISTRATION_API_URL } from './config.js?v=20260930c';
+import { ENV, REGISTRATION_API_URL } from './config.js?v=20261004a';
 
 export async function crearRegistro(payload, { fetchImpl = globalThis.fetch } = {}) {
   // Se conserva el demo estático histórico. Localhost y Dev Tunnels usan el

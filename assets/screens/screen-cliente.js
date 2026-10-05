@@ -1,4 +1,4 @@
-import { CLIENTE_ESTADO, CLIENTE_ERROR, resolverLoginUrl } from '../services/cliente-service.js?v=20260930c';
+import { CLIENTE_ESTADO, CLIENTE_ERROR, resolverLoginUrl } from '../services/cliente-service.js?v=20261004a';
 
 export function renderPantallaCliente(body, result, { onRetry, onBack }) {
   const existing = result.status === CLIENTE_ESTADO.EXISTING_CLIENT;

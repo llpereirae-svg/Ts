@@ -51,16 +51,18 @@ test('tax-data y reconciliación tienen vocabulario cerrado', () => {
   ]);
 });
 
-test('logo contractual no conserva la variante antigua', async () => {
+test('logo contractual incluye contacto sin conservar variantes contradictorias', async () => {
   const [readme, handoff, screen] = await Promise.all([
     read('README.md'), read('docs/V2-BACKEND-HANDOFF.md'), read('assets/screens/post-create-logo.js'),
   ]);
   assert.equal(LOGO_CONTRACT.width, 2970);
   assert.equal(LOGO_CONTRACT.height, 300);
   assert.equal(LOGO_CONTRACT.provisionalFont, 'Roboto Condensed Light');
-  assert.match(handoff, /razón social únicamente/);
-  assert.doesNotMatch(`${readme}\n${handoff}`, /Roboto Condensed Bold|correo y celular con iconos|logo.*contrato pendiente/i);
-  assert.doesNotMatch(screen, /contactIcon/);
+  assert.equal(LOGO_CONTRACT.provisionalContent, 'RAZON_SOCIAL_EMAIL_CELULAR_WITH_ICONS');
+  assert.doesNotMatch(`${readme}\n${handoff}`, /Roboto Condensed Bold|logo.*contrato pendiente/i);
+  assert.match(`${readme}\n${handoff}`, /correo y celular(?: registrados)? con iconos/i);
+  assert.match(screen, /drawMailIcon/);
+  assert.match(screen, /drawPhoneIcon/);
 });
 
 test('consentimiento usa IDs y hashes de los documentos actuales', async () => {

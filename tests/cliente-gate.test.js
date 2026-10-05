@@ -98,6 +98,8 @@ test('firma inválida o sin términos no llama al endpoint', async () => {
 test('navegación comprueba gate antes de renderizar y no prepara Datos al registrar renderer', async () => {
   const source = await readFile(new URL('../assets/wizard.js', import.meta.url), 'utf8');
   assert.match(source, /body && SCREENS\[currentIdx\]\.id === id/);
-  assert.match(source, /if \(index > 0 && !clienteGate\.permite\(wizardData\)\)/);
+  assert.match(source, /if \(index > 0 && \(!clienteGate\.permite\(wizardData\) \|\| !issuerAuthorizationGate\.permite\(wizardData\)\)\)/);
   assert.ok(source.indexOf('clienteGate.verificar') < source.indexOf('await transitionTo(currentIdx + 1)'));
+  assert.ok(source.indexOf('issuerAuthorizationGate.verificar') < source.indexOf('await transitionTo(currentIdx + 1)'));
+  assert.ok(source.indexOf('precargarDatosSri(wizardData)') < source.indexOf('issuerAuthorizationGate.verificar'));
 });

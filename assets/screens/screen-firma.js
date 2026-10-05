@@ -1,11 +1,31 @@
-import { firmarChallengeP12, validarFirmaP12 } from '../parsers/firma-validator.js?v=20260930c';
-import { validarRUC } from '../utils/ruc-validation.js?v=20260930c';
-import { showLoading, hideLoading } from '../wizard.js?v=20260930c';
-import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20260930c';
-import { cancelarDraft, crearChallenge, crearDraft, subirPaqueteCertificado, verificarChallenge } from '../services/draft-service.js?v=20260930c';
+import { firmarChallengeP12, validarFirmaP12 } from '../parsers/firma-validator.js?v=20261004a';
+import { validarRUC } from '../utils/ruc-validation.js?v=20261004a';
+import { showLoading, hideLoading } from '../wizard.js?v=20261005f';
+import { signatureHelpMarkup, wireSignatureHelp } from './signature-offer.js?v=20261004a';
+import { mostrarConsentimientoLegal } from './legal-consent-dialog.js?v=20261005f';
+import { cancelarDraft, crearChallenge, crearDraft, subirPaqueteCertificado, verificarChallenge } from '../services/draft-service.js?v=20261004a';
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 let pendingFile = null;
+
+export function mensajeErrorPosesion(error) {
+  if (error?.status === 429 || error?.code === 'RATE_LIMITED') {
+    const minutes = Math.ceil(Number(error?.retryAfter || 0) / 60);
+    return minutes > 0
+      ? `Has realizado varios intentos. Espera ${minutes} minuto${minutes === 1 ? '' : 's'} y vuelve a intentarlo.`
+      : 'Has realizado varios intentos. Espera unos minutos y vuelve a intentarlo.';
+  }
+  if (error?.status === 401 || error?.status === 403 || ['SESSION_REQUIRED', 'SESSION_MISMATCH', 'CSRF_INVALID'].includes(error?.code)) {
+    return 'La sesión de registro expiró. Recarga la página e intenta nuevamente.';
+  }
+  if (error?.status === 503 || ['BACKEND_CONFIG_REQUIRED', 'BACKEND/CONFIG_REQUIRED', 'SERVICE_UNAVAILABLE'].includes(error?.code)) {
+    return 'El servicio de verificación no está disponible. Intenta nuevamente.';
+  }
+  if (error?.code === 'INVALID_SIGNATURE') {
+    return 'No pudimos comprobar la firma digital. Vuelve a seleccionar el archivo e intenta nuevamente.';
+  }
+  return 'No pudimos verificar la posesión de la firma. Intenta nuevamente.';
+}
 
 export function renderPantallaFirma(body, data) {
   body.innerHTML = `
@@ -30,7 +50,7 @@ export function renderPantallaFirma(body, data) {
 
       <label class="consent-row">
         <input id="firma-terms" type="checkbox" ${data.terminos ? 'checked' : ''}>
-        <span>Acepto los <a href="./Terminos-y-Condiciones.txt" target="_blank" rel="noopener">Términos y Condiciones</a> y la <a href="./Politica-de-Privacidad.txt" target="_blank" rel="noopener">Política de Privacidad</a>.</span>
+        <span>Acepto los <button type="button" class="legal-inline-link" data-legal-open>Términos y Condiciones</button> y la <button type="button" class="legal-inline-link" data-legal-open>Política de Privacidad</button>.</span>
       </label>
       <span id="firma-terms-error" class="field-error consent-error" role="alert"></span>
     </div>`;
@@ -49,10 +69,27 @@ export function renderPantallaFirma(body, data) {
     prepareFile(body, data, event.dataTransfer.files[0]);
   });
   fileInput.addEventListener('change', () => prepareFile(body, data, fileInput.files[0]));
-  body.querySelector('#firma-terms').addEventListener('change', (event) => {
+  const terms = body.querySelector('#firma-terms');
+  const requestConsent = async () => {
+    if (!(await mostrarConsentimientoLegal())) return;
+    terms.checked = true;
+    data.terminos = true;
+    body.querySelector('#firma-terms-error').textContent = '';
+  };
+  terms.addEventListener('click', (event) => {
+    if (data.terminos) return;
+    event.preventDefault();
+    void requestConsent();
+  });
+  terms.addEventListener('change', (event) => {
     data.terminos = event.target.checked;
     body.querySelector('#firma-terms-error').textContent = '';
   });
+  body.querySelectorAll('[data-legal-open]').forEach(button => button.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    void requestConsent();
+  }));
   password.addEventListener('input', () => { body.querySelector('#firma-password-error').textContent = ''; });
   password.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -82,6 +119,7 @@ function prepareFile(body, data, file) {
   if (previousDraftId) void cancelarDraft(previousDraftId).catch(() => {});
   data.firma = null;
   data.clienteGate = { status: 'IDLE' };
+  data.issuerAuthorization = { status: 'IDLE' };
   body.querySelector('.signature-help').hidden = true;
   body.querySelector('#firma-result').hidden = true;
   body.querySelector('.firma-password').hidden = false;
@@ -153,7 +191,7 @@ export async function validarPantallaFirma(data) {
     data.certificatePackageStatus = 'TEMPORARY_STORED';
   } catch (error) {
     hideLoading();
-    body.querySelector('#firma-file-error').textContent = 'No pudimos verificar la posesión de la firma. Intenta nuevamente.';
+    body.querySelector('#firma-file-error').textContent = mensajeErrorPosesion(error);
     return false;
   }
   hideLoading();

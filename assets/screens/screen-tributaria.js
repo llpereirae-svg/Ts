@@ -9,10 +9,10 @@
    - No. Resolución: aparece solo si el tipo requiere uno
      (Agente de Retención, Contribuyente Especial o Gran Contribuyente). */
 
-import { validarNoResolucion } from '../utils/validators.js?v=20260930c';
-import { goNext } from '../wizard.js?v=20260930c';
+import { validarNoResolucion } from '../utils/validators.js?v=20261004a';
+import { goNext } from '../wizard.js?v=20261004a';
 
-import { LABEL_TIPO, LABEL_REGIMEN, TIPOS_CON_RESOLUCION } from '../utils/registration-data.js?v=20260930c';
+import { LABEL_TIPO, LABEL_REGIMEN, TIPOS_CON_RESOLUCION } from '../utils/registration-data.js?v=20261004a';
 
 export function renderPantallaTributaria(body, wizardData) {
   preFillFromCert(wizardData);

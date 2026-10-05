@@ -1,5 +1,5 @@
 // Fija el documento en su posición (incluido Safari iOS), sin bloquear el scroll del diálogo.
-export function lockModalScroll(dialog, { doc = document, win = window } = {}) {
+export function lockModalScroll(dialog, { doc = document, win = window, scrollTarget = dialog } = {}) {
   const body = doc.body;
   const html = doc.documentElement;
   const x = win.scrollX;
@@ -27,9 +27,10 @@ export function lockModalScroll(dialog, { doc = document, win = window } = {}) {
     const delta = touchY - event.touches[0].clientY;
     touchY = event.touches[0].clientY;
     const inside = dialog.contains(event.target);
-    const atTop = dialog.scrollTop <= 0 && delta < 0;
-    const atBottom = dialog.scrollTop + dialog.clientHeight >= dialog.scrollHeight - 1 && delta > 0;
-    if (!inside || dialog.scrollHeight <= dialog.clientHeight || atTop || atBottom) event.preventDefault();
+    const scrollable = scrollTarget?.contains?.(event.target) ? scrollTarget : null;
+    const atTop = scrollable && scrollable.scrollTop <= 0 && delta < 0;
+    const atBottom = scrollable && scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight - 1 && delta > 0;
+    if (!inside || !scrollable || scrollable.scrollHeight <= scrollable.clientHeight || atTop || atBottom) event.preventDefault();
   };
   const wheel = (event) => { if (!dialog.contains(event.target)) event.preventDefault(); };
   doc.addEventListener('touchstart', start, { passive: true });

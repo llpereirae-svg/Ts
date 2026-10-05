@@ -9,7 +9,7 @@ for (const hostname of ['localhost', '127.0.0.1', 'tributasoft.com.ec']) {
       globalThis.window = { location: { hostname: ${JSON.stringify(hostname)} } };
       let calls = 0;
       globalThis.fetch = async () => { calls++; throw new Error('backend ausente'); };
-      const config = await import('./assets/services/config.js?v=20260930c');
+      const config = await import('./assets/services/config.js?v=20261004a');
       const { generarYEnviarToken, verificarToken } = await import('./assets/services/token-service.js');
       if (config.ENV === 'development') {
         assert.equal(config.USE_MOCKS, false);
