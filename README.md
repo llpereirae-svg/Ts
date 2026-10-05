@@ -4,9 +4,9 @@ Landing estática en HTML, CSS y JavaScript ES modules con un flujo responsive d
 
 ## Flujo de registro
 
-1. **Firma:** lee `.p12` o `.pfx` localmente con `node-forge`, valida el RUC, crea un draft, firma un challenge y entrega el paquete al backend para custodia temporal. La clave privada nunca sale del navegador; archivo y contraseña se eliminan de memoria después del upload confirmado.
-2. **Gates previos:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, exige que figure como emisor electrónico autorizado antes de consultar sus datos tributarios.
-3. **Datos:** consulta el catastro SRI; muestra snapshot oficial o captura manual identificada tras tres fallos transitorios, contacto y OTP ligados al draft.
+1. **Firma:** abre `.p12` o `.pfx` localmente con `node-forge`, valida el RUC, crea un draft, firma un challenge y entrega el paquete y su contraseña al backend para custodia temporal cifrada. El navegador elimina archivo y contraseña de memoria después del upload confirmado; el backend productivo debe aplicar la política de cifrado y KMS/Vault definida en el handoff V2.
+2. **Gates previos:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, inicia en paralelo la autorización de emisor y la consulta tributaria; la autorización debe quedar confirmada antes de mostrar Datos.
+3. **Datos:** usa el snapshot del catastro SRI ya precargado o habilita captura manual identificada tras tres fallos transitorios; contacto y OTP quedan ligados al draft.
 4. **Facturación:** configuración inicial de Factura; otros documentos, establecimientos y puntos se administran después desde el perfil. Véase `docs/PASO3-FACTURACION.md`.
 5. **Revisión:** resume identidad, datos tributarios, contacto y facturación antes del alta. Son cuatro pasos visibles; el gate no es un quinto paso.
 
@@ -25,13 +25,29 @@ Challenge backend + verificación criptográfica
         │    ├─ no autorizado → guía de autoservicio y bloqueo
         │    └─ indisponible → reintentar, sin asumir resultado
         └─ POST .../sri/lookup
-             ├─ SRI verificado y precargado
+             ├─ SRI verificado + ACTIVO → snapshot precargado
+             ├─ SRI verificado + no ACTIVO → bloqueo
+             ├─ 204 → RUC no encontrado y bloqueo
+             ├─ respuesta inválida/no coincidente → bloqueo y reintento
              └─ 3 fallos transitorios → MANUAL_ENTRY / cuenta restringida
         ↓
       Datos + OTP → Facturación → Revisión → complete idempotente
 ```
 
 Ser cliente, figurar como emisor electrónico autorizado y tener RUC ACTIVO son tres controles distintos. El gate de cliente se resuelve primero; para un cliente nuevo, las otras dos consultas son independientes y paralelas. Un cliente existente no las ejecuta dentro de esta promoción.
+
+### Checkpoints al ingresar el RUC
+
+| Checkpoint | Petición/validación | Avanza cuando | Rama que detiene o restringe |
+|---|---|---|---|
+| CP0 Identidad | validación local + challenge/custodia backend | firma válida, RUC de 13 dígitos y `IDENTITY_VERIFIED` | firma inválida, CI sin RUC, RUC distinto o custodia fallida |
+| CP1 Cliente | `POST /api/registro/drafts/{id}/client-check` | `esCliente=false` | `true` muestra acceso al portal; error mantiene el gate cerrado |
+| CP2 Emisor | `POST /api/registro/drafts/{id}/issuer-authorization/check` | `AUTHORIZED` | `NOT_AUTHORIZED` muestra guía; `UNAVAILABLE` permite reintentar |
+| CP3 Catastro | `POST /api/registro/drafts/{id}/sri/lookup` | snapshot del mismo RUC con estado `ACTIVO` | 204, respuesta inválida o estado no activo bloquean; tres fallos transitorios habilitan `MANUAL_ENTRY` restringido |
+| CP4 Contacto | `PUT .../contact` + OTP email | correo exacto verificado | editar el correo invalida la verificación |
+| CP5 Alta | `POST .../complete` con `Idempotency-Key` | backend vuelve a validar todos los gates | cualquier precondición pendiente impide crear la cuenta |
+
+CP2 y CP3 comienzan juntos después de CP1. El snapshot de CP3 puede quedar guardado en el draft mientras CP2 termina, pero no habilita ni muestra Datos hasta que CP2 resulte `AUTHORIZED`.
 
 ### Cliente existente
 
@@ -64,11 +80,13 @@ El tutorial local usa el PIN `1234` sin mostrar etiquetas técnicas en la interf
 ## Arquitectura RUC
 
 ```text
-Frontend
-  → GET /api/ruc/:ruc
-  → backend propio
+Wizard V2
+  → POST /api/registro/drafts/{id}/sri/lookup (body vacío)
+  → backend toma el RUC autoritativo del draft
   → SRI
 ```
+
+`GET /api/ruc/:ruc` es una ruta V1 conservada para consumidores legacy; no es la autoridad del wizard V2.
 
 El navegador **no debe consultar directamente al SRI**. Se observaron cabeceras CORS incompatibles/duplicadas para consumo directo. El proxy propio hace la llamada servidor a servidor; no desactivar seguridad del navegador ni cambiar a browser → SRI. Maneja timeout, 204, errores upstream y JSON; el frontend normaliza el contrato tributario.
 
@@ -170,7 +188,7 @@ python .github\smoke-test.py
 
 Las pruebas cubren formato y dígito verificador, representante presente o ausente, 204, timeout/5xx, respuesta malformada o de otro RUC, bloqueo de estados no activos, fechas objeto/lista, mapeo funcional, condicionales, vínculo del correo verificado, estructura de cuatro pasos y breakpoints responsive.
 
-El gate agrega cobertura de nuevo/existente/error, validación de esquema, timeout/204/JSON malformado, URL de login válida/faltante/no confiable, mock desactivado fuera de local, deduplicación, reintento, cambio de firma y bloqueo de navegación antes de Datos. QA de navegador con firma sintética: existente hizo 1 lookup y 0 llamadas SRI; nuevo hizo 1 lookup y luego 1 SRI; error/reintento mantuvo Datos sin renderizar y 0 llamadas SRI. El RUC autorizado se verificó contra el proceso mock local sin guardarlo en fixtures ni capturas. No se probó DB/alta real.
+El gate agrega cobertura de nuevo/existente/error, validación de esquema, autorización de emisor, timeout/204/JSON malformado, URL de login válida/faltante/no confiable, mock desactivado fuera de local, deduplicación, reintento, cambio de firma y bloqueo de navegación antes de Datos. Para cliente nuevo, autorización y SRI se disparan en paralelo; para cliente existente no se ejecuta ninguna. El RUC autorizado se verifica contra el proceso mock local sin guardarlo en fixtures ni capturas. No se probó DB/alta real.
 
 ## Privacidad, cookies y tracking
 

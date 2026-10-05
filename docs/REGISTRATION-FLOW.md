@@ -4,6 +4,26 @@ Firma electrónica → Datos → Facturación → Revisión.
 
 Correo se verifica dentro de Datos mediante `email-verification.js`. No hay una ruta/pantalla de correo independiente. Firma mantiene su composición aprobada; únicamente cambia el indicador de avance a cuatro pasos. Facturación y Revisión conservan contenido y comportamiento visual, con numeración actualizada.
 
+## Peticiones y ramas al obtener el RUC
+
+El RUC candidato se extrae de la firma. Después de crear el draft, demostrar posesión de la clave y entregar el paquete para custodia temporal, el backend conserva ese RUC como autoridad. Las peticiones posteriores llevan body vacío cuando el RUC ya está ligado al draft.
+
+1. `POST /api/registro/drafts/{id}/client-check` se resuelve primero. `esCliente=true` detiene la promoción y muestra el acceso al portal; `false` habilita las dos consultas siguientes. Un error no se interpreta como cliente nuevo.
+2. `POST /api/registro/drafts/{id}/issuer-authorization/check` y `POST /api/registro/drafts/{id}/sri/lookup` comienzan en paralelo. El resultado SRI puede quedar precargado en el draft, pero Datos no se muestra hasta confirmar `AUTHORIZED`.
+3. Autorización devuelve `AUTHORIZED`, `NOT_AUTHORIZED` o `ISSUER_AUTHORIZATION_UNAVAILABLE`. Las dos últimas ramas mantienen el avance bloqueado; la primera continúa cuando también termina la consulta SRI.
+4. SRI exitoso debe corresponder al mismo RUC. `ACTIVO` habilita el snapshot; un estado distinto bloquea. `204` significa no encontrado. JSON inválido, contrato incompleto o RUC distinto son respuesta malformada. Tras tres fallos transitorios registrados por backend se habilita `MANUAL_ENTRY`, con cuenta restringida y reconciliación posterior.
+
+## Checkpoints
+
+| ID | Condición que debe quedar acreditada | Evidencia/ruta | Resultado si falla |
+|---|---|---|---|
+| CP0 | Identidad y posesión de firma | challenge verificado + paquete custodiado | volver a Firma; no consultar cliente ni SRI |
+| CP1 | No existe cliente con el RUC del draft | `client-check` | existente: portal; error: reintento |
+| CP2 | Emisor electrónico autorizado | `issuer-authorization/check` | guía de autorización o reintento |
+| CP3 | Datos tributarios utilizables | `sri/lookup` | bloqueo para no encontrado/no activo; reintento o `MANUAL_ENTRY` solo después de tres fallos transitorios |
+| CP4 | Contacto ligado al draft | contacto guardado + OTP del correo exacto | editar correo invalida OTP |
+| CP5 | Facturación válida y gates vigentes | `billing` + `complete` idempotente | backend rechaza el alta sin crear estado parcial |
+
 ## Mapeo SRI → formulario
 
 | Respuesta normalizada | Formulario / regla |
@@ -31,9 +51,9 @@ ACTIVO no renderiza mensaje positivo ni reserva espacio. No activo y servicio no
 
 El diálogo de correo fija el body usando los offsets previos, compensa el scrollbar y conserva los estilos originales. Bloquea gestos fuera del diálogo y rebote en sus límites; permite scroll interno y zoom. Ajusta altura al visual viewport (teclado), y al cerrar restaura scroll y foco. QA en navegador integrado: 390 px, scroll 292 → cierre 292; 430 px, scroll 242 → cierre 242, sin movimiento visual de fondo. Pruebas unitarias de touchmove, restauración y limpieza. No se dispone de una prueba en dispositivo real iOS Safari/Android Chrome; esa comprobación permanece pendiente.
 
-La consulta continúa usando frontend → `GET /api/ruc/:ruc` → proxy propio → SRI. `SRI_RUC_URL` se configura en el entorno del proceso, nunca en el frontend. El proxy no almacena la consulta. Ante indisponibilidad no hay avance manual provisional.
+El wizard V2 usa frontend → `POST /api/registro/drafts/{id}/sri/lookup` → proxy propio → SRI. `SRI_RUC_URL` se configura en el entorno del proceso, nunca en el frontend. El proxy no almacena la respuesta cruda. `GET /api/ruc/:ruc` queda solo para V1. La captura manual no nace de un error del navegador: el backend debe registrar tres fallos transitorios y devolver `SRI_UNAVAILABLE`, `attempts=3` y `errorCode=SRI_UNAVAILABLE`.
 
-Continuar valida estado ACTIVO, campos y contacto antes de abrir el diálogo. Se usa `generarYEnviarToken` / `verificarToken` sin alterar sus endpoints. El modal mantiene el foco, permite cerrar con Escape, cambiar correo, reenviar con espera y verificar. Correo destino parcialmente oculto. Cerrar no avanza. Cambiar correo invalida la confirmación previa. La verificación exitosa cierra y avanza a Facturación.
+Continuar valida estado ACTIVO o `MANUAL_PENDING` autorizado, campos y contacto antes de abrir el diálogo. Se usa `generarYEnviarToken` / `verificarToken`; con draft llaman a `/otp/email/send` y `/otp/email/verify`. El modal mantiene el foco, permite cerrar con Escape, cambiar correo, reenviar con espera y verificar. Correo destino parcialmente oculto. Cerrar no avanza. Cambiar correo invalida la confirmación previa. La verificación exitosa cierra y avanza a Facturación.
 
 Demo se identifica expresamente: no se envió correo y se muestra un código de prueba. En localhost se usa el backend configurado; si está ausente, se muestra un error, sin éxito simulado. El backend productivo sigue siendo responsable de revalidar estado, sesión y verificación antes del alta.
 

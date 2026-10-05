@@ -6,9 +6,26 @@
 
 Todo lo demás devuelve 404; rutas malformadas o traversal devuelven 400. No ampliar la lista con una blacklist. Dev Tunnels recibe exactamente la misma superficie y no obtiene acceso adicional al repositorio. `DEV_BIND_HOST` solo acepta `127.0.0.1`, `::1` o `localhost`.
 
-## Dev Tunnels — mock de cliente (flujo vigente)
+## Flujo V2 que debe revisar el desarrollador
 
-`POST /api/registro/verificar-cliente`, `POST /api/registro` y el frontend comparten el puerto 8000.
+El recorrido vigente no usa `POST /api/registro/verificar-cliente`, `GET /api/ruc/:ruc` ni `POST /api/registro` como autoridad. Después de validar la firma y crear el draft, ejecuta:
+
+```text
+POST /api/registro/drafts/{id}/client-check
+  ├─ esCliente=true  → detener promoción y ofrecer login
+  ├─ error           → gate cerrado y reintento
+  └─ esCliente=false → iniciar en paralelo:
+       ├─ POST .../issuer-authorization/check
+       └─ POST .../sri/lookup
+```
+
+Los checkpoints obligatorios son: CP0 identidad/custodia; CP1 cliente nuevo; CP2 emisor autorizado; CP3 SRI `ACTIVO` o fallback manual habilitado por tres fallos transitorios; CP4 correo exacto verificado; CP5 facturación y `complete` idempotente. `README.md`, `docs/REGISTRATION-FLOW.md` y `docs/V2-BACKEND-HANDOFF.md` contienen el detalle contractual.
+
+Para probar todo el flujo local, iniciar desde la misma terminal con `NODE_ENV=development`, `DEV_REGISTRATION_MOCK=1`, `DEV_CLIENT_LOOKUP_MOCK=1`, un `DEV_CLIENT_LOOKUP_EXISTING_RUC` válido suministrado al proceso, `DEV_ISSUER_AUTHORIZATION_MOCK` y `SRI_RUC_URL`. Sin esas condiciones, los mocks fallan cerrados.
+
+## Dev Tunnels — compatibilidad V1 y configuración de mocks
+
+Las rutas V1 `POST /api/registro/verificar-cliente` y `POST /api/registro` comparten el puerto 8000, pero no representan el wizard V2.
 Localhost funciona porque el servidor permite conexiones loopback con Host local
 (`localhost`, `127.0.0.1`, `[::1]`) y Origin HTTP coincidente, sin forwarding.
 Dev Tunnels usa un origen público HTTPS; necesita una autorización explícita:
@@ -44,7 +61,7 @@ Esto habilita **un mock, no la consulta real a clientes**. La allowlist no susti
 autenticación: conserve el control de acceso de VS Code al túnel. Pendiente de
 verificación en iPhone después de configurar el origen real y reiniciar.
 
-> **Documento legado del baseline.** Para el flujo vigente de cuatro pasos y el comando actual use `README.md`. Las referencias a certificado PDF, SMS, clave y logo describen la versión anterior.
+> **Desde la sección 0 se conserva el baseline V1 como referencia histórica.** No usar sus pantallas, endpoints ni payloads para implementar V2. Para el contrato vigente use las secciones anteriores, `README.md`, `docs/REGISTRATION-FLOW.md` y `docs/V2-BACKEND-HANDOFF.md`.
 
 Para devs que van a construir el backend desde cero o que necesitan tocar el frontend en su máquina antes de pushear.
 

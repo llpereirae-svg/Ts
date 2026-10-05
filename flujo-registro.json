@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-29",
+  "version": "2026-10-05",
   "nombre": "Registro 300 documentos gratis",
   "pasos": [
     {
@@ -7,36 +7,50 @@
       "numero": 1,
       "titulo": "Firma electrónica",
       "requiere": ["archivo .p12 o .pfx", "clave de firma", "aceptación de términos y privacidad"],
-      "privacidad": "archivo y clave se procesan localmente; no forman parte del payload"
+      "checkpoint": "CP0",
+      "peticiones": ["POST /api/registro/drafts", "POST /api/registro/drafts/{id}/signature-challenges", "POST /api/registro/drafts/{id}/signature-challenges/{challengeId}/verify", "POST /api/registro/drafts/{id}/certificate-package"],
+      "privacidad": "la firma se abre localmente; el paquete y la clave se entregan al backend para custodia temporal y se eliminan de memoria después del upload confirmado"
     },
     {
       "id": "datos",
       "numero": 2,
       "titulo": "Datos tributarios y contacto",
-      "ruc": "GET /api/ruc/:ruc",
-      "bloqueo": "requiere consulta exitosa del mismo RUC y estadoContribuyenteRuc ACTIVO; indisponibilidad no permite avanzar",
+      "checkpoints": ["CP1 cliente nuevo", "CP2 emisor autorizado", "CP3 datos tributarios utilizables", "CP4 contacto y correo verificado"],
+      "peticiones": ["POST /api/registro/drafts/{id}/client-check", "POST /api/registro/drafts/{id}/issuer-authorization/check", "POST /api/registro/drafts/{id}/sri/lookup", "PUT /api/registro/drafts/{id}/tax-data", "PUT /api/registro/drafts/{id}/contact", "POST /api/registro/drafts/{id}/otp/email/send", "POST /api/registro/drafts/{id}/otp/email/verify"],
+      "paralelismo": "issuer-authorization/check y sri/lookup empiezan juntas solo después de client-check=false",
+      "bloqueo": "requiere AUTHORIZED y snapshot del mismo RUC en estado ACTIVO; tres fallos transitorios registrados habilitan MANUAL_ENTRY restringido",
       "correo": "modal/bottom sheet dentro de Datos; verificación vinculada a la dirección exacta",
-      "endpoints": ["POST /api/token/email", "POST /api/token/verify"]
+      "ramas": {
+        "cliente_existente": "detener promoción y mostrar portal",
+        "emisor_no_autorizado": "mostrar guía y bloquear",
+        "emisor_indisponible": "reintentar sin asumir resultado",
+        "sri_204": "RUC no encontrado; bloquear",
+        "sri_no_activo": "bloquear",
+        "sri_malformado_o_ruc_distinto": "bloquear y reintentar",
+        "sri_tres_fallos_transitorios": "MANUAL_ENTRY y cuenta restringida"
+      }
     },
     {
       "id": "facturacion",
       "numero": 3,
       "titulo": "Información de facturación",
-      "pregunta": "¿Ya has emitido comprobantes electrónicos anteriormente?"
+      "pregunta": "¿Ya has emitido comprobantes electrónicos anteriormente?",
+      "peticion": "PUT /api/registro/drafts/{id}/billing"
     },
     {
       "id": "resumen",
       "numero": 4,
       "titulo": "Revisión y creación",
-      "accion": "POST /api/registro"
+      "checkpoint": "CP5",
+      "accion": "POST /api/registro/drafts/{id}/complete con Idempotency-Key"
     }
   ],
   "ruc": {
     "formato": "13 dígitos, terminación 001 y dígito verificador válido",
-    "arquitectura": "frontend -> API propia -> SRI",
+    "arquitectura": "frontend -> POST /api/registro/drafts/{id}/sri/lookup -> backend usa RUC autoritativo -> SRI",
     "estados": {
       "204": "no encontrado, sin body",
-      "408_5xx": "indisponibilidad temporal",
+      "408_5xx": "indisponibilidad temporal; tres fallos habilitan MANUAL_ENTRY restringido",
       "malformado": "error de contrato"
     },
     "estadoPrincipal": "estadoContribuyenteRuc",

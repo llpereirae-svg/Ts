@@ -1,6 +1,25 @@
 # HANDOVER · Equipo TICS — TributaSoft Landing
 
-> **Documento legado del baseline.** El contrato vigente del rediseño está en `README.md` y `docs/REDESIGN-REPORT.md`. Las referencias a ocho pasos, certificado PDF, SMS, clave y logo no describen el flujo nuevo.
+> **Estado del documento:** el contenido original de este handover describe el baseline V1 y se conserva como referencia histórica. No debe guiar una implementación nueva. El contrato vigente es V2 y está en `README.md`, `docs/REGISTRATION-FLOW.md` y, como autoridad backend, `docs/V2-BACKEND-HANDOFF.md`.
+
+## Resumen vigente para TICS
+
+El wizard visible tiene cuatro pasos: Firma, Datos, Facturación y Revisión. El RUC se extrae de la firma y queda ligado al draft. Challenge y custodia vuelven a enviarlo solo para comprobar coincidencia; `client-check`, autorización de emisor y consulta SRI llevan body vacío y el backend usa el RUC autoritativo.
+
+```text
+CP0  draft + challenge + custodia → IDENTITY_VERIFIED
+CP1  POST .../client-check
+     ├─ existente → detener promoción y mostrar login
+     └─ nuevo → lanzar en paralelo:
+          CP2  POST .../issuer-authorization/check
+          CP3  POST .../sri/lookup
+CP4  contacto + OTP email ligado al draft
+CP5  billing + POST .../complete con Idempotency-Key
+```
+
+CP2 exige `AUTHORIZED`; `NOT_AUTHORIZED` presenta la guía y `UNAVAILABLE` permite reintentar sin asumir autorización. CP3 exige snapshot del mismo RUC y estado `ACTIVO`; 204, RUC distinto, respuesta malformada o estado no activo bloquean. Solo tres fallos transitorios confirmados por backend habilitan `MANUAL_ENTRY`, que crea una cuenta restringida hasta reconciliación.
+
+Los endpoints V1 `POST /api/registro`, `POST /api/registro/verificar-cliente`, `GET /api/ruc/:ruc` y `/api/token/*` son compatibilidad legacy. No deben usarse para implementar el wizard V2. Todo el contenido que sigue a partir de «Resumen ejecutivo» pertenece a ese baseline V1, incluso las referencias a ocho pantallas, certificado de RUC PDF, SMS, clave, logo dentro del wizard y payload único de registro.
 
 Documento técnico para integrar la landing del wizard de registro con el backend de TributaSoft.
 

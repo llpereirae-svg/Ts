@@ -89,6 +89,26 @@ test('handoff contiene comparación V1→V2 y matriz frontend/mock/backend', asy
   assert.match(handoff, /\/drafts\/\{id\}\/complete/);
 });
 
+test('documentación de entrada conserva las ramas y checkpoints V2 del RUC', async () => {
+  const [readme, flow, handoff, machineText] = await Promise.all([
+    read('README.md'), read('docs/REGISTRATION-FLOW.md'),
+    read('docs/V2-BACKEND-HANDOFF.md'), read('flujo-registro.json'),
+  ]);
+  const currentDocs = `${readme}\n${flow}\n${handoff}`;
+  for (const checkpoint of ['CP0', 'CP1', 'CP2', 'CP3', 'CP4', 'CP5']) {
+    assert.match(currentDocs, new RegExp(`\\b${checkpoint}\\b`), `checkpoint faltante: ${checkpoint}`);
+  }
+  for (const suffix of ['client-check', 'issuer-authorization/check', 'sri/lookup']) {
+    assert.match(readme, new RegExp(suffix.replace('/', '\\/')));
+    assert.match(flow, new RegExp(suffix.replace('/', '\\/')));
+  }
+  const machine = JSON.parse(machineText);
+  assert.equal(machine.version, '2026-10-05');
+  assert.match(machine.pasos[1].paralelismo, /empiezan juntas/);
+  assert.match(machine.pasos[3].accion, /\/drafts\/\{id\}\/complete/);
+  assert.doesNotMatch(machineText, /GET \/api\/ruc\/:ruc|POST \/api\/registro"/);
+});
+
 test('límite PKCS#12 queda alineado en 8 MB', () => {
   assert.equal(validarFirmaArchivo({ name: 'firma.p12', size: 8 * 1024 * 1024 }).valid, true);
   assert.equal(validarFirmaArchivo({ name: 'firma.p12', size: 8 * 1024 * 1024 + 1 }).valid, false);

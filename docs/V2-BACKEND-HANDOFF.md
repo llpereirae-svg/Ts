@@ -1,6 +1,6 @@
 # TributaSoft Registro V2 — contrato definitivo para backend
 
-Estado: **READY FOR BACKEND IMPLEMENTATION**. Audiencia: equipo backend. Fecha contractual: 2026-09-30.
+Estado: **READY FOR BACKEND IMPLEMENTATION**. Audiencia: equipo backend. Fecha contractual revisada: 2026-10-05.
 
 Este documento es la fuente normativa del Registro V2. El código frontend y el mock de desarrollo deben coincidir con él. Las rutas legacy permanecen únicamente para consumidores V1 y no son autoridad del flujo V2.
 
@@ -64,6 +64,19 @@ Cualquier estado no terminal vencido -> EXPIRED
 ```
 
 Las operaciones pueden completarse en distinto orden después de `IDENTITY_VERIFIED`; `refreshReadiness` conserva `SRI_PENDING` mientras no exista snapshot SRI ni declaración manual admitida. `READY_TO_CREATE` requiere identidad, paquete de certificado, cliente nuevo, autorización de emisor `AUTHORIZED`, datos tributarios, email verificado, facturación y consentimiento.
+
+Checkpoints que debe registrar y revalidar el backend:
+
+| ID | Condición | Petición que aporta evidencia | Regla de cierre |
+|---|---|---|---|
+| CP0 | identidad verificada y paquete bajo custodia | challenge verify + certificate-package | sin ambos no se ejecuta `client-check` |
+| CP1 | RUC no pertenece a un cliente existente | `client-check` | `esCliente=true` termina la promoción; error no equivale a nuevo |
+| CP2 | emisor electrónico autorizado | `issuer-authorization/check` | solo `AUTHORIZED` pasa; `NOT_AUTHORIZED` y `UNAVAILABLE` son ramas distintas |
+| CP3 | datos tributarios utilizables | `sri/lookup` o `MANUAL_ENTRY` admitido | snapshot debe ser del mismo RUC y `ACTIVO`; manual exige tres fallos transitorios registrados |
+| CP4 | contacto verificado | contact + OTP email | la verificación pertenece al correo exacto y al draft |
+| CP5 | alta preparada | billing + `complete` | revalidar CP0–CP4, unicidad e idempotencia dentro de la transacción |
+
+Después de CP1, CP2 y CP3 pueden completarse en cualquier orden. La implementación frontend actual inicia ambas peticiones juntas, espera CP2 antes de mostrar Datos y después consume el resultado precargado de CP3.
 
 Estados terminales: `COMPLETED`, `EXPIRED`, `CANCELLED`. No son reutilizables.
 

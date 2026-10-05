@@ -1,6 +1,6 @@
 # Auditoría interna de seguridad — TributaSoft Landing
 
-> **Auditoría histórica del baseline.** Los cambios y pendientes actuales están en `docs/REDESIGN-AUDIT.md` y `docs/REDESIGN-REPORT.md`.
+> **Auditoría histórica del baseline V1.** No usar sus ocho pantallas, endpoints ni tokens como contrato vigente. Los controles V2, los checkpoints CP0–CP5 y los pendientes actuales están en `docs/V2-BACKEND-HANDOFF.md`; el recorrido funcional está en `docs/REGISTRATION-FLOW.md`.
 
 Última revisión: 2026-05-20
 Alcance: todos los `.js`, `.html` y `.css` del repo.
