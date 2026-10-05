@@ -57,18 +57,20 @@ test('normaliza la secuencia a nueve dígitos', () => {
   assert.equal(data.documentosFacturacion.factura.secuencia, '000000001');
 });
 
-test('payload envía exactamente una Factura y conserva el contrato', () => {
+test('payload conserva Factura y crea los cinco documentos adicionales con defaults', () => {
   const data = {};
   iniciarFacturacion(data);
   data.documentosFacturacion.factura.secuencia = '1';
   assert.deepEqual(construirFacturacion(data), {
     modo: 'nuevo',
-    documentos: [{
-      tipo_documento: 'factura',
-      establecimiento: '001',
-      punto_emision: '002',
-      secuencia: '000000001',
-    }],
+    documentos: [
+      { tipo_documento: 'factura', establecimiento: '001', punto_emision: '002', secuencia: '000000001' },
+      { tipo_documento: 'guia', establecimiento: '001', punto_emision: '001', secuencia: '000000001' },
+      { tipo_documento: 'nc', establecimiento: '001', punto_emision: '001', secuencia: '000000001' },
+      { tipo_documento: 'nd', establecimiento: '001', punto_emision: '001', secuencia: '000000001' },
+      { tipo_documento: 'liquidacion', establecimiento: '001', punto_emision: '001', secuencia: '000000001' },
+      { tipo_documento: 'retencion', establecimiento: '001', punto_emision: '001', secuencia: '000000001' },
+    ],
   });
 });
 

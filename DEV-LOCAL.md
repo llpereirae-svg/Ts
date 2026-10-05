@@ -21,6 +21,10 @@ POST /api/registro/drafts/{id}/client-check
 
 Los checkpoints obligatorios son: CP0 identidad/custodia; CP1 cliente nuevo; CP2 emisor autorizado; CP3 SRI `ACTIVO` o fallback manual habilitado por tres fallos transitorios; CP4 correo exacto verificado; CP5 facturación y `complete` idempotente. `README.md`, `docs/REGISTRATION-FLOW.md` y `docs/V2-BACKEND-HANDOFF.md` contienen el detalle contractual.
 
+En CP5, la pantalla muestra solo Factura, pero `billing.documentos` debe contener seis elementos en este orden: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`. Factura conserva lo editado; los otros cinco se envían como strings con `establecimiento=001`, `punto_emision=001` y `secuencia=000000001`. Véase el JSON completo en `docs/PASO3-FACTURACION.md`.
+
+La consulta backend de emisores autorizados usa `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf`: primero `GET`, después `POST` al mismo URL conservando cookie y `javax.faces.ViewState`. No llamarla directamente desde el navegador. La referencia ejecutable está en `server/emisor-autorizado.js`.
+
 Para probar todo el flujo local, iniciar desde la misma terminal con `NODE_ENV=development`, `DEV_REGISTRATION_MOCK=1`, `DEV_CLIENT_LOOKUP_MOCK=1`, un `DEV_CLIENT_LOOKUP_EXISTING_RUC` válido suministrado al proceso, `DEV_ISSUER_AUTHORIZATION_MOCK` y `SRI_RUC_URL`. Sin esas condiciones, los mocks fallan cerrados.
 
 ## Dev Tunnels — compatibilidad V1 y configuración de mocks

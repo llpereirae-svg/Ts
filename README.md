@@ -7,7 +7,7 @@ Landing estática en HTML, CSS y JavaScript ES modules con un flujo responsive d
 1. **Firma:** abre `.p12` o `.pfx` localmente con `node-forge`, valida el RUC, crea un draft, firma un challenge y entrega el paquete y su contraseña al backend para custodia temporal cifrada. El navegador elimina archivo y contraseña de memoria después del upload confirmado; el backend productivo debe aplicar la política de cifrado y KMS/Vault definida en el handoff V2.
 2. **Gates previos:** el backend usa el RUC autoritativo del draft. Si ya es cliente, muestra «Ya eres cliente de TributaSoft». Si es nuevo, inicia en paralelo la autorización de emisor y la consulta tributaria; la autorización debe quedar confirmada antes de mostrar Datos.
 3. **Datos:** usa el snapshot del catastro SRI ya precargado o habilita captura manual identificada tras tres fallos transitorios; contacto y OTP quedan ligados al draft.
-4. **Facturación:** configuración inicial de Factura; otros documentos, establecimientos y puntos se administran después desde el perfil. Véase `docs/PASO3-FACTURACION.md`.
+4. **Facturación:** la pantalla configura Factura; el JSON conserva seis documentos e inicializa los otros cinco con `001 / 001 / 000000001`. Véase `docs/PASO3-FACTURACION.md`.
 5. **Revisión:** resume identidad, datos tributarios, contacto y facturación antes del alta. Son cuatro pasos visibles; el gate no es un quinto paso.
 
 ```text

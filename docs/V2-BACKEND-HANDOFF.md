@@ -169,6 +169,8 @@ Solo se consulta después de `IDENTITY_VERIFIED` y custodia temporal. Request va
 
 Solo se ejecuta cuando `client-check` confirma cliente nuevo. El request es vacío y el backend usa el RUC autoritativo del draft; el navegador nunca llama al portal del SRI ni envía otro RUC. El backend abre la consulta pública de emisores autorizados, conserva cookie y `javax.faces.ViewState` únicamente durante esa operación y normaliza la respuesta:
 
+URL oficial de consulta: `https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezEmisor.jsf`. No es un endpoint REST: el backend hace primero `GET` para obtener cookie y `javax.faces.ViewState`, y luego `POST` al mismo URL con el formulario JSF. La implementación de referencia está en `server/emisor-autorizado.js`.
+
 ```json
 { "status": "AUTHORIZED", "authorized": true, "authorizationDate": "14/04/2014 08:11", "checkedAt": "..." }
 ```
@@ -241,13 +243,13 @@ Solo `AUTO_RECONCILED` o una confirmación/revisión resuelta satisfactoriamente
 
 ## 11. Facturación
 
-El registro V2 envía únicamente la configuración inicial de `factura`: `tipo_documento`, `establecimiento`, `punto_emision`, `secuencia`. Los demás tipos, establecimientos y puntos de emisión se configuran después desde el perfil, fuera del onboarding. Valores sugeridos editables: `001 / 002 / 1`; antes del envío la secuencia se normaliza a nueve dígitos (`000000001`).
+El registro V2 muestra únicamente la configuración inicial de Factura, pero el JSON mantiene el contrato de seis documentos. Factura envía los valores editados en pantalla (`001 / 002 / 1` como sugerencia inicial); `guia`, `nc`, `nd`, `liquidacion` y `retencion` se inicializan sin controles visibles con `001 / 001 / 000000001`. La secuencia de Factura también se normaliza a nueve dígitos antes del envío.
 
 - Establecimiento y punto: exactamente 3 dígitos, distintos de `000`.
 - Secuencia UX: 1–9 dígitos; contrato persistido: 9 dígitos con ceros a la izquierda.
 - Para cliente previo, representa la última secuencia emitida; backend calcula la siguiente de forma atómica.
-- Para nuevo, defaults `001-001-000000001` según la configuración aprobada.
-- Solo se envían opcionales seleccionados; quitar uno elimina estado residual.
+- Para los cinco documentos adicionales, defaults `001-001-000000001` según la configuración aprobada.
+- El arreglo `documentos` contiene siempre, en este orden: `factura`, `guia`, `nc`, `nd`, `liquidacion`, `retencion`.
 
 ## 12. Complete e idempotencia
 

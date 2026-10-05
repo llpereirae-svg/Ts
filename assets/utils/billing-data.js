@@ -1,6 +1,7 @@
 export const DOCUMENTOS = Object.freeze({ factura: 'Factura', guia: 'Guía de remisión', nc: 'Nota de crédito', nd: 'Nota de débito', liquidacion: 'Liquidación de compra', retencion: 'Retención' });
 export const TIPOS_DOCUMENTO = Object.keys(DOCUMENTOS);
 const inicial = () => ({ establecimiento: '001', punto_emision: '002', secuencia: '000000001' });
+const inicialAdicional = () => ({ establecimiento: '001', punto_emision: '001', secuencia: '000000001' });
 export function normalizarSecuencia(value) {
   const raw = String(value ?? '');
   return /^\d{1,9}$/.test(raw) ? raw.padStart(9, '0') : raw;
@@ -56,8 +57,10 @@ export function erroresFacturacion(data) {
 }
 export function construirFacturacion(data) {
   iniciarFacturacion(data);
-  return { modo: 'nuevo', documentos: ['factura'].map(tipo => {
-    const doc = data.documentosFacturacion[tipo];
+  return { modo: 'nuevo', documentos: TIPOS_DOCUMENTO.map(tipo => {
+    // La pantalla configura solo Factura. El contrato histórico del API exige
+    // inicializar también los otros cinco documentos con 001-001-000000001.
+    const doc = tipo === 'factura' ? data.documentosFacturacion.factura : inicialAdicional();
     return { tipo_documento: tipo, establecimiento: doc.establecimiento, punto_emision: doc.punto_emision, secuencia: normalizarSecuencia(doc.secuencia) };
   }) };
 }
